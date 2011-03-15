@@ -1,0 +1,14 @@
+obj-$(CONFIG_PANEL_GENERIC) += panel-generic.o
+obj-$(CONFIG_PANEL_LGPHILIPS_LB035Q02) += panel-lgphilips-lb035q02.o
+obj-$(CONFIG_PANEL_SAMSUNG_LTE430WQ_F0C) += panel-samsung-lte430wq-f0c.o
+obj-$(CONFIG_PANEL_SHARP_LS037V7DW01) += panel-sharp-ls037v7dw01.o
+obj-$(CONFIG_PANEL_SHARP_LQ036Q1DA01) += panel-sharp-lq036q1da01.o
+obj-$(CONFIG_PANEL_SHARP_LQ043T1DG01) += panel-sharp-lq043t1dg01.o
+obj-$(CONFIG_PANEL_SHARP_LQ10D368) += panel-sharp-lq10d368.o
+obj-$(CONFIG_PANEL_SHARP_LQ121S1DG31) += panel-sharp-lq121s1dg31.o
+obj-$(CONFIG_PANEL_SHARP_LQ64D343) += panel-sharp-lq64d343.o
+obj-$(CONFIG_PANEL_SHARP_LS037V7DW01) += panel-sharp-ls037v7dw01.o
+obj-$(CONFIG_PANEL_SHARP_LS038Y7DX01) += panel-sharp-ls038y7dx01.o # new LCD panel added. mark.chung@logicpd.com
+obj-$(CONFIG_PANEL_CUSTOMER) += panel-customer.o
+
+obj-$(CONFIG_PANEL_TAAL) += panel-taal.o

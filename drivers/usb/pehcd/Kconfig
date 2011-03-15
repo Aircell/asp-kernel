@@ -1,0 +1,23 @@
+#
+# USB Host Controller Drivers
+#
+config USB_ISP1760_HCD_OMAP3LOGIC
+	tristate "ISP 1760 HCD support on Logic OMAP3 Reference boards"
+	depends on USB && EXPERIMENTAL && (MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO)
+	---help---
+	  The ISP1760 chip is a USB 2.0 host controller.
+	  This driver supports ISP1760 USB host controller embedded
+	  on Logic OMAP35xx reference boards
+
+config USB_ISP1760_OMAP3LOGIC_OC_WORKAROUND
+	bool "ISP 1760 software workaround of over current issue on Logic OMAP3530 LV SOM"
+	depends on USB_ISP1760_HCD_OMAP3LOGIC
+	---help---
+	  To work around an over current issue on downstream port 2 and 3 of Logic OMAP3530 LV SOM, the 
+          software workaround enables only downstream port 1 of ISP1760's internal built-in hub ISP1520.
+
+
+
+
+
+
