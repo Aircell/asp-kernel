@@ -183,8 +183,6 @@ static inline char *host_typetostr(int type)
 		return "PCI";
 	case HCI_SDIO:
 		return "SDIO";
-	case HCI_SPI:
-		return "SPI";
 	default:
 		return "UNKNOWN";
 	}

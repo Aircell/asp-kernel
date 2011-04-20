@@ -136,8 +136,6 @@ void omap2_sms_write_rot_control(u32 val, unsigned ctx);
 void omap2_sms_write_rot_size(u32 val, unsigned ctx);
 void omap2_sms_write_rot_physical_ba(u32 val, unsigned ctx);
 
-unsigned int omap2_sdrc_cs_size(int cs);
-
 #ifdef CONFIG_ARCH_OMAP2
 
 struct memory_timings {

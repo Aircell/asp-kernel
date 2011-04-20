@@ -1,13 +1,5 @@
 menu "EEPROM support"
 
-# added new eeprom by mark.chung@logicpd.com
-config EEPROM_LOGIC
-	tristate "I2C EEPROM"
-	depends on I2C && SYSFS
-	help
-	  EEPROM for Logic.
-	
-
 config EEPROM_AT24
 	tristate "I2C EEPROMs from most vendors"
 	depends on I2C && SYSFS

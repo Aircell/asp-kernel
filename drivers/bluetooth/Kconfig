@@ -195,17 +195,5 @@ config BT_MRVL_SDIO
 	  Say Y here to compile support for Marvell BT-over-SDIO driver
 	  into the kernel or say M to compile it as module.
 
-config BT_HCIBRF6300_SPI
-	tristate "HCI TI BRF6300 (SPI) driver"
-	depends on BT && MACH_OMAP3530_LV_SOM && SPI
-	help
-	  Bluetooth HCI driver for TI BRF63000 with SPI interface.
-	  This driver provides support for BRF63000 Bluetooth chip 
-	  with SPI interface.
-
-	  Say Y here to compile support for TI BRF63000 devices into the
-	  kernel or say M to compile it as module (brf6300_spi).
-
-
 endmenu
 

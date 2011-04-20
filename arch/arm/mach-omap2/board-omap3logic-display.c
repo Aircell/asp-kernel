@@ -33,9 +33,6 @@
 #include <plat/common.h>
 #include <plat/display.h>
 
-#include <linux/spi/spi.h>
-#include <plat/mcspi.h>
-
 #define OMAP3530_LV_SOM_LCD_GPIO_ENA		155
 #define OMAP3530_LV_SOM_LCD_GPIO_BL		8
 
@@ -106,12 +103,16 @@ static int omap3logic_panel_pre_enable_lcd(struct omap_dss_device *dssdev)
 
 int omap3logic_enable_lcd(struct omap_dss_device *dssdev)
 {
+	wait_queue_head_t wait;
+
 	printk("%s: Called\n", __FUNCTION__);
 
 	gpio_set_value(board_lcd_data.gpio_enable, 1);
 
 	// Sleep for 300ms since the 4.3" display needs clocks before
 	// turning off the syncs after turning off the backlight
+//	init_waitqueue_head (&wait);
+//	wait_event_timeout(wait, 0, msecs_to_jiffies(300));
 	msleep(300);
 
 	/* Bring up backlight */
@@ -143,8 +144,29 @@ struct omap_dss_device omap3logic_lcd_device;
 
 
 
+static int omap3logic_enable_tv(struct omap_dss_device *dssdev)
+{
+	return 0;
+}
+
+static void omap3logic_disable_tv(struct omap_dss_device *dssdev)
+{
+}
+
+static struct omap_dss_device omap3logic_tv_device = {
+	.name			= "tv",
+	.driver_name		= "venv",
+	.type			= OMAP_DISPLAY_TYPE_VENC,
+	.phy.dpi.data_lines	= OMAP_DSS_VENC_TYPE_SVIDEO,
+	.platform_enable	= omap3logic_enable_tv,
+	.platform_disable	= omap3logic_disable_tv,
+};
+
+
+
 static struct omap_dss_device *omap3logic_dss_devices[] = {
 	&omap3logic_lcd_device,
+	&omap3logic_tv_device,
 };
 
 static struct omap_dss_board_info omap3logic_dss_data = {
@@ -203,27 +225,9 @@ struct regulator_init_data omap3logic_vpll2 = {
 	.consumer_supplies      = omap3logic_vpll2_supplies,
 };
 
-#if defined(CONFIG_PANEL_SHARP_LS038Y7DX01)
-static struct omap2_mcspi_device_config dss_lcd_mcspi_config =
-{
-	.turbo_mode     = 0,
-	.single_channel = 1, /* 0: slave, 1: master */
-};
-
-static struct spi_board_info omap3logic_spi_ls038y7dx01_panel =
-{
-	.modalias       = "sharp_ls038y7dx01_panel-spi",
-	.bus_num        = 3,
-	.chip_select    = 0,
-	.max_speed_hz   = 307500, //37500,
-	//.mode         = SPI_MODE_1,
-	.controller_data = &dss_lcd_mcspi_config,
-};
-#endif
-
 void __init board_lcd_init(void)
 {
-	
+
 	if (!omap3logic_lcd_device.name) {
 		printk(KERN_ERR "No 'display=' specified on commandline!\n");
 		return;
@@ -253,65 +257,35 @@ void __init board_lcd_init(void)
 		return;
 	}
 
-// Set-up for Sharp LS038Y7DX01 display panel only.
-#if defined(CONFIG_PANEL_SHARP_LS038Y7DX01)
-	omap_mux_init_signal("cam_xclkb.gpio_111", OMAP_PIN_OUTPUT);
-	
-	if (gpio_request(111, "LCD reset line")) {
-		printk(KERN_ERR "failed to get LCD reset line on GPIO %d\n",
-		       111);
-		goto err0;
-	}
-	
-	gpio_direction_output(111, 1);
-	
-	mdelay(6);
-	gpio_direction_output(111, 0);
-	
-	mdelay(3);
-	
-	gpio_direction_output(111, 1);
-	
-	mdelay(6);
-	
-	omap_mux_init_signal("sdmmc2_clk.mcspi3_clk", OMAP_PIN_INPUT);
-	omap_mux_init_signal("sdmmc2_cmd.mcspi3_simo", OMAP_PIN_INPUT);
-	omap_mux_init_signal("sdmmc2_dat0.mcspi3_somi", OMAP_PIN_INPUT);
-	mdelay(5);
-	omap_mux_init_signal("sdmmc2_dat3.mcspi3_cs0", OMAP_PIN_INPUT);
-	
-	spi_register_board_info(&omap3logic_spi_ls038y7dx01_panel, 1);
-#endif
-	
 	omap_mux_init_signal("dss_pclk", OMAP_PIN_OUTPUT);
 	omap_mux_init_signal("dss_hsync", OMAP_PIN_OUTPUT);
 	omap_mux_init_signal("dss_vsync", OMAP_PIN_OUTPUT);
 	omap_mux_init_signal("dss_acbias", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data0.dss_data0", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data1.dss_data1", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data2.dss_data2", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data3.dss_data3", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data4.dss_data4", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data5.dss_data5", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data6.dss_data6", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data7.dss_data7", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data8.dss_data8", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data9.dss_data9", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data10.dss_data10", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data11.dss_data11", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data12.dss_data12", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data13.dss_data13", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data14.dss_data14", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data15.dss_data15", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data16.dss_data16", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data17.dss_data17", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data18.dss_data18", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data19.dss_data19", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data20.dss_data20", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data21.dss_data21", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data22.dss_data22", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data23.dss_data23", OMAP_PIN_OUTPUT);
-	
+	omap_mux_init_signal("dss_data0", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data1", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data2", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data3", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data4", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data5", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data6", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data7", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data8", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data9", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data10", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data11", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data12", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data13", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data14", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data15", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data16", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data17", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data18", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data19", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data20", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data21", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data22", OMAP_PIN_OUTPUT);
+	omap_mux_init_signal("dss_data23", OMAP_PIN_OUTPUT);
+
 	if (gpio_request(board_lcd_data.gpio_enable, "LCD enable")) {
 		printk(KERN_ERR "failed to get LCD enable on GPIO %d\n",
 			board_lcd_data.gpio_enable);
@@ -404,17 +378,6 @@ static struct omap3logic_display omap3logic_displays[] = {
 			.type			= OMAP_DISPLAY_TYPE_DPI,
 			.phy.dpi.data_lines	= 16,
 			.platform_pre_enable    = omap3logic_panel_pre_enable_lcd,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
-	{ 
-		.name		= "16", /* 16 == LS038Y7DX01 TFT WQVGA (3.8) Sharp */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "sharp_ls038y7dx01_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
 			.platform_enable	= omap3logic_enable_lcd,
 			.platform_disable	= omap3logic_disable_lcd,
 		},

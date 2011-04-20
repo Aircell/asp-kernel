@@ -607,7 +607,7 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 #else
 			mmc->slots[0].set_power = twl_mmc23_set_power;
 #endif
-			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
+//			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
 			break;
 		default:
 			pr_err("MMC%d configuration not supported!\n", c->mmc);

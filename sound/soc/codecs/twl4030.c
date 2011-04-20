@@ -49,7 +49,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0xc3, /* REG_OPTION		(0x2)	*/
 	0x00, /* REG_UNKNOWN		(0x3)	*/
 	0x00, /* REG_MICBIAS_CTL	(0x4)	*/
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) | defined(CONFIG_MACH_OMAP3_TORPEDO)
 	/* Use the AUX inputs, not carkit or microphone */
 	0x14, /* REG_ANAMICL		(0x5)	*/
 	0x14, /* REG_ANAMICR		(0x6)	*/

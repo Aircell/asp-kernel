@@ -38,6 +38,7 @@
 
 #include "i2c-core.h"
 
+
 /* core_lock protects i2c_adapter_idr, userspace_devices, and guarantees
    that device detection, deletion of detected devices, and attach_adapter
    and detach_adapter calls are serialized */

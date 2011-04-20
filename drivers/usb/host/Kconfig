@@ -59,16 +59,6 @@ config USB_EHCI_HCD
 	  To compile this driver as a module, choose M here: the
 	  module will be called ehci-hcd.
 
-config LOGIC_OMAP3530_USB3320_HACK
-	bool "LOGIC USB3320 Hack"
-	depends on USB_EHCI_HCD
-	default y
-	---help---
-	  This hack allows "suspend" in USB when the USB3320 is used as the PHY
-	  for the system.  It works by essentially turning off the power to the
-	  host controller when we need to gain access to talking to the PHY 
-	  again, thus performing essentially a hard reset of the controller.
-
 config USB_EHCI_ROOT_HUB_TT
 	bool "Root Hub Transaction Translators"
 	depends on USB_EHCI_HCD

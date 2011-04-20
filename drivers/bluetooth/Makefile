@@ -21,8 +21,6 @@ obj-$(CONFIG_BT_MRVL_SDIO)	+= btmrvl_sdio.o
 btmrvl-y			:= btmrvl_main.o
 btmrvl-$(CONFIG_DEBUG_FS)	+= btmrvl_debugfs.o
 
-obj-$(CONFIG_BT_HCIBRF6300_SPI)	+= brf6300_spi.o
-
 hci_uart-y				:= hci_ldisc.o
 hci_uart-$(CONFIG_BT_HCIUART_H4)	+= hci_h4.o
 hci_uart-$(CONFIG_BT_HCIUART_BCSP)	+= hci_bcsp.o

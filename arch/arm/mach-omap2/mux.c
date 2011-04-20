@@ -1005,13 +1005,5 @@ int __init omap_mux_init(u32 mux_pbase, u32 mux_size,
 	return 0;
 }
 
-#ifdef CONFIG_LOGIC_OMAP3530_USB3320_HACK
-
-EXPORT_SYMBOL_GPL(omap_mux_init_gpio);
-EXPORT_SYMBOL_GPL(omap_mux_get_gpio);
-EXPORT_SYMBOL_GPL(omap_mux_set_gpio);
-
-#endif
-
 #endif	/* CONFIG_ARCH_OMAP34XX */
 
