@@ -98,6 +98,8 @@ struct spi_device {
 	 *  - chipselect delays
 	 *  - ...
 	 */
+
+	int			quirks;
 };
 
 static inline struct spi_device *to_spi_device(struct device *dev)
@@ -738,6 +740,8 @@ struct spi_board_info {
 	 *  - quirks like clock rate mattering when not selected
 	 */
 	u8		bits_per_word;
+	int		quirks;	
+#define SPI_QUIRK_BRF6300		0x01
 };
 
 #ifdef	CONFIG_SPI

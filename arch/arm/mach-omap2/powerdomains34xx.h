@@ -337,8 +337,14 @@ static struct powerdomain usbhost_pwrdm = {
 	.omap_chip	  = OMAP_CHIP_INIT(CHIP_GE_OMAP3430ES2),
 	.wkdep_srcs	  = per_usbhost_wkdeps,
 	.sleepdep_srcs	  = dss_per_usbhost_sleepdeps,
-	.pwrsts		  = PWRSTS_OFF_RET_ON,
-	.pwrsts_logic_ret = PWRDM_POWER_RET,
+#ifdef CONFIG_LOGIC_OMAP3530_USB3320_HACK
+    .pwrsts       = PWRSTS_OFF_ON,
+    .pwrsts_logic_ret = PWRDM_POWER_OFF,
+#else
+    .pwrsts           = PWRSTS_OFF_RET_ON,
+    .pwrsts_logic_ret = PWRDM_POWER_RET,
+#endif
+
 	/*
 	 * REVISIT: Enabling usb host save and restore mechanism seems to
 	 * leave the usb host domain permanently in ACTIVE mode after

@@ -340,18 +340,18 @@ static int twl_mmc23_set_power(struct device *dev, int slot, int power_on, int v
 			reg |= OMAP2_MMCSDIO2ADPCLKISEL;
 			omap_ctrl_writel(reg, control_devconf1_offset);
 		}
-		ret = mmc_regulator_set_ocr(c->vcc, vdd);
+		ret = mmc_regulator_set_ocr(c->vcc_aux, vdd);
 		/* enable interface voltage rail, if needed */
 		if (ret == 0 && c->vcc_aux) {
 			ret = regulator_enable(c->vcc_aux);
 			if (ret < 0)
-				ret = mmc_regulator_set_ocr(c->vcc, 0);
+				ret = mmc_regulator_set_ocr(c->vcc_aux, 0);
 		}
 	} else {
 		if (c->vcc_aux && (ret = regulator_is_enabled(c->vcc_aux)) > 0)
 			ret = regulator_disable(c->vcc_aux);
 		if (ret == 0)
-			ret = mmc_regulator_set_ocr(c->vcc, 0);
+			ret = mmc_regulator_set_ocr(c->vcc_aux, 0);
 	}
 
 	return ret;
@@ -506,10 +506,8 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			emb_data = &omap_murata_wifi_emb_data;
 #endif
 #ifdef CONFIG_MACH_OMAP3530_LV_SOM
-			if (!omap3logic_has_murata_wifi_module()) {
-				printk("%s: Using Unifi data\n", __FUNCTION__);
+			if (!omap3logic_has_murata_wifi_module())
 				emb_data = &omap_uf1050a_wifi_emb_data;
-			}
 #endif
 			mmc->slots[0].embedded_sdio = emb_data;
 			mmc->slots[0].register_status_notify =
@@ -607,7 +605,7 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 #else
 			mmc->slots[0].set_power = twl_mmc23_set_power;
 #endif
-//			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
+			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
 			break;
 		default:
 			pr_err("MMC%d configuration not supported!\n", c->mmc);

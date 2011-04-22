@@ -8,6 +8,7 @@ obj-$(CONFIG_PANEL_SHARP_LQ10D368) += panel-sharp-lq10d368.o
 obj-$(CONFIG_PANEL_SHARP_LQ121S1DG31) += panel-sharp-lq121s1dg31.o
 obj-$(CONFIG_PANEL_SHARP_LQ64D343) += panel-sharp-lq64d343.o
 obj-$(CONFIG_PANEL_SHARP_LS037V7DW01) += panel-sharp-ls037v7dw01.o
+obj-$(CONFIG_PANEL_SHARP_LS038Y7DX01) += panel-sharp-ls038y7dx01.o # new LCD panel added. mark.chung@logicpd.com
 obj-$(CONFIG_PANEL_CUSTOMER) += panel-customer.o
 
 obj-$(CONFIG_PANEL_TAAL) += panel-taal.o

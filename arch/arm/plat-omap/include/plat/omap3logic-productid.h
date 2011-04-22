@@ -147,11 +147,13 @@ extern void omap3logic_fetch_sram_product_id_data(void);
 int omap3logic_extract_product_id_part_number(struct product_id_data *p, char *buf, int buflen);
 extern int omap3logic_extract_serial_number(struct product_id_data *p, char *buf, int buflen);
 
-extern int omap3logic_has_external_mute(void);
+extern int omap3logic_external_mute_gpio(void);
 
 extern void omap3logic_set_product_id_data(struct product_id_data *p);
 
 extern int omap3logic_NOR0_size(void);
+extern int omap3logic_NAND0_size(void);
 
 extern int omap3logic_has_murata_wifi_module(void);
+extern int omap3logic_has_isp1760(void);
 #endif

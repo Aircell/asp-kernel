@@ -40,6 +40,8 @@
 #endif
 #include "twl4030.h"
 
+#define AIRCELL
+
 /*
  * twl4030 register cache & default register settings
  */
@@ -48,11 +50,20 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x91, /* REG_CODEC_MODE		(0x1)	*/
 	0xc3, /* REG_OPTION		(0x2)	*/
 	0x00, /* REG_UNKNOWN		(0x3)	*/
+#ifdef AIRCELL
+	0x03, /* REG_MICBIAS_CTL	(0x4): Enable MICBIAS1,2	*/
+#else
 	0x00, /* REG_MICBIAS_CTL	(0x4)	*/
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) | defined(CONFIG_MACH_OMAP3_TORPEDO)
+#endif
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
+#ifdef AIRCELL
+	0x15, /* REG_ANAMICL		(0x5): use the Mic	*/
+	0x15, /* REG_ANAMICR		(0x6): use the Mic	*/
+#else
 	/* Use the AUX inputs, not carkit or microphone */
 	0x14, /* REG_ANAMICL		(0x5)	*/
 	0x14, /* REG_ANAMICR		(0x6)	*/
+#endif
 #else
 	0x34, /* REG_ANAMICL		(0x5)	*/
 	0x14, /* REG_ANAMICR		(0x6)	*/

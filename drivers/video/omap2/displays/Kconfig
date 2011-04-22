@@ -19,6 +19,13 @@ config PANEL_SAMSUNG_LTE430WQ_F0C
         help
           LCD Panel used on Overo Palo43
 
+# new LCD panel added(Sharp LS038Y7DX01). mark.chung@logicpd.com
+config PANEL_SHARP_LS038Y7DX01
+        tristate "Sharp LS038Y7DX01 LCD Panel"
+        depends on OMAP2_DSS
+        help
+          LCD Panel used in Logic's OMAP boards
+
 config PANEL_SHARP_LS037V7DW01
         tristate "Sharp LS037V7DW01 LCD Panel"
         depends on OMAP2_DSS

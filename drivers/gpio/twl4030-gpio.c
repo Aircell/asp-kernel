@@ -118,6 +118,7 @@ static inline int gpio_twl4030_read(u8 address)
 	int ret = 0;
 
 	ret = twl_i2c_read_u8(TWL4030_MODULE_GPIO, &data, address);
+
 	return (ret < 0) ? ret : data;
 }
 

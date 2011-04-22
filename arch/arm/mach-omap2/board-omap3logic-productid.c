@@ -29,6 +29,7 @@
 #include <plat/sram.h>
 
 #include <plat/omap3logic-productid.h>
+#include <plat/wifi_tiwlan.h>
 #include "mux.h"
 
 static struct extracted_product_id_data {
@@ -455,6 +456,16 @@ int omap3logic_extract_product_id_part_number(struct product_id_data *p, char *b
 		return 0;
 	}
 
+	if (p->d.u_zone0.pz_0r0.header_version == LOGIC_HEADER_VERSION_2
+		|| p->d.u_zone0.pz_0r0.header_version == LOGIC_HEADER_VERSION_3) {
+		size = sizeof(p->d.u_zone0.pz_0r2.part_number);
+		if (buflen < sizeof(p->d.u_zone0.pz_0r2.part_number))
+			size = buflen;
+		strncpy(buf, p->d.u_zone0.pz_0r2.part_number, sizeof(p->d.u_zone0.pz_0r2.part_number));
+		buf[sizeof(p->d.u_zone0.pz_0r2.part_number)] = '\0';
+		return 0;
+	}
+
 	return -EINVAL;
 }
 
@@ -519,11 +530,13 @@ int omap3logic_extract_model_number_revision(struct product_id_data *p, char *bu
 
 	strncpy(buf, product_id_data.d.zone1.model_number, buflen);
 	buf[buflen-1] = '\0';
-	i = strlen(buf);
-	if (i + 3 < buflen) {
-		buf[i] = '-';
-		buf[i+1] = product_id_data.d.zone1.model_revision;
-		buf[i+2] = '\0';
+	if (header_version < LOGIC_HEADER_VERSION_2) {
+		i = strlen(buf);
+		if (i + 3 < buflen) {
+			buf[i] = '-';
+			buf[i+1] = product_id_data.d.zone1.model_revision;
+			buf[i+2] = '\0';
+		}
 	}
 	return 0;
 }
@@ -971,18 +984,64 @@ static void remove_sysfs_files(void)
 }
 #endif
 
-/* Starting with the "B" rev (1011880) an external pair of FET's
- * controlled by GPIO177. */
-int omap3logic_has_external_mute(void)
+/* Is this a -11 LV SOM? */
+static int omap3logic_is_dash_11_module(void)
 {
-	if (product_id_data.d.zone1.model_revision >= 'B')
-		return !0;
+	/* No valid data, then no idea */
+	if (!omap3logic_is_product_data_valid())
+		return 0;
 
-	/* If we're a torpedo, we have mute as well */
-	if (machine_is_omap3_torpedo())
-		return !0;
+	/* Not a SOM, no Murata */
+	if (!machine_is_omap3530_lv_som())
+		return 0;
+
+	/* If earlier than rev3, it can't be a -11 */
+	if (header_version < LOGIC_HEADER_VERSION_3)
+		return 0;
+
+	/* If platform_bits bit 4 is set its a -11 */
+	if (product_id_data.d.zone2.pz_2r3.platform_bits & 0x10)
+		return 1;
 
 	return 0;
+}
+
+
+// On the 1011880 boards (and newer), audio mute is on GPIO_177
+#define TWL4030_OLD_EXTERNAL_AUDIO_MUTE_GPIO	177
+// On the 1015061 boards, audio mute is on GPIO_57
+#define TWL4030_NEW_EXTERNAL_AUDIO_MUTE_GPIO	57
+
+/* Starting with the "B" rev (1011880) an external pair of FET's
+ * controlled by GPIO177. On the -11 boards external mute is GPIO57 */
+int omap3logic_external_mute_gpio(void)
+{
+	u32 part_number;
+
+	/* No valid data, then no idea of the mute */
+	if (!omap3logic_is_product_data_valid())
+		return -EINVAL;
+
+	/* If we're a torpedo, we have the old external mute */
+	if (machine_is_omap3_torpedo())
+		return TWL4030_OLD_EXTERNAL_AUDIO_MUTE_GPIO;
+
+	/* If we're a -11 SOM, then we have the new external audio mute */
+	if (omap3logic_is_dash_11_module())
+		return TWL4030_NEW_EXTERNAL_AUDIO_MUTE_GPIO;
+
+	/* 101880 and later SOMs have the old external mute */
+	if (!omap3logic_get_product_id_part_number(&part_number)) {
+		if (part_number >= 101880)
+			return TWL4030_OLD_EXTERNAL_AUDIO_MUTE_GPIO;
+	}
+
+	/* If revision is "B" or later, we have the old external mute */
+	if (product_id_data.d.zone1.model_revision >= 'B')
+		return TWL4030_OLD_EXTERNAL_AUDIO_MUTE_GPIO;
+
+	/* Nope, this board doesn't have the external mute */
+	return -EINVAL;
 }
 
 /* Return positive non-zero if productID indicates there's
@@ -1011,11 +1070,41 @@ int omap3logic_NOR0_size(void)
 	return nor0_size;
 }
 
+/* Return positive non-zero if productID indicates there's
+ * the first NAND flash on the device - return size of flash
+ * as log2 in bytes, or negative for none(or size unknown) */
+int omap3logic_NAND0_size(void)
+{
+	char nand0_size;
+
+	if (!omap3logic_is_product_data_valid())
+		return -EINVAL;
+
+	if (header_version <= LOGIC_HEADER_VERSION_1) {
+		nand0_size = product_id_data.d.zone2.pz_2r0.nand0_size;
+	} else if (header_version <= LOGIC_HEADER_VERSION_2) {
+		nand0_size = product_id_data.d.zone2.pz_2r2.nand0_size;
+	} else 
+		nand0_size = product_id_data.d.zone2.pz_2r3.nand0_size;
+
+	/* Flash exists if its size is non-zero, but 0xff is known to be
+	 * a non-programmed value */
+	if (nand0_size == 0x00
+		|| nand0_size == 0xff)
+		return 0;
+
+	return nand0_size;
+}
+
 /*
  * Return !0 if SOM has a Murata module on it.  Currently we assume that
  * all -11 variants have it, have to fix in the future */
 int omap3logic_has_murata_wifi_module(void)
 {
+	static int murata_probed = 0;
+	static int murata_found = 0;
+	int i;
+
 	/* No valid data, then no Murata */
 	if (!omap3logic_is_product_data_valid())
 		return 0;
@@ -1028,24 +1117,66 @@ int omap3logic_has_murata_wifi_module(void)
 	if (header_version < LOGIC_HEADER_VERSION_3)
 		return 0;
 
-	/* If not hardware configuration 1, then not a -11 */
-	if (product_id_data.d.zone2.pz_2r3.hardware_revision != 1)
+	if (!murata_probed) {
+		int val;
+
+		murata_probed = 1;
+		/* Figure out if a Murata is on the board.  Use
+		   the pullup on WIFI_EN to determine such */
+		omap_mux_init_gpio(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, OMAP_PIN_INPUT);
+		if (gpio_request(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, "wifi probe") < 0)
+			printk("%s:%d\n", __FUNCTION__, __LINE__);
+		if (gpio_direction_output(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 1) < 0)
+			printk("%s:%d\n", __FUNCTION__, __LINE__);
+
+		/* Give it a chance to pull the pin the pin down */
+		/* Let it soak for a while */
+		for (i=0; i<0x100; ++i)
+			asm("nop");
+
+		if (gpio_direction_input(OMAP3LOGIC_MURATA_WIFI_EN_GPIO) < 0)
+			printk("%s:%d\n", __FUNCTION__, __LINE__);
+
+		/* Let it soak for a while */
+		for (i=0; i<0x100; ++i)
+			asm("nop");
+
+		val = gpio_get_value(OMAP3LOGIC_MURATA_WIFI_EN_GPIO);
+		
+		murata_found = !val;
+		gpio_free(OMAP3LOGIC_MURATA_WIFI_EN_GPIO);
+	}
+
+	return(murata_found);
+}
+
+/*
+ * Return !0 if SOM has a isp1760 on it, or is used with one.  Currently we
+ * assume all -11 variants do *not* have the isp1670 and everything else
+ * does, have to fix in the future */
+int omap3logic_has_isp1760(void)
+{
+	/* No valid data, then no isp1760 */
+	if (!omap3logic_is_product_data_valid())
 		return 0;
 
-	/* If data was valid, assume it is */
-	if (!product_id_data.d.wifi_config_data.valid)
+	/* If not a SOM, assume its on the baseboard */
+	if (!machine_is_omap3530_lv_som())
+		return 1;
+
+	/* If its a -11 SOM then it uses the internal USB host controller */
+	if (omap3logic_is_dash_11_module())
 		return 0;
 
-	/* Assume it has the Murata.  FIXME - not all -11 modules
-	   will have the Murata module */
+	/* Its not a -11 SOM, so we must have the isp1760 */
 	return 1;
+
 }
 
 static int __init omap3logic_fetch_production_data(void)
 {
 	int valid;
 	extern void omap3logic_init_productid_specifics(void);
-
 
 	valid = !fetch_product_id_data();
 	if (valid) {

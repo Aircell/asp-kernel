@@ -8,21 +8,19 @@
 #include <plat/omap3logic-productid.h>
 #include "mux.h"
 
-// On the 1011880 boards (and newer), audio mute is on GPIO_177
-#define TWL4030_AUDIO_MUTE_GPIO 177
+static int omap3logic_extern_audio_mute = -EINVAL;
 
-static int omap3logic_has_extern_audio_mute;
 static void setup_mute_io_mux(void)
 {
-	if (omap3logic_has_extern_audio_mute) {
-		omap_mux_init_gpio(TWL4030_AUDIO_MUTE_GPIO, OMAP_PIN_OUTPUT);
-		if (gpio_request(TWL4030_AUDIO_MUTE_GPIO, "audio mute") < 0) {
+	if (gpio_is_valid(omap3logic_extern_audio_mute)) {
+		omap_mux_init_gpio(omap3logic_extern_audio_mute, OMAP_PIN_OUTPUT);
+		if (gpio_request(omap3logic_extern_audio_mute, "audio mute") < 0) {
 			printk(KERN_ERR "Failed to request GPIO%d for twl4030 mute\n",
-			       TWL4030_AUDIO_MUTE_GPIO);
+			       omap3logic_extern_audio_mute);
 			return;
 		}
 		// Initial value is muted
-		gpio_direction_output(TWL4030_AUDIO_MUTE_GPIO, 1);
+		gpio_direction_output(omap3logic_extern_audio_mute, 1);
 	}
 }
 
@@ -33,8 +31,8 @@ static int omap3logic_audio_ext_enabled = 1;
 // 1 = on, 0=mute
 void twl4030_set_path_mute(int mute)
 {
-	if (omap3logic_has_extern_audio_mute && omap3logic_audio_ext_enabled) {
-		gpio_set_value(TWL4030_AUDIO_MUTE_GPIO, !mute);
+	if (gpio_is_valid(omap3logic_extern_audio_mute) && omap3logic_audio_ext_enabled) {
+		gpio_set_value(omap3logic_extern_audio_mute, !mute);
 	}
 }
 EXPORT_SYMBOL(twl4030_set_path_mute);
@@ -42,8 +40,8 @@ EXPORT_SYMBOL(twl4030_set_path_mute);
 int twl4030_set_ext_mute(int mute)
 {
 	omap3logic_audio_ext_enabled = mute;
-	if (omap3logic_has_extern_audio_mute)
-		gpio_set_value(TWL4030_AUDIO_MUTE_GPIO, !mute);
+	if (gpio_is_valid(omap3logic_extern_audio_mute))
+		gpio_set_value(omap3logic_extern_audio_mute, !mute);
 
 	return 0;
 }
@@ -59,7 +57,17 @@ EXPORT_SYMBOL(twl4030_get_ext_mute);
 
 void omap3logic_init_twl_external_mute(void)
 {
-	omap3logic_has_extern_audio_mute = omap3logic_has_external_mute();
+	/* Note that omap3logic_external_mute is valid if a GPIO pin
+	   is used for audio mute */
+	omap3logic_extern_audio_mute = omap3logic_external_mute_gpio();
 	setup_mute_io_mux();
+}
+
+void omap3logic_init_audio_mux(void)
+{
+	omap_mux_init_signal("mcbsp2_clkx", OMAP_PIN_INPUT);
+	omap_mux_init_signal("mcbsp2_dr", OMAP_PIN_INPUT);
+	omap_mux_init_signal("mcbsp2_dx", OMAP_PIN_INPUT);
+	omap_mux_init_signal("mcbsp2_fsx", OMAP_PIN_INPUT);
 }
 

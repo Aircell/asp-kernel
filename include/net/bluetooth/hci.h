@@ -51,6 +51,7 @@
 #define HCI_RS232	4
 #define HCI_PCI		5
 #define HCI_SDIO	6
+#define HCI_SPI		7
 
 /* HCI device quirks */
 enum {
@@ -139,10 +140,10 @@ enum {
 #define ESCO_2EV5	0x0100
 #define ESCO_3EV5	0x0200
 
-#define SCO_ESCO_MASK	(ESCO_HV1 | ESCO_HV2 | ESCO_HV3)
-#define EDR_ESCO_MASK	(ESCO_2EV3 | ESCO_3EV3 | ESCO_2EV5 | ESCO_3EV5)
-#define ALL_ESCO_MASK	(SCO_ESCO_MASK | ESCO_EV3 | ESCO_EV4 | ESCO_EV5 | \
-			EDR_ESCO_MASK)
+#define SCO_ESCO_MASK  (ESCO_HV1 | ESCO_HV2 | ESCO_HV3)
+#define EDR_ESCO_MASK  (ESCO_2EV3 | ESCO_3EV3 | ESCO_2EV5 | ESCO_3EV5)
+#define ALL_ESCO_MASK  (SCO_ESCO_MASK | ESCO_EV3 | ESCO_EV4 | ESCO_EV5 | \
+                       EDR_ESCO_MASK)
 
 /* ACL flags */
 #define ACL_START_NO_FLUSH	0x00
