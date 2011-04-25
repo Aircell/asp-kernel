@@ -71,6 +71,12 @@
 #define OMAP3LOGIC_LV_SOM_SMSC911X_GPIO		152	/* LV SOM LAN IRQ */
 #define OMAP3LOGIC_TORPEDO_SMSC911X_GPIO	129	/* Torpedo LAN IRQ */
 
+extern struct regulator_consumer_supply twl4030_vmmc1_supply;
+extern struct regulator_consumer_supply twl4030_vsim_supply; 
+
+extern struct regulator_init_data vmmc1_data;
+extern struct regulator_init_data vsim_data;
+
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 static struct resource omap3logic_smsc911x_resources[] = {
 	[0] =	{
@@ -183,14 +189,6 @@ static inline void __init omap3logic_init_smsc911x(void)
 static inline void __init omap3logic_init_smsc911x(void) { return; }
 #endif
 
-static struct regulator_consumer_supply omap3logic_vmmc1_supply = {
-	.supply			= "vmmc",
-};
-
-static struct regulator_consumer_supply omap3logic_vsim_supply = {
-	.supply			= "vmmc_aux",
-};
-
 static struct regulator_consumer_supply omap3logic_vaux1_supply = {
 	.supply			= "vaux1",
 };
@@ -235,37 +233,6 @@ static struct regulator_init_data omap3logic_vpll2 = {
 	},
 	.num_consumer_supplies  = ARRAY_SIZE(omap3logic_vpll2_supplies),
 	.consumer_supplies      = omap3logic_vpll2_supplies,
-};
-
-
-/* VMMC1 for MMC1 pins CMD, CLK, DAT0..DAT3 (20 mA, plus card == max 220 mA) */
-static struct regulator_init_data omap3logic_vmmc1 = {
-	.constraints = {
-		.min_uV			= 1850000,
-		.max_uV			= 3150000,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask		= REGULATOR_CHANGE_VOLTAGE
-					| REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies	= 1,
-	.consumer_supplies	= &omap3logic_vmmc1_supply,
-};
-
-/* VSIM for MMC1 pins DAT4..DAT7 (2 mA, plus card == max 50 mA) */
-static struct regulator_init_data omap3logic_vsim = {
-	.constraints = {
-		.min_uV			= 1800000,
-		.max_uV			= 3000000,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask		= REGULATOR_CHANGE_VOLTAGE
-					| REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies	= 1,
-	.consumer_supplies	= &omap3logic_vsim_supply,
 };
 
 /* VAUX1 for mainboard (touch and productID) */
@@ -488,17 +455,18 @@ static int omap3logic_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio)
 {
 	if (machine_is_omap3530_lv_som()) {
-#ifndef CONFIG_INPUT_TWL4030_VIBRA
 		/* LV-SOM 1010194/1009998 */
 		mmc[0].gpio_cd = 110;
 		omap_mux_init_gpio(110, OMAP_PIN_INPUT_PULLUP);
+
+#ifndef CONFIG_INPUT_TWL4030_VIBRA
 		mmc[0].gpio_wp = 126;
 		omap_mux_init_gpio(126, OMAP_PIN_INPUT_PULLUP);
+#endif
 
 		/* For the LV SOM, add in the uf1050a MMC info to
 		 * the MMC list (the 3rd slot is the terminator). */
 		mmc[1] = mmc3;
-#endif
 	} else if (machine_is_omap3_torpedo()) {
 		/* Torpedo 1013994/1013995 */
 		omap3torpedo_fix_pbias_voltage();
@@ -512,8 +480,8 @@ static int omap3logic_twl_gpio_setup(struct device *dev,
 	}
 
 	/* link regulators to MMC adapters */
-	omap3logic_vmmc1_supply.dev = mmc[0].dev;
-	omap3logic_vsim_supply.dev = mmc[0].dev;
+	twl4030_vmmc1_supply.dev = mmc[0].dev;
+	twl4030_vsim_supply.dev = mmc[0].dev;
 
 	twl4030_base_gpio = gpio;
 
@@ -522,7 +490,7 @@ static int omap3logic_twl_gpio_setup(struct device *dev,
 	brf6300_bt_nshutdown_gpio = gpio + TWL4030_BT_nSHUTDOWN;
 #endif
 
-		printk(KERN_INFO "%s: TWL4030 base gpio: %d\n", __FUNCTION__, gpio);
+	printk(KERN_INFO "%s: TWL4030 base gpio: %d\n", __FUNCTION__, gpio);
 
 	twl4030_mmc_init(mmc);
 
@@ -739,8 +707,8 @@ static int __init omap3logic_i2c_init(void)
 	 * REVISIT: These entries can be set in omap3logic_twl_data
 	 * after a merge with MFD tree
 	 */
-	omap3logic_twldata.vmmc1 = &omap3logic_vmmc1;
-	omap3logic_twldata.vsim = &omap3logic_vsim;
+	omap3logic_twldata.vmmc1 = &vmmc1_data;
+	omap3logic_twldata.vsim = &vsim_data;
 
 	omap_register_i2c_bus(1, 2600, omap3logic_i2c_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c_boardinfo));
