@@ -273,7 +273,8 @@ void __init board_lcd_init(void)
 	gpio_direction_output(111, 1);
 	
 	mdelay(6);
-	
+	gpio_free(111);
+
 	omap_mux_init_signal("sdmmc2_clk.mcspi3_clk", OMAP_PIN_INPUT);
 	omap_mux_init_signal("sdmmc2_cmd.mcspi3_simo", OMAP_PIN_INPUT);
 	omap_mux_init_signal("sdmmc2_dat0.mcspi3_somi", OMAP_PIN_INPUT);
