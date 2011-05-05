@@ -34,6 +34,7 @@
 #include <linux/smsc911x.h>
 
 #include <linux/regulator/machine.h>
+#include <linux/usb/android_composite.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -66,6 +67,10 @@
 #include "omap3-opp.h"
 #include "board-omap3logic.h"
 #include <plat/sdrc.h>
+
+#define DIE_ID_REG_BASE      (L4_WK_34XX_PHYS + 0xA000)
+#define DIE_ID_REG_OFFSET    0x218
+#define MAX_USB_SERIAL_NUM   17
 
 #define OMAP3LOGIC_SMSC911X_CS		1
 #define OMAP3LOGIC_LV_SOM_SMSC911X_GPIO		152	/* LV SOM LAN IRQ */
@@ -1440,6 +1445,53 @@ static void __init aircell_mux_init(void)
 #endif
 }
 
+static char device_serial[MAX_USB_SERIAL_NUM];
+
+static char *usb_functions_adb[] = {
+	"adb",
+};
+
+static char *usb_functions_all[] = {
+	"adb",
+};
+
+static struct android_usb_product usb_products[] = {
+	{
+		.num_functions = ARRAY_SIZE(usb_functions_adb),
+		.functions     = usb_functions_adb,
+	},
+};
+
+static struct android_usb_platform_data andusb_plat = {
+	.manufacturer_name     = "LogicPD",
+	.product_name          = "OMAP3530 SOM LV/Torpedo",
+	.serial_number         = device_serial,
+	.functions             = usb_functions_all,
+	.products              = usb_products,
+	.num_functions         = ARRAY_SIZE(usb_functions_all),
+};
+
+static struct platform_device androidusb_device = {
+	.name                  = "android_usb",
+	.id                    = -1,
+	.dev                   = {
+		.platform_data = &andusb_plat,
+	},
+};
+
+static void omap3logic_android_gadget_init(void)
+{
+	unsigned int val[2];
+	unsigned int reg;
+
+	reg = DIE_ID_REG_BASE + DIE_ID_REG_OFFSET;
+	val[0] = omap_readl(reg);
+	val[1] = omap_readl(reg + 4);
+
+	snprintf(device_serial, MAX_USB_SERIAL_NUM, "%08X%08X", val[1], val[0]);
+
+	platform_device_register(&androidusb_device);
+}
 
 static void __init omap3logic_init(void)
 {
@@ -1506,6 +1558,8 @@ static void __init omap3logic_init(void)
 	omap3logic_spi_init();
 
 	dump_omap3logic_timings();
+
+	omap3logic_android_gadget_init();
 }
 
 #if defined(CONFIG_OMAP3LOGIC_COMPACT_FLASH) || defined(CONFIG_OMAP3LOGIC_COMPACT_FLASH_MODULE)
