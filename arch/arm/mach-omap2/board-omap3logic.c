@@ -28,7 +28,7 @@
 #include <linux/spi/brf6300.h>
 #include <linux/spi/eeprom.h>
 
-#include <linux/i2c/tsc2004.h>
+#include <linux/i2c/qt602240_ts.h>
 #include <linux/i2c/twl.h>
 #include <linux/usb/otg.h>
 #include <linux/smsc911x.h>
@@ -247,7 +247,8 @@ static struct regulator_init_data omap3logic_vaux1 = {
 		.max_uV			= 3000000,
 		.name			= "VAUX1_30",
 		.apply_uV		= true,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
+					
 #if 0
 					| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
@@ -650,59 +651,105 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 #endif
 
 /*
- * TSC 2004 Support
+ * Atmel QT602240 Support
  */
-#define	GPIO_TSC2004_IRQ	153
+#define	GPIO_QT602240_IRQ	153
+#define QT602240_I2C3_Slave	0x4A
+#define GPIO_QT602240_RST	61
 
-static int tsc2004_init_irq(void)
-{
-	int ret = 0;
+struct qt602240_platform_data omap3logic_qt602240data = {
+	.x_line=18,
+	.y_line=12,
+	.x_size=280,
+	.y_size=1000,
+	.blen=0.41,
+	.threshold=0x30,
+	.voltage=3,
+	.orient=QT602240_NORMAL,
 
-	omap_mux_init_gpio(GPIO_TSC2004_IRQ, OMAP_PIN_INPUT);
-	ret = gpio_request(GPIO_TSC2004_IRQ, "tsc2004-irq");
-	if (ret < 0) {
-		printk(KERN_WARNING "failed to request GPIO#%d: %d\n",
-				GPIO_TSC2004_IRQ, ret);
-		return ret;
-	}
+	/*.x_line=19,
+	.y_line=11,
+	.x_size=19,
+	.y_size=11,
+	.blen=0,
+	.threshold=40,
+	.voltage=20,
+	.orient=0, */ /* suggested values from Touch International */
+};
 
-	if (gpio_direction_input(GPIO_TSC2004_IRQ)) {
-		printk(KERN_WARNING "GPIO#%d cannot be configured as "
-				"input\n", GPIO_TSC2004_IRQ);
-		return -ENXIO;
-	}
-
-	omap_set_gpio_debounce(GPIO_TSC2004_IRQ, 1);
-	omap_set_gpio_debounce_time(GPIO_TSC2004_IRQ, 0xa);
-	return ret;
-}
-
-static void tsc2004_exit_irq(void)
-{
-	gpio_free(GPIO_TSC2004_IRQ);
-}
-
-static int tsc2004_get_irq_level(void)
-{
-	return gpio_get_value(GPIO_TSC2004_IRQ) ? 0 : 1;
-}
-
-struct tsc2004_platform_data omap3logic_tsc2004data = {
-	.model = 2004,
-	.x_plate_ohms = 180,
-	.get_pendown_state = tsc2004_get_irq_level,
-	.init_platform_hw = tsc2004_init_irq,
-	.exit_platform_hw = tsc2004_exit_irq,
+static struct platform_device omap3logic_qt602240_device = {
+	.name		= "qt602240",
+	.id		= 0, //Ashwin is this correct?
+	.dev		= {
+		.platform_data = &omap3logic_qt602240data,
+	},
 };
 
 static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 	{
-		I2C_BOARD_INFO("tsc2004", 0x48),
-		.type		= "tsc2004",
-		.platform_data = &omap3logic_tsc2004data,
-		.irq = OMAP_GPIO_IRQ(GPIO_TSC2004_IRQ),
+		I2C_BOARD_INFO("qt602240", 0x4a),
+		/*.type		= "tsc2004",*/ /* Ashwin does atmel need this? I don't see where i2c uses this*/
+		.platform_data = &omap3logic_qt602240data,
+		.irq = OMAP_GPIO_IRQ(GPIO_QT602240_IRQ),
 	},
 };
+
+static void omap3logic_qt602240_init(void)
+{
+	int ret = 0;
+	int irq_state = 0;
+	int irq_mask = 0;
+	int rst_state = 0;
+	int rst_mask = 0;
+	//Ashwin  is reset set up right, where is this used? Android?
+	//Ashwin why can't I see /sys/kernel/debug/gpio
+	printk("%s:%d\n", __FUNCTION__, __LINE__);
+
+	irq_state= gpio_get_value(GPIO_QT602240_IRQ);
+	irq_mask= omap_mux_get_gpio(GPIO_QT602240_IRQ);
+	rst_state= gpio_get_value(GPIO_QT602240_RST);
+	rst_mask= omap_mux_get_gpio(GPIO_QT602240_RST);
+	printk(KERN_WARNING "@@@@@@@@@@@@@@ QT GPIO IRQ after INIT 61/153 %d-%o-%d-%o\n", irq_state,irq_mask,rst_state,rst_mask);
+
+
+	omap_mux_init_gpio(GPIO_QT602240_RST,0x0004);//0x0404 irq 6
+	gpio_request(GPIO_QT602240_RST, "TS_RST");
+	gpio_direction_output(GPIO_QT602240_RST, 1);
+	//gpio_export(GPIO_QT602240_RST, 0);
+
+	//omap_mux_init_gpio(GPIO_QT602240_IRQ,OMAP_PIN_INPUT_PULLUP); //Ashwin, is this the correct masking?
+	omap_mux_init_gpio(GPIO_QT602240_IRQ,0x010c);
+
+	ret = gpio_request(GPIO_QT602240_IRQ, "qt602240");
+	if (ret < 0) {
+		printk(KERN_WARNING "QT init failed to request GPIO#%d: %d\n",
+				GPIO_QT602240_IRQ, ret);
+		return;
+	}
+
+	if (gpio_direction_input(GPIO_QT602240_IRQ)) {
+		printk(KERN_WARNING "QT init GPIO#%d cannot be configured as input\n", GPIO_QT602240_IRQ);
+		return;
+	}
+
+	if (platform_device_register(&omap3logic_qt602240_device) < 0){
+			printk(KERN_ERR "QT init Unable to register device\n");
+		return;
+	}
+	omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(GPIO_QT602240_IRQ);
+	
+/* read off bus to release IRQ */
+	irq_state= gpio_get_value(GPIO_QT602240_IRQ);
+	irq_mask= omap_mux_get_gpio(GPIO_QT602240_IRQ);
+	rst_state= gpio_get_value(GPIO_QT602240_RST);
+	rst_mask= omap_mux_get_gpio(GPIO_QT602240_RST);
+	printk(KERN_WARNING "@@@@@@@@@@@@@@ QT GPIO IRQ after INIT 61/153 %d-%o-%d-%o\n", irq_state,irq_mask,rst_state,rst_mask);
+	//Ashwin, active low and it is low here.  Hardware guys say I don't need next two lines
+	/*omap_set_gpio_debounce(GPIO_QT602240_IRQ, 1);
+	omap_set_gpio_debounce_time(GPIO_QT602240_IRQ, 0xa);*/
+
+	return;
+}
 
 
 static int __init omap3logic_i2c_init(void)
@@ -723,11 +770,16 @@ static int __init omap3logic_i2c_init(void)
 #else
 	omap_register_i2c_bus(2, 400, NULL, 0);
 #endif
+
 	omap_register_i2c_bus(3, 400, omap3logic_i2c3_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c3_boardinfo));
+
+
+	printk(KERN_WARNING "@@@@@@@@@@@@@@ INIT I2C%d\n",  omap3logic_i2c3_boardinfo[0].irq);
+
 	return 0;
 }
-
+ 
 static struct omap_board_config_kernel omap3logic_config[] __initdata = {
 };
 
@@ -740,10 +792,16 @@ static void __init omap3logic_init_irq(void)
 			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
 			     omap35x_l3_rate_table);
 	omap_init_irq();
+	
 	omap_gpio_init();
+
+	printk(KERN_WARNING "@@@@@@@@@@@@@@ INIT IRQ%d, %d, %d\n", 
+omap3logic_i2c_boardinfo[0].irq, omap3logic_i2c2_boardinfo[0].irq, omap3logic_i2c3_boardinfo[0].irq);
 }
 
 static struct platform_device *omap3logic_devices[] __initdata = {
+
+
 };
 
 #ifdef CONFIG_OMAP_MUX
@@ -1496,6 +1554,7 @@ static void omap3logic_android_gadget_init(void)
 static void __init omap3logic_init(void)
 {
 	//aircell_mux_init(); // mark.chung
+
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
 
 	omap3logic_i2c_init();
@@ -1503,6 +1562,7 @@ static void __init omap3logic_init(void)
 	board_lcd_init();
 
 	platform_add_devices(omap3logic_devices, ARRAY_SIZE(omap3logic_devices));
+	printk(KERN_WARNING "@@@@@@@@@@@@@@ Add Devices%d\n", ARRAY_SIZE(omap3logic_devices));
 #if 1 // mark.chung //def CONFIG_OMAP3LOGIC_UART_A
 #if 0
 	omap_mux_init_signal("jtag_emu1.gpio_31", OMAP_PIN_OUTPUT);
@@ -1545,6 +1605,7 @@ static void __init omap3logic_init(void)
 	omap3logic_fetch_sram_product_id_data();
 
 	omap3logic_flash_init();
+
 	omap3logic_init_smsc911x();
 
 	omap3logic_usb_init();
@@ -1560,6 +1621,9 @@ static void __init omap3logic_init(void)
 	dump_omap3logic_timings();
 
 	omap3logic_android_gadget_init();
+
+	omap3logic_qt602240_init();//Ashwin, is this a good place to put this, 
+					//tsc2004 calls qpio init during probe
 }
 
 #if defined(CONFIG_OMAP3LOGIC_COMPACT_FLASH) || defined(CONFIG_OMAP3LOGIC_COMPACT_FLASH_MODULE)
@@ -1663,6 +1727,8 @@ void omap3logic_init_productid_specifics(void)
 	omap3logic_led_init();
 	brf6300_dev_init();
 	omap3logic_cf_init();
+
+printk("@@@@@@@@@@@@Product ID Specifics\n");
 }
 
 static void __init omap3logic_map_io(void)
