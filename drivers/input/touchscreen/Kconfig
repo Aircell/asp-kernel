@@ -583,14 +583,14 @@ config TOUCHSCREEN_PCAP
 	  To compile this driver as a module, choose M here: the
 	  module will be called pcap_ts.
 
-#config TOUCHSCREEN_QT602240
-#	tristate "Atmel Touchscreen"
-#	depends on I2C
-#	help
-#	  Say Y here if you have a Atmel QT602240
-#	  want to enable support for the built-in touchscreen.
-#
-#	  To compile this driver as a module, choose M here: the
-#	  module will be called qt602240_ts.
+config TOUCHSCREEN_QT602240
+	tristate "Atmel Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have a Atmel QT602240
+	  want to enable support for the built-in touchscreen.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called qt602240_ts.
 endif
 
