@@ -1,4 +1,10 @@
 /*
+ * Aircell - 
+ * Updated for the AirCell CloudSurfer
+ * Tarr - July 2011
+ */
+
+/*
  * linux/arch/arm/mach-omap2/board-omap3logic.c
  *
  * Copyright (C) 2010 Logic Product Development
@@ -68,6 +74,9 @@
 #include "board-omap3logic.h"
 #include <plat/sdrc.h>
 
+#include "aircell_gpio.h"
+
+#define QT_I2C_ADDR			0x4b
 #define DIE_ID_REG_BASE      (L4_WK_34XX_PHYS + 0xA000)
 #define DIE_ID_REG_OFFSET    0x218
 #define MAX_USB_SERIAL_NUM   17
@@ -82,7 +91,6 @@ extern struct regulator_consumer_supply twl4030_vsim_supply;
 extern struct regulator_init_data vmmc1_data;
 extern struct regulator_init_data vsim_data;
 
-#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 static struct resource omap3logic_smsc911x_resources[] = {
 	[0] =	{
 		.flags	= IORESOURCE_MEM,
@@ -109,55 +117,15 @@ static struct platform_device omap3logic_smsc911x_device = {
 	},
 };
 
-/* Fix the PBIAS voltage for Torpedo MMC1 pins that
- * are used for other needs (IRQs, etc). */
-static void omap3torpedo_fix_pbias_voltage(void)
-{
-	u16 control_pbias_offset = OMAP343X_CONTROL_PBIAS_LITE;
-	static int pbias_fixed = 0;
-	u32 reg;
-
-	if (!pbias_fixed) {
-		// Set the bias for the pin
-		reg = omap_ctrl_readl(control_pbias_offset);
-
-		reg &= ~OMAP343X_PBIASLITEPWRDNZ1;
-		omap_ctrl_writel(reg, control_pbias_offset);
-
-		/* 100ms delay required for PBIAS configuration */
-		msleep(100);
-
-		reg |= OMAP343X_PBIASLITEVMODE1;
-		reg |= OMAP343X_PBIASLITEPWRDNZ1;
-		omap_ctrl_writel(reg | 0x300, control_pbias_offset);
-
-		pbias_fixed = 1;
-	}
-}
-
 static inline void __init omap3logic_init_smsc911x(void)
 {
 	int eth_cs;
 	unsigned long cs_mem_base;
 	int eth_gpio = 0;
 
-	printk("%s:%d\n", __FUNCTION__, __LINE__);
-
 	eth_cs = OMAP3LOGIC_SMSC911X_CS;
 
-	if (machine_is_omap3530_lv_som()) {
-		eth_gpio = OMAP3LOGIC_LV_SOM_SMSC911X_GPIO;
-	} else if (machine_is_omap3_torpedo()) {
-		eth_gpio = OMAP3LOGIC_TORPEDO_SMSC911X_GPIO;
-
-		/* On Torpedo, LAN9221 IRQ is an MMC1_DATA7 pin
-		 * and IRQ1760 IRQ is MMC1_DATA4 pin - need
-		 * to update PBIAS to get voltage to the device
-		 * so the IRQs works correctly rather than float
-		 * and cause an IRQ storm... */
-
-		omap3torpedo_fix_pbias_voltage();
-	}
+	eth_gpio = OMAP3LOGIC_LV_SOM_SMSC911X_GPIO;
 
 	omap_mux_init_gpio(eth_gpio, OMAP_PIN_INPUT | OMAP_PIN_OFF_WAKEUPENABLE);
 
@@ -189,10 +157,6 @@ static inline void __init omap3logic_init_smsc911x(void)
 		return;
 	}
 }
-
-#else
-static inline void __init omap3logic_init_smsc911x(void) { return; }
-#endif
 
 static struct regulator_consumer_supply omap3logic_vaux1_supply = {
 	.supply			= "vaux1",
@@ -247,8 +211,7 @@ static struct regulator_init_data omap3logic_vaux1 = {
 		.max_uV			= 3000000,
 		.name			= "VAUX1_30",
 		.apply_uV		= true,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
-					
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
 #if 0
 					| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
@@ -358,15 +321,6 @@ static void omap3logic_led_init(void)
 		omap3logic_led_data.num_leds = 2;
 	}
 
-// Disable GPIO initialization for LED1 when using
-// Sharp LS038Y7DX01 display panel. PIN sharing issue.
-#if !defined(CONFIG_PANEL_SHARP_LS038Y7DX01)
-
-	if (gpio_led1 < twl4030_base_gpio)
-		omap_mux_init_gpio(gpio_led1, OMAP_PIN_OUTPUT);
-	omap3logic_leds[0].gpio = gpio_led1;
-#endif
-
 	if (gpio_led2 < twl4030_base_gpio)
 		omap_mux_init_gpio(gpio_led2, OMAP_PIN_OUTPUT);
 	omap3logic_leds[1].gpio = gpio_led2;
@@ -376,8 +330,6 @@ static void omap3logic_led_init(void)
 	if (platform_device_register(&omap3logic_led_device) < 0)
 		printk(KERN_ERR "Unable to register LED device\n");
 }
-
-#ifdef CONFIG_BT_HCIBRF6300_SPI
 
 int brf6300_bt_nshutdown_gpio;
 
@@ -431,70 +383,25 @@ int brf6300_get_bt_nshutdown_gpio(int value)
 	printk("%s: value %d\n", __FUNCTION__, ret);
 	return ret;
 }
-#else
-int brf6300_request_bt_nshutdown_gpio(void) {
-	return -ENOSYS;
-}
-
-void brf6300_free_bt_nshutdown_gpio(void) {
-	return;
-}
-
-void brf6300_direction_bt_nshutdown_gpio(int direction, int value)
-{
-	return;
-}
-
-void brf6300_set_bt_nshutdown_gpio(int value)
-{	
-	return;
-}
-
-int brf6300_get_bt_nshutdown_gpio(int value)
-{
-	return -ENOSYS;
-}
-#endif
-
 
 static int omap3logic_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio)
 {
-	if (machine_is_omap3530_lv_som()) {
-		/* LV-SOM 1010194/1009998 */
-		mmc[0].gpio_cd = 110;
-		omap_mux_init_gpio(110, OMAP_PIN_INPUT_PULLUP);
+	/* LV-SOM 1010194/1009998 */
+	mmc[0].gpio_cd = 110;
+	omap_mux_init_gpio(110, OMAP_PIN_INPUT_PULLUP);
 
-#ifndef CONFIG_INPUT_TWL4030_VIBRA
-		mmc[0].gpio_wp = 126;
-		omap_mux_init_gpio(126, OMAP_PIN_INPUT_PULLUP);
-#endif
-
-		/* For the LV SOM, add in the uf1050a MMC info to
-		 * the MMC list (the 3rd slot is the terminator). */
-		mmc[1] = mmc3;
-	} else if (machine_is_omap3_torpedo()) {
-		/* Torpedo 1013994/1013995 */
-		omap3torpedo_fix_pbias_voltage();
-		mmc[0].gpio_cd = 127;
-		omap_mux_init_gpio(127, OMAP_PIN_INPUT_PULLUP);
-		omap_set_gpio_debounce(127, 5);
-		mmc[0].gpio_wp = -EINVAL;
-	} else {
-		printk(KERN_ERR "%s: Unknown machine\n", __FUNCTION__);
-		return -1;
-	}
-
+	/* For the LV SOM, add in the uf1050a MMC info to
+	 * the MMC list (the 3rd slot is the terminator). */
+	mmc[1] = mmc3;
 	/* link regulators to MMC adapters */
 	twl4030_vmmc1_supply.dev = mmc[0].dev;
 	twl4030_vsim_supply.dev = mmc[0].dev;
 
 	twl4030_base_gpio = gpio;
 
-#ifdef CONFIG_BT_HCIBRF6300_SPI
 	/* TWL4030 GPIO for BT_nSHUTDOWN */
 	brf6300_bt_nshutdown_gpio = gpio + TWL4030_BT_nSHUTDOWN;
-#endif
 
 	printk(KERN_INFO "%s: TWL4030 base gpio: %d\n", __FUNCTION__, gpio);
 
@@ -577,29 +484,9 @@ static int omap3logic_batt_table[] = {
 
 static struct twl4030_bci_platform_data omap3logic_bci_data = {
 	.battery_tmp_tbl	= omap3logic_batt_table,
-#ifdef OMAP3LOGIC_BACKUP_BATTERY_ENABLE
 	.bb_chen		= BB_CHARGE_ENABLED,
-# ifdef OMAP3LOGIC_BACKUP_BATTERY_C25
-	.bb_current		= BB_CURRENT_25,
-#  elif OMAP3LOGIC_BACKUP_BATTERY_C150
 	.bb_current		= BB_CURRENT_150,
-#  elif OMAP3LOGIC_BACKUP_BATTERY_C500
-	.bb_current		= BB_CURRENT_500,
-#  elif OMAP3LOGIC_BACKUP_BATTERY_C1000
-	.bb_current		= BB_CURRENT_1000,
-# endif
-# ifdef OMAP3LOGIC_BACKUP_BATTERY_V25
-	.bb_voltage		= BB_VOLTAGE_25,
-#  elif OMAP3LOGIC_BACKUP_BATTERY_V30
-	.bb_voltage		= BB_VOLTAGE_30,
-#  elif OMAP3LOGIC_BACKUP_BATTERY_V31
 	.bb_voltage		= BB_VOLTAGE_31,
-#  elif OMAP3LOGIC_BACKUP_BATTERY_V32
-	.bb_voltage		= BB_VOLTAGE_32,
-# endif
-# else
-	.bb_chen		= BB_CHARGE_DISABLED,
-#endif
 	.tblsize		= ARRAY_SIZE(omap3logic_batt_table),
 };
 
@@ -632,7 +519,6 @@ static struct i2c_board_info __initdata omap3logic_i2c_boardinfo[] = {
 /*
  * 24LC128 EEPROM Support
  */ 
-#ifdef CONFIG_EEPROM_AT24
 #include <linux/i2c/at24.h>
 
 static struct at24_platform_data m24c128 = { 
@@ -643,114 +529,59 @@ static struct at24_platform_data m24c128 = {
 	
 static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
     {    
-        //I2C_BOARD_INFO("24c128", 0x57),
-        I2C_BOARD_INFO("24c128", 0x50),
+        I2C_BOARD_INFO("eeprom", 0x50),
 		.platform_data = &m24c128,
     },
 };
-#endif
 
 /*
- * Atmel QT602240 Support
+ * Touch Screen Support
  */
-#define	GPIO_QT602240_IRQ	153
-#define QT602240_I2C3_Slave	0x4A
-#define GPIO_QT602240_RST	61
 
-struct qt602240_platform_data omap3logic_qt602240data = {
-	.x_line=18,
-	.y_line=12,
-	.x_size=280,
-	.y_size=1000,
-	.blen=0.41,
-	.threshold=0x30,
-	.voltage=3,
-	.orient=QT602240_NORMAL,
-
-	/*.x_line=19,
-	.y_line=11,
-	.x_size=19,
-	.y_size=11,
-	.blen=0,
-	.threshold=40,
-	.voltage=20,
-	.orient=0, */ /* suggested values from Touch International */
+struct qt602240_platform_data omap3logic_touchscreendata = {
+    .x_line = 19,
+    .y_line = 11,
+    .x_size = 19,
+    .y_size = 11,
+    .blen = 0,
+    .threshold = 40,
+    .voltage = 2700000,
+    .orient = QT602240_NORMAL
 };
 
-static struct platform_device omap3logic_qt602240_device = {
-	.name		= "qt602240",
-	.id		= 0, //Ashwin is this correct?
-	.dev		= {
-		.platform_data = &omap3logic_qt602240data,
-	},
+static struct platform_device omap3logic_touch_device = {
+    .name       = "qt602240_ts",
+    .id     = 0, //Ashwin is this correct?
+    .dev        = {
+        .platform_data = &omap3logic_touchscreendata,
+    },
 };
+
 
 static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 	{
-		I2C_BOARD_INFO("qt602240", 0x4a),
-		/*.type		= "tsc2004",*/ /* Ashwin does atmel need this? I don't see where i2c uses this*/
-		.platform_data = &omap3logic_qt602240data,
-		.irq = OMAP_GPIO_IRQ(GPIO_QT602240_IRQ),
+		I2C_BOARD_INFO("qt602440_ts", QT_I2C_ADDR),
+		.type		= "qt602240_ts",
+		.platform_data = &omap3logic_touchscreendata,
+		.irq = OMAP_GPIO_IRQ(AIRCELL_TOUCH_INTERRUPT),
 	},
 };
 
 static void omap3logic_qt602240_init(void)
 {
-	int ret = 0;
-	int irq_state = 0;
-	int irq_mask = 0;
-	int rst_state = 0;
-	int rst_mask = 0;
-	//Ashwin  is reset set up right, where is this used? Android?
-	//Ashwin why can't I see /sys/kernel/debug/gpio
-	printk("%s:%d\n", __FUNCTION__, __LINE__);
+    if (platform_device_register(&omap3logic_touch_device) < 0){
+            printk(KERN_ERR "Unable to register touch device\n");
+        return;
+    }
+	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
+    omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
-	irq_state= gpio_get_value(GPIO_QT602240_IRQ);
-	irq_mask= omap_mux_get_gpio(GPIO_QT602240_IRQ);
-	rst_state= gpio_get_value(GPIO_QT602240_RST);
-	rst_mask= omap_mux_get_gpio(GPIO_QT602240_RST);
-	printk(KERN_WARNING "@@@@@@@@@@@@@@ QT GPIO IRQ after INIT 61/153 %d-%o-%d-%o\n", irq_state,irq_mask,rst_state,rst_mask);
-
-
-	omap_mux_init_gpio(GPIO_QT602240_RST,0x0004);//0x0404 irq 6
-	gpio_request(GPIO_QT602240_RST, "TS_RST");
-	gpio_direction_output(GPIO_QT602240_RST, 1);
-	//gpio_export(GPIO_QT602240_RST, 0);
-
-	//omap_mux_init_gpio(GPIO_QT602240_IRQ,OMAP_PIN_INPUT_PULLUP); //Ashwin, is this the correct masking?
-	omap_mux_init_gpio(GPIO_QT602240_IRQ,0x010c);
-
-	ret = gpio_request(GPIO_QT602240_IRQ, "qt602240");
-	if (ret < 0) {
-		printk(KERN_WARNING "QT init failed to request GPIO#%d: %d\n",
-				GPIO_QT602240_IRQ, ret);
-		return;
-	}
-
-	if (gpio_direction_input(GPIO_QT602240_IRQ)) {
-		printk(KERN_WARNING "QT init GPIO#%d cannot be configured as input\n", GPIO_QT602240_IRQ);
-		return;
-	}
-
-	if (platform_device_register(&omap3logic_qt602240_device) < 0){
-			printk(KERN_ERR "QT init Unable to register device\n");
-		return;
-	}
-	omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(GPIO_QT602240_IRQ);
-	
-/* read off bus to release IRQ */
-	irq_state= gpio_get_value(GPIO_QT602240_IRQ);
-	irq_mask= omap_mux_get_gpio(GPIO_QT602240_IRQ);
-	rst_state= gpio_get_value(GPIO_QT602240_RST);
-	rst_mask= omap_mux_get_gpio(GPIO_QT602240_RST);
-	printk(KERN_WARNING "@@@@@@@@@@@@@@ QT GPIO IRQ after INIT 61/153 %d-%o-%d-%o\n", irq_state,irq_mask,rst_state,rst_mask);
-	//Ashwin, active low and it is low here.  Hardware guys say I don't need next two lines
-	/*omap_set_gpio_debounce(GPIO_QT602240_IRQ, 1);
-	omap_set_gpio_debounce_time(GPIO_QT602240_IRQ, 0xa);*/
+	/* Take the touch screen out of reset */
+	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
+    omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(AIRCELL_TOUCH_INTERRUPT);
 
 	return;
 }
-
 
 static int __init omap3logic_i2c_init(void)
 {
@@ -764,22 +595,13 @@ static int __init omap3logic_i2c_init(void)
 
 	omap_register_i2c_bus(1, 2600, omap3logic_i2c_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c_boardinfo));
-#ifdef CONFIG_EEPROM_AT24
     omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
             ARRAY_SIZE(omap3logic_i2c2_boardinfo));
-#else
-	omap_register_i2c_bus(2, 400, NULL, 0);
-#endif
-
 	omap_register_i2c_bus(3, 400, omap3logic_i2c3_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c3_boardinfo));
-
-
-	printk(KERN_WARNING "@@@@@@@@@@@@@@ INIT I2C%d\n",  omap3logic_i2c3_boardinfo[0].irq);
-
 	return 0;
 }
- 
+
 static struct omap_board_config_kernel omap3logic_config[] __initdata = {
 };
 
@@ -792,64 +614,21 @@ static void __init omap3logic_init_irq(void)
 			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
 			     omap35x_l3_rate_table);
 	omap_init_irq();
-	
 	omap_gpio_init();
-
-	printk(KERN_WARNING "@@@@@@@@@@@@@@ INIT IRQ%d, %d, %d\n", 
-omap3logic_i2c_boardinfo[0].irq, omap3logic_i2c2_boardinfo[0].irq, omap3logic_i2c3_boardinfo[0].irq);
 }
 
 static struct platform_device *omap3logic_devices[] __initdata = {
-
-
 };
 
-#ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
-#else
-#define board_mux	NULL
-#endif
 
 /* Initialization code called from LCD panel_init to allow muxing */
 void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 {
-	int gpio_enable, gpio_backlight;
-
-	if (machine_is_omap3530_lv_som()) {
-		gpio_backlight = 8;
-		gpio_enable = 155;
-	} else if (machine_is_omap3_torpedo()) {
-		gpio_backlight = 154;
-		gpio_enable = 155;
-		if (gpio_request(56, "LCD mdisp"))
-			pr_err("omap3logic: can't request GPIO %d for LCD mdisp\n", gpio_backlight);
-		gpio_direction_output(56, 1);
-		omap_mux_init_gpio(56, OMAP_PIN_OUTPUT);
-		
-	} else
-		BUG();
-
-	*p_gpio_enable = gpio_enable;
-	*p_gpio_backlight = gpio_backlight;
-
-	if (gpio_request(gpio_backlight, "LCD backlight"))
-		pr_err("omap3logic: can't request GPIO %d for LCD backlight\n", gpio_backlight);
-	gpio_direction_output(gpio_backlight, 0);
-	omap_mux_init_gpio(gpio_backlight, OMAP_PIN_OUTPUT);
-	if (gpio_request(gpio_enable, "LCD enable"))
-		pr_err("omap3logic: can't request GPIO %d for LCD enable\n", gpio_enable);
-	gpio_direction_output(gpio_enable, 1);
-	omap_mux_init_gpio(gpio_enable, OMAP_PIN_OUTPUT);
-
-	/* Sleep for 600ms since hte 4.3" display needs
-	 * power before turning on the clocks */
-	msleep(600);
-
-	/* Bring up backlight */
-	gpio_direction_output(gpio_backlight, 1);
-
+	*p_gpio_enable = 0;
+	*p_gpio_backlight = 0;
 }
 
 #define NAND_BLOCK_SIZE		SZ_128K
@@ -857,52 +636,12 @@ void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 #define GPMC_CS_SIZE   0x30
 #define OMAP3LOGIC_NORFLASH_CS 2
 
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
 static struct mtd_partition omap3logic_nor_partitions[] = {
 	{
 		.name		= CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_NAME,
 		.offset		= 0,
-#if CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0
-		.size		= (CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_SIZE) << 17,
-#else
 		.size		= MTDPART_SIZ_FULL,
-#endif
-#if defined(CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
 	},
-#if (CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0)
-	/* file system */
-	{
-		.name		= CONFIG_OMAP3LOGIC_NOR_PARTITION_TWO_NAME,
-		.offset		= MTDPART_OFS_APPEND,
-#if CONFIG_OMAP3LOGIC_NOR_PARTITION_TWO_SIZE != 0
-		.size		= (CONFIG_OMAP3LOGIC_NOR_PARTITION_TWO_SIZE) << 17,
-#else
-		.size		= MTDPART_SIZ_FULL,
-#endif
-#if defined(CONFIG_OMAP3LOGIC_NOR_PARTITION_TWO_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#endif
-#if (CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0) && defined(CONFIG_OMAP3LOGIC_NOR_PARTITION_TWO_SIZE)
-#if (CONFIG_OMAP3LOGIC_NOR_PARTITION_TWO_SIZE != 0)
-	/* 3rd partition */
-	{
-		.name		= CONFIG_OMAP3LOGIC_NOR_PARTITION_THREE_NAME,
-		.offset		= MTDPART_OFS_APPEND,
-#if CONFIG_OMAP3LOGIC_NOR_PARTITION_THREE_SIZE != 0
-		.size		= (CONFIG_OMAP3LOGIC_NOR_PARTITION_THREE_SIZE) << 17,
-#else
-		.size		= MTDPART_SIZ_FULL,
-#endif
-#if defined(CONFIG_OMAP3LOGIC_NOR_PARTITION_THREE_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#endif
-#endif
 };
 
 static struct physmap_flash_data omap3logic_nor_data = {
@@ -924,7 +663,6 @@ static struct platform_device omap3logic_nor_device = {
 	.num_resources	= 1,
 	.resource	= &omap3logic_nor_resource,
 };
-#endif
 
 static struct mtd_partition omap3logic_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
@@ -966,50 +704,6 @@ static struct mtd_partition omap3logic_nand_partitions[] = {
 		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0xE680000 */
 		.size		= 202 * NAND_BLOCK_SIZE,
 	},
-#if 0
-	{
-		.name		= CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_NAME,
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x240000 */
-#if CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0
-		.size = (CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_SIZE) << 17,
-#else
-		.size = (2046 - 17 -1) << 17,
-#endif
-#if defined (CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#if (CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0)
-	{
-		.name		= CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_NAME,
-		.offset		= MTDPART_OFS_APPEND,
-#if CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_SIZE != 0
-		.size = (CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_SIZE) << 17,
-#else
-		.size		= (2046 - (CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_SIZE) - 17 - 1)*(64 * 2048),
-#endif
-#if defined (CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#endif
-#if (CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0) && defined(CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_SIZE)
-#if (CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_SIZE != 0)
-	{
-		.name		= CONFIG_OMAP3LOGIC_NAND_PARTITION_THREE_NAME,
-		.offset		= MTDPART_OFS_APPEND,
-#if CONFIG_OMAP3LOGIC_NAND_PARTITION_THREE_SIZE != 0
-		.size = (CONFIG_OMAP3LOGIC_NAND_PARTITION_THREE_SIZE) << 17,
-#else
-		.size		= (2046 - (CONFIG_OMAP3LOGIC_NAND_PARTITION_ONE_SIZE) - (CONFIG_OMAP3LOGIC_NAND_PARTITION_TWO_SIZE) - 17 - 1)*(64 * 2048),
-#endif
-#if defined (CONFIG_OMAP3LOGIC_NAND_PARTITION_THREE_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#endif
-#endif
-#endif /* if 0 */
 	{
 		.name		= "U-Boot Env-NAND",
 		.offset		= 2046 << 17,	/* Offset = 0xffc0000 */
@@ -1115,109 +809,6 @@ static void __init omap3logic_flash_init(void)
 	}
 }
 
-#if defined(CONFIG_USB_ISP1760_HCD_OMAP3LOGIC) || defined(CONFIG_USB_ISP1760_HCD_OMAP3LOGIC_MODULE) || defined(CONFIG_USB_ISP1760_HCD) || defined(CONFIG_USB_ISP1760_HCD)
-
-// ISP1760 USB interrupt
-#define OMAP3530LV_SOM_ISP1760_IRQ_GPIO		4
-#define OMAP3TORPEDO_ISP1760_IRQ_GPIO		126
-
-// ISP1760 SUSPEND
-#define OMAP3530LV_SOM_ISP1760_SUSPEND_GPIO 182
-
-static struct resource omap3logic_isp1760_resources[] = {
-	[0] = {
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start = -EINVAL,
-		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL,
-	},
-};
-
-static struct platform_device omap3logic_isp1760 = {
-	.name		= "isp1760",
-	.id		= -1,
-	.dev		= {
-		.platform_data	= NULL,
-	},
-	.num_resources = ARRAY_SIZE(omap3logic_isp1760_resources),
-	.resource = omap3logic_isp1760_resources,
-};
-
-
-static void omap3logic_init_isp1760(void)
-{
-	unsigned long cs_mem_base;
-	unsigned int irq_gpio;
-
-	// ISP1760 IRQ is an MMC1 data pin - need to update PBIAS
-	// to get voltage to the device so the IRQ works correctly rather
-	// than float below logic 1 and cause IRQ storm...
-	if (machine_is_omap3_torpedo())
-		omap3torpedo_fix_pbias_voltage();
-
-	if (gpmc_cs_request(6, SZ_16M, &cs_mem_base) < 0) {
-		printk(KERN_ERR "Failed to request GPMC mem for ISP1760\n");
-		return;
-	}
-	
-	omap3logic_isp1760_resources[0].start = cs_mem_base;
-	omap3logic_isp1760_resources[0].end = cs_mem_base + 0xffff;
-
-	if (machine_is_omap3530_lv_som()) {
-		irq_gpio = OMAP3530LV_SOM_ISP1760_IRQ_GPIO;
-		omap_mux_init_gpio(irq_gpio, OMAP_PIN_INPUT_PULLUP | OMAP_PIN_OFF_WAKEUPENABLE);
-	} else if (machine_is_omap3_torpedo()) {
-		irq_gpio = OMAP3TORPEDO_ISP1760_IRQ_GPIO;
-
-		/* Since GPIO126 is routed on the OMAP35x to
-		 * both sdmmc1_dat4 and cam_strobe we have to
-		 * mux sdmm1_dat4 as a GPIO by hand */
-		omap_mux_init_signal("sdmmc1_dat4.gpio_126", OMAP_PIN_INPUT_PULLUP | OMAP_PIN_OFF_WAKEUPENABLE);
-	} else {
-		printk(KERN_ERR "%s: Unknown machine\n", __FUNCTION__);
-		return;
-	}
-
-	// Setup ISP1760 IRQ pin
-	if (gpio_request(irq_gpio, "isp1760_irq") < 0) {
-		printk(KERN_ERR "Failed to request GPIO%d for isp1760 IRQ\n",
-		irq_gpio);
-		return;
-	}
-	omap3logic_isp1760_resources[1].start = OMAP_GPIO_IRQ(irq_gpio);
-
-	// Set IRQ as an input
-	gpio_direction_input(irq_gpio);
-
-	// Setup ISP data3 pin as GPIO
-	omap_mux_init_gpio(OMAP3530LV_SOM_ISP1760_SUSPEND_GPIO, OMAP_PIN_INPUT);
-	if (gpio_request(OMAP3530LV_SOM_ISP1760_SUSPEND_GPIO, "isp1760_suspend") < 0) {
-		printk(KERN_ERR "Failed to request GPIO%d for isp1760 SUSPEND\n",
-		       OMAP3530LV_SOM_ISP1760_SUSPEND_GPIO);
-		gpio_free(irq_gpio);
-		gpio_free(OMAP3530LV_SOM_ISP1760_IRQ_GPIO);
-		return;
-	}
-
-        // Set SUSPEND as an input...
-	gpio_direction_input(OMAP3530LV_SOM_ISP1760_SUSPEND_GPIO);
-
-	if (platform_device_register(&omap3logic_isp1760) < 0) {
-		printk(KERN_ERR "Unable to register isp1760 device\n");
-		gpio_free(irq_gpio);
-		gpio_free(OMAP3530LV_SOM_ISP1760_IRQ_GPIO);
-		return;
-	} else {
-		pr_info("registered isp1760 platform_device\n");
-	}
-}
-#else
-static void omap3logic_init_isp1760(void)
-{
-}
-#endif
-
 static struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 
 	.port_mode[0] = EHCI_HCD_OMAP_MODE_UNKNOWN,
@@ -1238,13 +829,8 @@ static void omap3logic_init_ehci(void)
 
 static void omap3logic_usb_init(void)
 {
-	if (omap3logic_has_isp1760())
-		omap3logic_init_isp1760();
-	else
-		omap3logic_init_ehci();
+	omap3logic_init_ehci();
 }
-
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
 
 void kick_uf1050a_card_detect(void)
 {
@@ -1273,13 +859,7 @@ static void omap3logic_init_uf1050a_mux(void)
 	    omap_rev() >= OMAP3430_REV_ES3_1)
 		mmc3.no_multi_block = 0;
 }
-#else
-static void omap3logic_init_uf1050a_mux(void)
-{
-}
-#endif
 
-#ifdef CONFIG_WLAN_1273
 static void omap3logic_init_murata_mux(void)
 {
 	printk(KERN_INFO "%s: setup murata mux signals\n", __FUNCTION__);
@@ -1289,27 +869,14 @@ static void omap3logic_init_murata_mux(void)
 	gpio_direction_output(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
 	omap_mux_init_gpio(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, OMAP_PIN_OUTPUT);
 	gpio_export(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
-#if 0
-	if (gpio_request(OMAP3LOGIC_MURATA_BT_EN_GPIO, "bt_en") != 0)
-		pr_err("GPIO %i request for bt_en failed\n", OMAP3LOGIC_MURATA_BT_EN_GPIO);
-	gpio_direction_output(OMAP3LOGIC_MURATA_BT_EN_GPIO, 0);
-	omap_mux_init_gpio(OMAP3LOGIC_MURATA_BT_EN_GPIO, OMAP_PIN_OUTPUT);
-	gpio_export(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
-#endif
 
 	/* Pull the enables out of reset */
 	msleep(10);
 	gpio_set_value(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 1);
-#if 0
-	gpio_set_value(OMAP3LOGIC_MURATA_BT_EN_GPIO, 1);
-#endif
 	msleep(10);
 
 	/* Put them back into reset (so they go into low-power mode) */
 	gpio_set_value(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
-#if 0
-	gpio_set_value(OMAP3LOGIC_MURATA_BT_EN_GPIO, 0);
-#endif
 
 	// Setup the mux for mmc3
 	omap_mux_init_signal("mcspi1_cs1.sdmmc3_cmd", OMAP_PIN_INPUT_PULLUP);
@@ -1324,11 +891,6 @@ static void omap3logic_init_murata_mux(void)
 	    omap_rev() >= OMAP3430_REV_ES3_1)
 		mmc3.no_multi_block = 0;
 }
-#else
-static void omap3logic_init_murata_mux(void)
-{
-}
-#endif
 
 static void omap3logic_init_wifi_mux(void)
 {
@@ -1450,7 +1012,6 @@ static void omap3logic_spi_init(void)
 	}
 }
 
-#ifdef CONFIG_BT_HCIBRF6300_SPI
 static void brf6300_dev_init(void)
 {
 	/* Only the LV SOM has a BRF6300 */
@@ -1471,37 +1032,10 @@ static void brf6300_dev_init(void)
 	brf6300_config.irq_gpio = BT_IRQ_GPIO;
 	brf6300_config.shutdown_gpio = twl4030_base_gpio + TWL4030_BT_nSHUTDOWN;
 }
-#else
-static void brf6300_dev_init(void)
-{
-}
-#endif
 
 extern void omap3logic_init_audio_mux(void);
 extern void __init board_lcd_init(void);
 
-//mark.chung
-static void __init aircell_mux_init(void)
-{
-	// gpios for power
-#if 0
-	omap_mux_init_signal("uart1_cts.gpio_150", OMAP_PIN_INPUT);
-	omap_mux_init_signal("uart1_rts.gpio_149", OMAP_PIN_INPUT);
-	omap_mux_init_signal("sdmmc2_dat2.gpio_134", OMAP_PIN_INPUT);
-	omap_mux_init_signal("mcbsp1_dr.gpio_159", OMAP_PIN_INPUT);
-	omap_mux_init_signal("cam_hs.gpio_94", OMAP_PIN_INPUT);
-	omap_mux_init_signal("cam_vs.gpio_95", OMAP_PIN_INPUT);
-#endif
-	//omap_mux_init_signal("jtag_emu1.gpio_31", OMAP_PIN_OUTPUT);
-#if 0	
-	if (gpio_request(31, "master reset")) {
-		printk(KERN_ERR "gpio_request on gpio 31 failed.\n");
-	}
-	
-	// etc
-	omap_mux_init_signal("gpmc_nbe1.gpio_61", OMAP_PIN_INPUT);
-#endif
-}
 
 static char device_serial[MAX_USB_SERIAL_NUM];
 
@@ -1522,7 +1056,7 @@ static struct android_usb_product usb_products[] = {
 
 static struct android_usb_platform_data andusb_plat = {
 	.manufacturer_name     = "LogicPD",
-	.product_name          = "OMAP3530 SOM LV/Torpedo",
+	.product_name          = "OMAP3530 SOM LV",
 	.serial_number         = device_serial,
 	.functions             = usb_functions_all,
 	.products              = usb_products,
@@ -1551,52 +1085,76 @@ static void omap3logic_android_gadget_init(void)
 	platform_device_register(&androidusb_device);
 }
 
+static void aircell_gpio_init(void)
+{
+	gpio_request(AIRCELL_5V_ENABLE,"AIRCELL_5V_ENABLE");
+	gpio_request(AIRCELL_33V_ENABLE,"AIRCELL_33V_ENABLE");
+	gpio_request(AIRCELL_18V_ENABLE,"AIRCELL_18V_ENABLE");
+	gpio_request(AIRCELL_23V_ENABLE,"AIRCELL_23V_ENABLE");
+	gpio_request(AIRCELL_SOFTWARE_RESET,"AIRCELL_SOFTWARE_RESET");
+	gpio_request(AIRCELL_WIFI_ENABLE_DETECT,"AIRCELL_WIFI_ENABLE_DETECT");
+	gpio_request(AIRCELL_LCD_RESET,"AIRCELL_LCD_RESET");
+	gpio_request(AIRCELL_CRADLE_DETECT,"AIRCELL_CRADLE_DETECT");
+	gpio_request(AIRCELL_BLUE_ENABLE	,"AIRCELL_BLUE_ENABLE	");
+	gpio_request(AIRCELL_GREEN_ENABLE,"AIRCELL_GREEN_ENABLE");
+	gpio_request(AIRCELL_RED_ENABLE,"AIRCELL_RED_ENABLE");
+	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
+	gpio_request(AIRCELL_EARPIECE_ENABLE,"AIRCELL_EARPIECE_ENABLE");
+	gpio_request(AIRCELL_RINGER_ENABLE,"AIRCELL_RINGER_ENABLE");
+	gpio_request(AIRCELL_VOLUME_UP_DETECT,"AIRCELL_VOLUME_UP_DETECT");
+	gpio_request(AIRCELL_VOLUME_DOWN_DETECT,"AIRCELL_VOLUME_DOWN_DETECT");
+	gpio_request(AIRCELL_HANDSET_DETECT,"AIRCELL_HANDSET_DETECT");
+	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
+	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
+	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
+	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
+	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
+	gpio_request(AIRCELL_LCD_POWER_ENABLE,"AIRCELL_LCD_POWER_ENABLE");
+
+	gpio_export(AIRCELL_5V_ENABLE,0);
+	gpio_export(AIRCELL_33V_ENABLE,0);
+	gpio_export(AIRCELL_18V_ENABLE,0);
+	gpio_export(AIRCELL_23V_ENABLE,0);
+	gpio_export(AIRCELL_SOFTWARE_RESET,0);
+	gpio_export(AIRCELL_WIFI_ENABLE_DETECT,0);
+	gpio_export(AIRCELL_LCD_RESET,0);
+	gpio_export(AIRCELL_CRADLE_DETECT,0);
+	gpio_export(AIRCELL_BLUE_ENABLE	,0);
+	gpio_export(AIRCELL_GREEN_ENABLE,0);
+	gpio_export(AIRCELL_RED_ENABLE,0);
+	gpio_export(AIRCELL_LED_ENABLE,0);
+	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
+	gpio_export(AIRCELL_RINGER_ENABLE,0);
+	gpio_export(AIRCELL_VOLUME_UP_DETECT,0);
+	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
+	gpio_export(AIRCELL_HANDSET_DETECT,0);
+	gpio_export(AIRCELL_TOUCH_RESET,0);
+	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
+	gpio_export(AIRCELL_PROX_INTERRUPT,0);
+	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
+	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
+	gpio_export(AIRCELL_CAMERA_PWDN,0);
+	gpio_export(AIRCELL_LCD_POWER_ENABLE,0);
+
+}
 static void __init omap3logic_init(void)
 {
-	//aircell_mux_init(); // mark.chung
-
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
+
+	aircell_gpio_init();
+
+	omap3logic_qt602240_init();
 
 	omap3logic_i2c_init();
 
 	board_lcd_init();
 
 	platform_add_devices(omap3logic_devices, ARRAY_SIZE(omap3logic_devices));
-	printk(KERN_WARNING "@@@@@@@@@@@@@@ Add Devices%d\n", ARRAY_SIZE(omap3logic_devices));
-#if 1 // mark.chung //def CONFIG_OMAP3LOGIC_UART_A
-#if 0
-	omap_mux_init_signal("jtag_emu1.gpio_31", OMAP_PIN_OUTPUT);
-	if (gpio_request(31, "master reset")) {
-		printk(KERN_ERR "gpio_request on gpio 31 failed.\n");
-	}
-	gpio_direction_output(31, 0);
-#endif
-	printk(KERN_INFO "Setup pinmux and enable UART A\n");
-	omap_mux_init_signal("uart1_tx.uart1_tx", OMAP_PIN_OUTPUT);
-//	omap_mux_init_signal("uart1_rts.uart1_rts", OMAP_PIN_INPUT);
-//	omap_mux_init_signal("uart1_cts.uart1_cts", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("uart1_rx.uart1_rx", OMAP_PIN_INPUT);
+
 	omap_serial_init_port(0);
-#endif
 
-//#ifdef CONFIG_OMAP3LOGIC_UART_B
-#if 0
-	printk(KERN_INFO "Setup pinmux and enable UART B\n");
-	omap_mux_init_signal("uart3_tx_irtx.uart3_tx_irtx", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("uart3_rts_sd.uart3_rts_sd", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("uart3_cts_rctx.uart3_cts_rctx", OMAP_PIN_INPUT);
-	omap_mux_init_signal("uart3_rx_irrx.uart3_rx_irrx", OMAP_PIN_INPUT);
-	omap_serial_init_port(2);
-#endif
-
-#ifdef CONFIG_OMAP3LOGIC_UART_C
-	printk(KERN_INFO "Setup pinmux and enable UART C\n");
-	omap_mux_init_signal("uart2_tx.uart2_tx", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("uart2_rts.uart2_rts", OMAP_PIN_INPUT);
-	omap_mux_init_signal("uart2_cts.uart2_cts", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("uart2_rx.uart2_rx", OMAP_PIN_INPUT);
 	omap_serial_init_port(1);
-#endif
 
 	omap3logic_musb_init();
 
@@ -1614,6 +1172,7 @@ static void __init omap3logic_init(void)
 
 	omap3logic_init_audio_mux();
 
+
 	/* Must be here since on exit, omap2_init_devices(called later)
 	 * setups up SPI devices - can't add boardinfo afterwards */
 	omap3logic_spi_init();
@@ -1622,113 +1181,13 @@ static void __init omap3logic_init(void)
 
 	omap3logic_android_gadget_init();
 
-	omap3logic_qt602240_init();//Ashwin, is this a good place to put this, 
-					//tsc2004 calls qpio init during probe
 }
-
-#if defined(CONFIG_OMAP3LOGIC_COMPACT_FLASH) || defined(CONFIG_OMAP3LOGIC_COMPACT_FLASH_MODULE)
-
-#define OMAP_LV_SOM_CF_RESET_GPIO 6
-#define OMAP_LV_SOM_CF_EN_GPIO 128
-#define OMAP_LV_SOM_CF_CD_GPIO 154
-
-static struct resource omap3logic_lv_som_cf_resources[] = {
-	[0] = {
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start = OMAP_GPIO_IRQ(OMAP_LV_SOM_CF_CD_GPIO),
-		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL,
-	},
-};
-
-static struct omap3logic_cf_data cf_data = {
-	.gpio_reset = OMAP_LV_SOM_CF_RESET_GPIO,
-	.gpio_en = OMAP_LV_SOM_CF_EN_GPIO,
-	.gpio_cd = OMAP_LV_SOM_CF_CD_GPIO,
-};
-
-static struct platform_device omap3logic_lv_som_cf = {
-	.name		= "omap3logic-cf",
-	.id		= 0,
-	.dev		= {
-		.platform_data	= &cf_data,
-	},
-	.num_resources = ARRAY_SIZE(omap3logic_lv_som_cf_resources),
-	.resource = omap3logic_lv_som_cf_resources,
-};
-
-void omap3logic_cf_init(void)
-{
-	unsigned long cs_mem_base;
-	int result;
-
-	/* Only the LV SOM SDK has a CF interface */
-	if (!machine_is_omap3530_lv_som())
-		return;
-
-	/* Fix PBIAS to get USIM enough voltage to power up */
-	omap3torpedo_fix_pbias_voltage();
-
-	if (gpmc_cs_request(3, SZ_16M, &cs_mem_base) < 0) {
-		printk(KERN_ERR "Failed to request GPMC mem for CF\n");
-		return;
-	}
-
-	omap3logic_lv_som_cf_resources[0].start = cs_mem_base;
-	omap3logic_lv_som_cf_resources[0].end = cs_mem_base + 0x1fff;
-	
-
-	omap_mux_init_signal("gpmc_ncs3", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("gpmc_io_dir", OMAP_PIN_OUTPUT);
-
-	omap_mux_init_gpio(OMAP_LV_SOM_CF_CD_GPIO, OMAP_PIN_INPUT_PULLUP);
-	if (gpio_request(OMAP_LV_SOM_CF_CD_GPIO, "CF card detect") < 0) {
-		printk(KERN_ERR "Failed to request GPIO%d for CompactFlash CD IRQ\n",
-		OMAP_LV_SOM_CF_CD_GPIO);
-		return;
-	}
-	omap_set_gpio_debounce(OMAP_LV_SOM_CF_CD_GPIO, 5);
-	gpio_direction_input(OMAP_LV_SOM_CF_CD_GPIO);
-
-	// Setup ComapctFlash Enable pin
-	omap_mux_init_gpio(OMAP_LV_SOM_CF_EN_GPIO, OMAP_PIN_OUTPUT);
-	if (gpio_request(OMAP_LV_SOM_CF_EN_GPIO, "CF enable") < 0) {
-		printk(KERN_ERR "Failed to request GPIO%d for CompactFlash EN\n",
-		OMAP_LV_SOM_CF_EN_GPIO);
-		return;
-	}
-	gpio_direction_output(OMAP_LV_SOM_CF_EN_GPIO, 0);
-
-	// Setup ComapctFlash Reset pin
-	omap_mux_init_gpio(OMAP_LV_SOM_CF_RESET_GPIO, OMAP_PIN_OUTPUT);
-	if (gpio_request(OMAP_LV_SOM_CF_RESET_GPIO, "CF reset") < 0) {
-		printk(KERN_ERR "Failed to request GPIO%d for CompactFlash Reset\n",
-		OMAP_LV_SOM_CF_RESET_GPIO);
-		return;
-	}
-	gpio_direction_output(OMAP_LV_SOM_CF_RESET_GPIO, 0);
-
-	result = platform_device_register(&omap3logic_lv_som_cf);
-	if (result)
-		printk("%s: platform device register of CompactFlash device failed: %d\n", __FUNCTION__, result);
-}
-#else
-static void omap3logic_cf_init(void)
-{
-}
-#endif
-
 
 void omap3logic_init_productid_specifics(void)
 {
 	omap3logic_init_twl_external_mute();
-	aircell_mux_init(); // mark.chung
 	omap3logic_led_init();
 	brf6300_dev_init();
-	omap3logic_cf_init();
-
-printk("@@@@@@@@@@@@Product ID Specifics\n");
 }
 
 static void __init omap3logic_map_io(void)
@@ -1736,17 +1195,6 @@ static void __init omap3logic_map_io(void)
 	omap2_set_globals_343x();
 	omap2_map_common_io();
 }
-
-MACHINE_START(OMAP3_TORPEDO, "Logic OMAP3 Torpedo board")
-	/* Maintainer: Peter Barada <peterb@logicpd.com> */
-	.phys_io	= 0x48000000,
-	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
-	.boot_params	= 0x80000100,
-	.map_io		= omap3logic_map_io,
-	.init_irq	= omap3logic_init_irq,
-	.init_machine	= omap3logic_init,
-	.timer		= &omap_timer,
-MACHINE_END
 
 MACHINE_START(OMAP3530_LV_SOM, "OMAP Logic 3530 LV SOM board")
 	/* Maintainer: Peter Barada <peterb@logicpd.com> */

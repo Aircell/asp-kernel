@@ -84,8 +84,8 @@ static int gpio_i2c_coarse_delay;
  * The commented string gives the final mux configuration for that pin
  */
 
-#define GPIO_I2C_GPIO_SCLK  184
-#define GPIO_I2C_GPIO_SDATA 185
+#define I2C3_SCLK  184
+#define I2C3_SDATA 185
 
 /* Put SCLK/SDA pins connected to the product ID into GPIO mode */
 static void gpio_i2c_config_pins(void)
@@ -93,13 +93,13 @@ static void gpio_i2c_config_pins(void)
 
 	/* Claim the I2C3 pins as GPIO */
 	
-	omap_mux_init_gpio(GPIO_I2C_GPIO_SCLK, OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_gpio(GPIO_I2C_GPIO_SDATA, OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_gpio(I2C3_SCLK, OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_gpio(I2C3_SDATA, OMAP_PIN_INPUT_PULLUP);
 
-	if (gpio_request(GPIO_I2C_GPIO_SCLK, "gpio_i2c4_sclk"))
-		printk("%s: gpio_request(gpio_i2ce_sclk) failed\n", __FUNCTION__);
-	if (gpio_request(GPIO_I2C_GPIO_SDATA, "gpio_i2c4_sdata"))
-		printk("%s: gpio_request(gpio_i2ce_sdata) failed\n", __FUNCTION__);
+	if (gpio_request(I2C3_SCLK, "gpio_i2c3_sclk"))
+		printk("%s: gpio_request(gpio_i2c3_sclk) failed\n", __FUNCTION__);
+	if (gpio_request(I2C3_SDATA, "gpio_i2c3_sdata"))
+		printk("%s: gpio_request(gpio_i2c3_sdata) failed\n", __FUNCTION__);
 
 	printk("%s: VAUX1 must be on to access product_id data.\n", __FUNCTION__);
 }
@@ -107,8 +107,8 @@ static void gpio_i2c_config_pins(void)
 /* Restore SCLK/SDA pins connected to the product ID back to I2C mode */
 static void gpio_i2c_restore_pins(void)
 {
-	gpio_free(GPIO_I2C_GPIO_SCLK);
-	gpio_free(GPIO_I2C_GPIO_SDATA);
+	gpio_free(I2C3_SCLK);
+	gpio_free(I2C3_SDATA);
 	omap_mux_init_signal("i2c3_scl", OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_signal("i2c3_sda", OMAP_PIN_INPUT_PULLUP);
 }
@@ -117,23 +117,23 @@ static void gpio_i2c_config_pin(GPIO_I2C_PIN pin, GPIO_I2C_DIRECTION dir, int le
 {
 	if (dir == GPIO_I2C_INPUT) {
 		if (pin == GPIO_I2C_SCLK)
-			gpio_direction_input(GPIO_I2C_GPIO_SCLK);
+			gpio_direction_input(I2C3_SCLK);
 		else
-			gpio_direction_input(GPIO_I2C_GPIO_SDATA);
+			gpio_direction_input(I2C3_SDATA);
 	} else if (dir == GPIO_I2C_OUTPUT) {
 		if (pin == GPIO_I2C_SCLK)
-			gpio_direction_output(GPIO_I2C_GPIO_SCLK, level);
+			gpio_direction_output(I2C3_SCLK, level);
 		else
-			gpio_direction_output(GPIO_I2C_GPIO_SDATA, level);
+			gpio_direction_output(I2C3_SDATA, level);
 	}
 }
 
 static int gpio_i2c_read_pin(GPIO_I2C_PIN pin)
 {
 	if (pin == GPIO_I2C_SCLK)
-		return gpio_get_value(GPIO_I2C_GPIO_SCLK);
+		return gpio_get_value(I2C3_SCLK);
 	else
-		return gpio_get_value(GPIO_I2C_GPIO_SDATA);
+		return gpio_get_value(I2C3_SDATA);
 	return 0;
 }
 
@@ -142,10 +142,10 @@ static void gpio_i2c_set_pin_level(GPIO_I2C_PIN pin, int level)
 	uint8_t pin_level;
 
 	if (pin == GPIO_I2C_SCLK) {
-		pin_level = gpio_get_value(GPIO_I2C_GPIO_SCLK);
+		pin_level = gpio_get_value(I2C3_SCLK);
 		if (((level == 1) && (pin_level == 0)) ||
 		    ((level == 0) && (pin_level == 1)))
-			gpio_set_value(GPIO_I2C_GPIO_SCLK, level);
+			gpio_set_value(I2C3_SCLK, level);
 	} else if (pin == GPIO_I2C_SDATA) {
 		if (level == 0) {
 			gpio_i2c_config_pin(pin, GPIO_I2C_OUTPUT, 0);

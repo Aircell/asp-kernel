@@ -35,12 +35,7 @@
 
 #include <linux/spi/spi.h>
 #include <plat/mcspi.h>
-
-#define OMAP3530_LV_SOM_LCD_GPIO_ENA		155
-#define OMAP3530_LV_SOM_LCD_GPIO_BL		8
-
-#define OMAP3_TORPEDO_LCD_GPIO_ENA		155
-#define OMAP3_TORPEDO_LCD_GPIO_BL		154
+#include "aircell_gpio.h"
 
 struct omap3logic_lcd_data {
 	int	gpio_enable;
@@ -65,8 +60,6 @@ static int omap3logic_panel_power_enable(int enable)
 	int ret;
 	struct regulator *vpll2_reg;
 
-	printk("%s: Called\n", __FUNCTION__);
-
 	vpll2_reg = regulator_get(NULL, "vpll2");
 	if (IS_ERR(vpll2_reg)) {
 		pr_err("Unable to get vpll2 regulator\n");
@@ -81,33 +74,8 @@ static int omap3logic_panel_power_enable(int enable)
 	return ret;
 }
 
-static int omap3logic_panel_pre_enable_lcd(struct omap_dss_device *dssdev)
-{
-	struct omap3logic_dss_board_info *pdata;
-	int ret;
-
-	printk("%s: Called\n", __FUNCTION__);
-
-	ret = omap3logic_panel_power_enable(1);
-	if (ret < 0)
-		return ret;
-
-	/* Allow the power to stablize */
-	msleep(50);
-
-	pdata = dssdev->dev.platform_data;
-
-	gpio_set_value(board_lcd_data.gpio_enable, 1);
-
-	msleep(300);
-
-	return 0;
-}
-
 int omap3logic_enable_lcd(struct omap_dss_device *dssdev)
 {
-	printk("%s: Called\n", __FUNCTION__);
-
 	gpio_set_value(board_lcd_data.gpio_enable, 1);
 
 	// Sleep for 300ms since the 4.3" display needs clocks before
@@ -126,8 +94,6 @@ void omap3logic_disable_lcd(struct omap_dss_device *dssdev)
 {
 	int ret;
 
-	printk("%s: Called\n", __FUNCTION__);
-
 	ret = omap3logic_panel_power_enable(0);
 	if (ret < 0)
 		BUG();
@@ -140,8 +106,6 @@ void omap3logic_disable_lcd(struct omap_dss_device *dssdev)
 
 /* setup by omap3logic_display_selection() below */
 struct omap_dss_device omap3logic_lcd_device;
-
-
 
 static struct omap_dss_device *omap3logic_dss_devices[] = {
 	&omap3logic_lcd_device,
@@ -203,7 +167,6 @@ struct regulator_init_data omap3logic_vpll2 = {
 	.consumer_supplies      = omap3logic_vpll2_supplies,
 };
 
-#if defined(CONFIG_PANEL_SHARP_LS038Y7DX01)
 static struct omap2_mcspi_device_config dss_lcd_mcspi_config =
 {
 	.turbo_mode     = 0,
@@ -219,202 +182,42 @@ static struct spi_board_info omap3logic_spi_ls038y7dx01_panel =
 	//.mode         = SPI_MODE_1,
 	.controller_data = &dss_lcd_mcspi_config,
 };
-#endif
 
 void __init board_lcd_init(void)
 {
 	
-	if (!omap3logic_lcd_device.name) {
-		printk(KERN_ERR "No 'display=' specified on commandline!\n");
-		return;
-	}
+	board_lcd_data.gpio_enable = AIRCELL_LCD_POWER_ENABLE;
+	board_lcd_data.gpio_backlight = AIRCELL_BACKLIGHT_ENABLE;
 
-	/* OMAP3530 LV SOM board */
-	if (machine_is_omap3530_lv_som()) {
-		board_lcd_data.gpio_enable = OMAP3530_LV_SOM_LCD_GPIO_ENA;
-		board_lcd_data.gpio_backlight = OMAP3530_LV_SOM_LCD_GPIO_BL;
-		omap_mux_init_gpio(OMAP3530_LV_SOM_LCD_GPIO_ENA, 
-				OMAP_PIN_OUTPUT);
-		omap_mux_init_gpio(OMAP3530_LV_SOM_LCD_GPIO_BL,
-				OMAP_PIN_OUTPUT);
-
-	/* Torpedo board */
-	} else if (machine_is_omap3_torpedo()) {
-		board_lcd_data.gpio_enable = OMAP3_TORPEDO_LCD_GPIO_ENA;
-		board_lcd_data.gpio_backlight = OMAP3_TORPEDO_LCD_GPIO_BL;
-		omap_mux_init_gpio(OMAP3_TORPEDO_LCD_GPIO_ENA, 
-				OMAP_PIN_OUTPUT);
-		omap_mux_init_gpio(OMAP3_TORPEDO_LCD_GPIO_BL, 
-				OMAP_PIN_OUTPUT);
-
-	/* unsupported board */
-	} else {
-		printk(KERN_ERR "Unknown machine in board_lcd_init()\n");
-		return;
-	}
-
-// Set-up for Sharp LS038Y7DX01 display panel only.
-#if defined(CONFIG_PANEL_SHARP_LS038Y7DX01)
-	omap_mux_init_signal("cam_xclkb.gpio_111", OMAP_PIN_OUTPUT);
-	
-	if (gpio_request(111, "LCD reset line")) {
-		printk(KERN_ERR "failed to get LCD reset line on GPIO %d\n",
-		       111);
-		goto err0;
-	}
-	
-	gpio_direction_output(111, 1);
-	
+	/* Toggle the LCD reset */	
+	gpio_set_value(AIRCELL_LCD_RESET, 1);
 	mdelay(6);
-	gpio_direction_output(111, 0);
-	
+	gpio_set_value(AIRCELL_LCD_RESET, 0);
 	mdelay(3);
-	
-	gpio_direction_output(111, 1);
-	
+	gpio_set_value(AIRCELL_LCD_RESET, 1);
 	mdelay(6);
-	gpio_free(111);
 
-	omap_mux_init_signal("sdmmc2_clk.mcspi3_clk", OMAP_PIN_INPUT);
-	omap_mux_init_signal("sdmmc2_cmd.mcspi3_simo", OMAP_PIN_INPUT);
-	omap_mux_init_signal("sdmmc2_dat0.mcspi3_somi", OMAP_PIN_INPUT);
-	mdelay(5);
-	omap_mux_init_signal("sdmmc2_dat3.mcspi3_cs0", OMAP_PIN_INPUT);
-	
 	spi_register_board_info(&omap3logic_spi_ls038y7dx01_panel, 1);
-#endif
-	
-	omap_mux_init_signal("dss_pclk", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_hsync", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_vsync", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_acbias", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data0.dss_data0", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data1.dss_data1", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data2.dss_data2", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data3.dss_data3", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data4.dss_data4", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data5.dss_data5", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data6.dss_data6", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data7.dss_data7", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data8.dss_data8", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data9.dss_data9", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data10.dss_data10", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data11.dss_data11", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data12.dss_data12", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data13.dss_data13", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data14.dss_data14", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data15.dss_data15", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data16.dss_data16", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data17.dss_data17", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data18.dss_data18", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data19.dss_data19", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data20.dss_data20", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data21.dss_data21", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data22.dss_data22", OMAP_PIN_OUTPUT);
-	omap_mux_init_signal("dss_data23.dss_data23", OMAP_PIN_OUTPUT);
-	
-	if (gpio_request(board_lcd_data.gpio_enable, "LCD enable")) {
-		printk(KERN_ERR "failed to get LCD enable on GPIO %d\n",
-			board_lcd_data.gpio_enable);
-		goto err0;
-	}
 
-	if (gpio_request(board_lcd_data.gpio_backlight, "LCD backlight")) {
-		printk(KERN_ERR "failed to get LCD backlight on GPIO %d\n",
-			board_lcd_data.gpio_backlight);
-		goto err1;
-	}
-
-	gpio_direction_output(board_lcd_data.gpio_enable, 0);
-	gpio_direction_output(board_lcd_data.gpio_backlight, 0);
+	gpio_set_value(board_lcd_data.gpio_enable, 0);
+	gpio_set_value(board_lcd_data.gpio_backlight, 0);
 
 	board_lcd_data.lcd_enabled = 0;
 
 	platform_device_register(&omap3logic_dss_device);
 
 	return;
-err1:
-	gpio_free(board_lcd_data.gpio_enable);
-err0:
-	return;
 }
 
 
 
 static struct omap3logic_display omap3logic_displays[] = {
-	{
-		.name		= "2", /* 2 == LQ121S1DG31 TFT SVGA (12.1) Sharp */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "sharp_lq121s1dg31_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
-	{
-		.name		= "3", /* 3 == LQ036Q1DA01 TFT QVGA (3.6) Sharp w/ASIC */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "sharp_lq036q1da01_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
-	{
-		.name		= "4", /* 4 == HV056WX1-100 TFT WXGA (5.6) BOEhydis */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "boehydis_hc056wx1_100_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
-	{
-		.name		= "5", /* 5 == LQ64D343 TFT VGA (6.4) Sharp */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "sharp_lq64d343_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
-	{
-		.name		= "7", /* 7 == LQ10D368 TFT VGA (10.4) Sharp */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "sharp_lq10d368_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
-	{
-		.name		= "15", /* 15 == LQ043T1DG01 TFT WQVGA (4.3) Sharp */
-		.device	= {
-			.name			= "lcd",
-			.driver_name		= "sharp_lq043t1dg01_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
-			.phy.dpi.data_lines	= 16,
-			.platform_pre_enable    = omap3logic_panel_pre_enable_lcd,
-			.platform_enable	= omap3logic_enable_lcd,
-			.platform_disable	= omap3logic_disable_lcd,
-		},
-	},
 	{ 
 		.name		= "16", /* 16 == LS038Y7DX01 TFT WQVGA (3.8) Sharp */
 		.device	= {
-			.name			= "lcd",
+			.name				= "lcd",
 			.driver_name		= "sharp_ls038y7dx01_panel",
-			.type			= OMAP_DISPLAY_TYPE_DPI,
+			.type				= OMAP_DISPLAY_TYPE_DPI,
 			.phy.dpi.data_lines	= 16,
 			.platform_enable	= omap3logic_enable_lcd,
 			.platform_disable	= omap3logic_disable_lcd,
@@ -423,25 +226,25 @@ static struct omap3logic_display omap3logic_displays[] = {
 };
 
 static struct omap_dss_device omap3logic_customer_lcd_device = {
-	.name			= "lcd",
-	.driver_name		= "customer_panel",
-	.type			= OMAP_DISPLAY_TYPE_DPI,
-	.phy.dpi.data_lines	= 16,
-	.panel.recommended_bpp	= 16,
-	.panel.config		= OMAP_DSS_LCD_TFT
+	.name						= "lcd",
+	.driver_name				= "customer_panel",
+	.type						= OMAP_DISPLAY_TYPE_DPI,
+	.phy.dpi.data_lines			= 16,
+	.panel.recommended_bpp		= 16,
+	.panel.config				= OMAP_DSS_LCD_TFT
 				| OMAP_DSS_LCD_IVS
 				| OMAP_DSS_LCD_IHS,
-	.panel.timings.x_res	= 480,
-	.panel.timings.y_res	= 272,
-	.panel.timings.pixel_clock = 10000,
-	.panel.timings.hfp	= 1,
-	.panel.timings.hsw	= 41,
-	.panel.timings.hbp	= 1,
-	.panel.timings.vfp	= 1,
-	.panel.timings.vsw	= 2,
-	.panel.timings.vbp	= 1,
-	.platform_enable	= omap3logic_enable_lcd,
-	.platform_disable	= omap3logic_disable_lcd,
+	.panel.timings.x_res		= 480,
+	.panel.timings.y_res		= 272,
+	.panel.timings.pixel_clock 	= 10000,
+	.panel.timings.hfp			= 1,
+	.panel.timings.hsw			= 41,
+	.panel.timings.hbp			= 1,
+	.panel.timings.vfp			= 1,
+	.panel.timings.vsw			= 2,
+	.panel.timings.vbp			= 1,
+	.platform_enable			= omap3logic_enable_lcd,
+	.platform_disable			= omap3logic_disable_lcd,
 };
 
 struct omap3logic_custom_display_fields {
@@ -459,18 +262,18 @@ struct omap3logic_custom_display_fields {
 
 static struct omap3logic_custom_display_fields
 omap3logic_custom_display_fields[] = {
- {"xr",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.x_res},
- {"yr",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.y_res},
- {"lm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.hbp},
- {"rm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.hfp},
- {"tm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.vbp},
- {"bm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.vfp},
- {"hs",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.hsw},
- {"vs",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.vsw},
- {"pc",lcdt_u32,&omap3logic_customer_lcd_device.panel.timings.pixel_clock},
- {"cf",lcdt_opc,&omap3logic_customer_lcd_device.panel.config},
- {"bp",lcdt_u8, &omap3logic_customer_lcd_device.panel.recommended_bpp},
- {"dl",lcdt_u8, &omap3logic_customer_lcd_device.phy.dpi.data_lines},
+	{"xr",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.x_res},
+	{"yr",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.y_res},
+	{"lm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.hbp},
+	{"rm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.hfp},
+	{"tm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.vbp},
+	{"bm",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.vfp},
+	{"hs",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.hsw},
+	{"vs",lcdt_u16,&omap3logic_customer_lcd_device.panel.timings.vsw},
+	{"pc",lcdt_u32,&omap3logic_customer_lcd_device.panel.timings.pixel_clock},
+	{"cf",lcdt_opc,&omap3logic_customer_lcd_device.panel.config},
+	{"bp",lcdt_u8, &omap3logic_customer_lcd_device.panel.recommended_bpp},
+	{"dl",lcdt_u8, &omap3logic_customer_lcd_device.phy.dpi.data_lines},
 };
 
 int omap3logic_display_selection(char *s)
@@ -480,6 +283,8 @@ int omap3logic_display_selection(char *s)
 	int last;
 	struct omap3logic_display *disp;
 	struct omap3logic_custom_display_fields *f;
+
+	printk("%s: TARR -\n", __FUNCTION__);
 
 	err = 0;
 	if (strchr(s, ':')) {
