@@ -545,13 +545,13 @@ struct qt602240_platform_data omap3logic_touchscreendata = {
     .y_size = 11,
     .blen = 0,
     .threshold = 40,
-    .voltage = 2700000,
+    .voltage = 600,
     .orient = QT602240_NORMAL
 };
 
 static struct platform_device omap3logic_touch_device = {
     .name       = "qt602240_ts",
-    .id     = 0, //Ashwin is this correct?
+    .id     = 0, 
     .dev        = {
         .platform_data = &omap3logic_touchscreendata,
     },
@@ -577,7 +577,7 @@ static void omap3logic_qt602240_init(void)
     omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
 	/* Take the touch screen out of reset */
-	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
+	gpio_set_value(AIRCELL_TOUCH_RESET, 1);
     omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(AIRCELL_TOUCH_INTERRUPT);
 
 	return;
@@ -1109,33 +1109,54 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
-	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
 	gpio_request(AIRCELL_LCD_POWER_ENABLE,"AIRCELL_LCD_POWER_ENABLE");
+
+	gpio_direction_output(AIRCELL_5V_ENABLE,1);
+	gpio_direction_output(AIRCELL_18V_ENABLE,1);
+	gpio_set_value(AIRCELL_23V_ENABLE,1);
+
+	gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
+	gpio_direction_output(AIRCELL_LCD_RESET,0);
+	gpio_direction_input(AIRCELL_CRADLE_DETECT);
+	gpio_direction_output(AIRCELL_BLUE_ENABLE,0);
+	gpio_direction_output(AIRCELL_GREEN_ENABLE,0);
+	gpio_direction_output(AIRCELL_RED_ENABLE,0);
+	gpio_direction_output(AIRCELL_LED_ENABLE,0);
+	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
+	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
+	gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
+	gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
+	gpio_direction_input(AIRCELL_HANDSET_DETECT);
+	gpio_direction_output(AIRCELL_TOUCH_RESET,0);
+	gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
+	gpio_direction_input(AIRCELL_PROX_INTERRUPT);
+	gpio_direction_input(AIRCELL_ACCEL_INTERRUPT);
+	gpio_direction_input(AIRCELL_TOUCH_INTERRUPT);
+	gpio_direction_output(AIRCELL_LCD_POWER_ENABLE,0);
 
 	gpio_export(AIRCELL_5V_ENABLE,0);
 	gpio_export(AIRCELL_33V_ENABLE,0);
 	gpio_export(AIRCELL_18V_ENABLE,0);
-	gpio_export(AIRCELL_23V_ENABLE,0);
-	gpio_export(AIRCELL_SOFTWARE_RESET,0);
+	gpio_export(AIRCELL_23V_ENABLE,1);
+	gpio_export(AIRCELL_SOFTWARE_RESET,1);
 	gpio_export(AIRCELL_WIFI_ENABLE_DETECT,0);
-	gpio_export(AIRCELL_LCD_RESET,0);
+	gpio_export(AIRCELL_LCD_RESET,1);
 	gpio_export(AIRCELL_CRADLE_DETECT,0);
-	gpio_export(AIRCELL_BLUE_ENABLE	,0);
-	gpio_export(AIRCELL_GREEN_ENABLE,0);
-	gpio_export(AIRCELL_RED_ENABLE,0);
-	gpio_export(AIRCELL_LED_ENABLE,0);
-	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
-	gpio_export(AIRCELL_RINGER_ENABLE,0);
+	gpio_export(AIRCELL_BLUE_ENABLE	,1);
+	gpio_export(AIRCELL_GREEN_ENABLE,1);
+	gpio_export(AIRCELL_RED_ENABLE,1);
+	gpio_export(AIRCELL_LED_ENABLE,1);
+	gpio_export(AIRCELL_EARPIECE_ENABLE,1);
+	gpio_export(AIRCELL_RINGER_ENABLE,1);
 	gpio_export(AIRCELL_VOLUME_UP_DETECT,0);
 	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
 	gpio_export(AIRCELL_HANDSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
-	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
+	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,1);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
-	gpio_export(AIRCELL_CAMERA_PWDN,0);
-	gpio_export(AIRCELL_LCD_POWER_ENABLE,0);
+	gpio_export(AIRCELL_LCD_POWER_ENABLE,1);
 
 }
 static void __init omap3logic_init(void)
