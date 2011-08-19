@@ -531,7 +531,7 @@ static struct omap_mux __initdata omap3_muxmodes[] = {
 	   cam_strobe as uP_nIRQc - disable gpio_126 on sdmmc1_dat4 */
 	_OMAP3_MUXENTRY(SDMMC1_DAT4, 0,
 		"sdmmc1_dat4", NULL, "sim_io", NULL,
-		"gpio_126", NULL, NULL, "safe_mode"),
+		NULL, NULL, NULL, "safe_mode"),
 #else
 	_OMAP3_MUXENTRY(SDMMC1_DAT4, 126,
 		"sdmmc1_dat4", NULL, "sim_io", NULL,
