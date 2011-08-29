@@ -76,7 +76,7 @@
 
 #include "aircell_gpio.h"
 
-#define QT_I2C_ADDR			0x4b
+#define QT_I2C_ADDR			 0x4b
 #define DIE_ID_REG_BASE      (L4_WK_34XX_PHYS + 0xA000)
 #define DIE_ID_REG_OFFSET    0x218
 #define MAX_USB_SERIAL_NUM   17
@@ -535,23 +535,40 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 };
 
 /*
- * Touch Screen Support
+ * Touchscreen MultiTouch configuration 
+ *
+ * For Aircell CloudSurfer, only that part of the touchscreen that
+ * overlays the LCD display is used for the MultiTouch.
+ * The touchscreen is configured to map returning x and y touch coordinates
+ * to the dsiplay coordinates. The touch screen is a matrix of 19 lines by
+ * 11 lines of "channels". The LCD display is a 480 X 800 pixle display.
+ * The display has the origin (0,0) in the upper left hand corner, (480,0)
+ * in the upper right hand corner, (0,800) in the lower left hand corner and
+ * (480,800) in the lower right hand corner. Since the since the touch screen 
+ * also overlays the "keys" which are a different module, the size is smaller
+ * than the x size is smaller that the full touch screen.
+ *
+ * Now for the really weird parts. The orientation field provides a 
+ * reporting of the x,y touch coordinates to match the display. 
+ * This makes the rest of the configuration stuff non intuitive.
+ * What makes this even worse is that the LCD for P1+ versions
+ * Have the display wired upside down......
+ *
  */
-
 struct qt602240_platform_data omap3logic_touchscreendata = {
-    .x_line = 19,
+    .x_line = 13,
     .y_line = 11,
-    .x_size = 19,
-    .y_size = 11,
-    .blen = 0,
-    .threshold = 40,
+    .x_size = 800,
+    .y_size = 480,
+    .blen = 23,
+    .threshold = 80,
     .voltage = 600,
-    .orient = QT602240_NORMAL
+    .orient = QT602240_DIAGONAL_COUNTER
 };
 
 static struct platform_device omap3logic_touch_device = {
     .name       = "qt602240_ts",
-    .id     = 0, 
+    .id     	= 0, 
     .dev        = {
         .platform_data = &omap3logic_touchscreendata,
     },
@@ -561,7 +578,7 @@ static struct platform_device omap3logic_touch_device = {
 static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("qt602440_ts", QT_I2C_ADDR),
-		.type		= "qt602240_ts",
+		.type	= "qt602240_ts",
 		.platform_data = &omap3logic_touchscreendata,
 		.irq = OMAP_GPIO_IRQ(AIRCELL_TOUCH_INTERRUPT),
 	},
@@ -569,15 +586,17 @@ static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 
 static void omap3logic_qt602240_init(void)
 {
+	printk("TARR - qt602240_init()\n");
+
     if (platform_device_register(&omap3logic_touch_device) < 0){
             printk(KERN_ERR "Unable to register touch device\n");
         return;
     }
-	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
-    omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
+	//omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
+    //omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
 	/* Take the touch screen out of reset */
-	gpio_set_value(AIRCELL_TOUCH_RESET, 1);
+	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
     omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(AIRCELL_TOUCH_INTERRUPT);
 
 	return;
@@ -1087,15 +1106,37 @@ static void omap3logic_android_gadget_init(void)
 
 static void aircell_gpio_init(void)
 {
+
+#ifdef CLOUDSURFER_P1
 	gpio_request(AIRCELL_5V_ENABLE,"AIRCELL_5V_ENABLE");
 	gpio_request(AIRCELL_33V_ENABLE,"AIRCELL_33V_ENABLE");
-	gpio_request(AIRCELL_18V_ENABLE,"AIRCELL_18V_ENABLE");
 	gpio_request(AIRCELL_23V_ENABLE,"AIRCELL_23V_ENABLE");
+	gpio_direction_output(AIRCELL_5V_ENABLE,1);
+	gpio_direction_output(AIRCELL_33V_ENABLE,1);
+	gpio_direction_output(AIRCELL_23V_ENABLE,1);
+	gpio_export(AIRCELL_5V_ENABLE,0);
+	gpio_export(AIRCELL_33V_ENABLE,0);
+	gpio_export(AIRCELL_23V_ENABLE,0);
+#endif
+
+#ifdef CLOUDSURFER_P2
+	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VAENABLE");
+	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");
+	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
+	gpio_direction_output(AIRCELL_5VA_ENABLE,0);
+	gpio_direction_output(AIRCELL_5VD_ENABLE,0);
+	gpio_direction_output(AIRCELL_CAMERA_PWDN,1);
+	gpio_export(AIRCELL_5VA_ENABLE,0);
+	gpio_export(AIRCELL_5VD_ENABLE,0);
+	gpio_export(AIRCELL_CAMERA_PWDN,0);
+#endif
+
+	gpio_request(AIRCELL_18V_ENABLE,"AIRCELL_18V_ENABLE");
 	gpio_request(AIRCELL_SOFTWARE_RESET,"AIRCELL_SOFTWARE_RESET");
 	gpio_request(AIRCELL_WIFI_ENABLE_DETECT,"AIRCELL_WIFI_ENABLE_DETECT");
 	gpio_request(AIRCELL_LCD_RESET,"AIRCELL_LCD_RESET");
 	gpio_request(AIRCELL_CRADLE_DETECT,"AIRCELL_CRADLE_DETECT");
-	gpio_request(AIRCELL_BLUE_ENABLE	,"AIRCELL_BLUE_ENABLE	");
+	gpio_request(AIRCELL_BLUE_ENABLE,"AIRCELL_BLUE_ENABLE");
 	gpio_request(AIRCELL_GREEN_ENABLE,"AIRCELL_GREEN_ENABLE");
 	gpio_request(AIRCELL_RED_ENABLE,"AIRCELL_RED_ENABLE");
 	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
@@ -1105,62 +1146,54 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_VOLUME_DOWN_DETECT,"AIRCELL_VOLUME_DOWN_DETECT");
 	gpio_request(AIRCELL_HANDSET_DETECT,"AIRCELL_HANDSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
-	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
-	gpio_request(AIRCELL_LCD_POWER_ENABLE,"AIRCELL_LCD_POWER_ENABLE");
 
-	gpio_direction_output(AIRCELL_5V_ENABLE,1);
-	gpio_direction_output(AIRCELL_18V_ENABLE,1);
-	gpio_set_value(AIRCELL_23V_ENABLE,1);
+    gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
+    gpio_direction_output(AIRCELL_LCD_RESET,0);
+    gpio_direction_input(AIRCELL_CRADLE_DETECT);
+    gpio_direction_output(AIRCELL_BLUE_ENABLE,0);
+    gpio_direction_output(AIRCELL_GREEN_ENABLE,0);
+    gpio_direction_output(AIRCELL_RED_ENABLE,0);
+    gpio_direction_output(AIRCELL_LED_ENABLE,0);
+    gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
+    gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
+    gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
+    gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
+    gpio_direction_input(AIRCELL_HANDSET_DETECT);
+    gpio_direction_output(AIRCELL_TOUCH_RESET,0);
+    gpio_direction_input(AIRCELL_PROX_INTERRUPT);
 
-	gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
-	gpio_direction_output(AIRCELL_LCD_RESET,0);
-	gpio_direction_input(AIRCELL_CRADLE_DETECT);
-	gpio_direction_output(AIRCELL_BLUE_ENABLE,0);
-	gpio_direction_output(AIRCELL_GREEN_ENABLE,0);
-	gpio_direction_output(AIRCELL_RED_ENABLE,0);
-	gpio_direction_output(AIRCELL_LED_ENABLE,0);
-	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
-	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
-	gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
-	gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
-	gpio_direction_input(AIRCELL_HANDSET_DETECT);
-	gpio_direction_output(AIRCELL_TOUCH_RESET,0);
-	gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
-	gpio_direction_input(AIRCELL_PROX_INTERRUPT);
-	gpio_direction_input(AIRCELL_ACCEL_INTERRUPT);
-	gpio_direction_input(AIRCELL_TOUCH_INTERRUPT);
-	gpio_direction_output(AIRCELL_LCD_POWER_ENABLE,0);
-
-	gpio_export(AIRCELL_5V_ENABLE,0);
-	gpio_export(AIRCELL_33V_ENABLE,0);
 	gpio_export(AIRCELL_18V_ENABLE,0);
-	gpio_export(AIRCELL_23V_ENABLE,1);
-	gpio_export(AIRCELL_SOFTWARE_RESET,1);
+	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_WIFI_ENABLE_DETECT,0);
-	gpio_export(AIRCELL_LCD_RESET,1);
+	gpio_export(AIRCELL_LCD_RESET,0);
 	gpio_export(AIRCELL_CRADLE_DETECT,0);
-	gpio_export(AIRCELL_BLUE_ENABLE	,1);
-	gpio_export(AIRCELL_GREEN_ENABLE,1);
-	gpio_export(AIRCELL_RED_ENABLE,1);
-	gpio_export(AIRCELL_LED_ENABLE,1);
-	gpio_export(AIRCELL_EARPIECE_ENABLE,1);
-	gpio_export(AIRCELL_RINGER_ENABLE,1);
+	gpio_export(AIRCELL_BLUE_ENABLE	,0);
+	gpio_export(AIRCELL_GREEN_ENABLE,0);
+	gpio_export(AIRCELL_RED_ENABLE,0);
+	gpio_export(AIRCELL_LED_ENABLE,0);
+	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
+	gpio_export(AIRCELL_RINGER_ENABLE,0);
 	gpio_export(AIRCELL_VOLUME_UP_DETECT,0);
 	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
 	gpio_export(AIRCELL_HANDSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
-	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,1);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
-	gpio_export(AIRCELL_LCD_POWER_ENABLE,1);
 
 }
 static void __init omap3logic_init(void)
 {
+
+#ifdef CLOUDSURFER_P1
+	printk(KERN_INFO "Aircell CloudSurfer P1\n");
+#else
+	printk(KERN_INFO "Aircell CloudSurfer P2\n");
+#endif
+
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
 
 	aircell_gpio_init();
