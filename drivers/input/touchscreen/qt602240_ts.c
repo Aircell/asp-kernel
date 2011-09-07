@@ -604,7 +604,7 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	/* Check the touch is present on the screen */
 	if (!(status & QT602240_DETECT)) {
 		if (status & QT602240_RELEASE) {
-			printk("QT - [%d] released\n", id);
+			//printk("QT - [%d] released\n", id);
 			finger[id].status = QT602240_RELEASE;
 			qt602240_input_report(data, id);
 		}
@@ -619,9 +619,9 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
 	area = message->message[4];
 
-	printk("QT - [%d] %s x: %d, y: %d, area: %d\n", id,
-		status & QT602240_MOVE ? "moved" : "pressed",
-		x, y, area);
+	//printk("QT - [%d] %s x: %d, y: %d, area: %d\n", id,
+	//	status & QT602240_MOVE ? "moved" : "pressed",
+	//	x, y, area);
 
 	finger[id].status = status & QT602240_MOVE ?
 				QT602240_MOVE : QT602240_PRESS;
