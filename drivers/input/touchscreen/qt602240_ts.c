@@ -1,7 +1,31 @@
-/* Aircel - 2011 
- * Modified for the CloudSurfer 
+/* Copyright (c) 2011 - Aircel
+ * Modified for the CloudSurfer by Tarr in 2011 
+ * This is a little different and probably not a kosker design, but....
+ *
+ * The touchscreen is divided into two regions. The first acts as a standard
+ * touchscreen that is overlying the display. The second acts as a keypad.
+ * The full touch screen uses the Atmel xMT224 feature that has the controller
+ * returning touch locations extrapolated to a value with in a configured range.
+ * In this particular case, that range is calcuated based on the ppi density
+ * of the display extended across the full length of the touch screen. In the
+ * case of the specifics of the P2 Cloudsurfer, the display is a 800X480
+ * screen. Extenteding it out to cover the full touchscreen yeilds a 1170X480
+ * range. The interrupt handle determines if the touch was in the "touchscreen"
+ * region or the keypad region. If it is in the "touchscreen" region, the
+ * location is reported on up the ladder. If it is in the "keypad" region,
+ * the handler determines which "key" was touched by wizing through a 
+ * keypad layout structure. The identified "key" is then reported up the
+ * ladder.
+ *
+ * The really poor part of this is that the range for the full touchscreen
+ * is set in the board specific code (arch/arm/mach-omap2/board-omap3logic.c).
+ * However, the keylayout map is defined here and is highly specific to
+ * the display parameter and the touchscreen's size. My humble apology.
+ *
+ * Added note: The Atmel's Key area feature was tried and found completely
+ * in adequate.
+ * 
  */
-
 
 /*
  * AT42QT602240/ATMXT224 Touchscreen driver
@@ -46,10 +70,10 @@
 #define QT602240_VARIANT_ID		0x01
 #define QT602240_VERSION		0x02
 #define QT602240_BUILD			0x03
-#define QT602240_MATRIX_X_SIZE		0x04
-#define QT602240_MATRIX_Y_SIZE		0x05
+#define QT602240_MATRIX_X_SIZE	0x04
+#define QT602240_MATRIX_Y_SIZE	0x05
 #define QT602240_OBJECT_NUM		0x06
-#define QT602240_OBJECT_START		0x07
+#define QT602240_OBJECT_START	0x07
 
 #define QT602240_OBJECT_SIZE		6
 
@@ -57,7 +81,7 @@
 #define QT602240_DEBUG_DIAGNOSTIC	37
 #define QT602240_GEN_MESSAGE		5
 #define QT602240_GEN_COMMAND		6
-#define QT602240_GEN_POWER		7
+#define QT602240_GEN_POWER			7
 #define QT602240_GEN_ACQUIRE		8
 #define QT602240_TOUCH_MULTI		9
 #define QT602240_TOUCH_KEYARRAY		15
@@ -94,12 +118,12 @@
 #define QT602240_ACQUIRE_ATCHCALSTHR	7
 
 /* QT602240_TOUCH_MULTI field */
-#define QT602240_TOUCH_CTRL		0
+#define QT602240_TOUCH_CTRL			0
 #define QT602240_TOUCH_XORIGIN		1
 #define QT602240_TOUCH_YORIGIN		2
 #define QT602240_TOUCH_XSIZE		3
 #define QT602240_TOUCH_YSIZE		4
-#define QT602240_TOUCH_BLEN		6
+#define QT602240_TOUCH_BLEN			6
 #define QT602240_TOUCH_TCHTHR		7
 #define QT602240_TOUCH_TCHDI		8
 #define QT602240_TOUCH_ORIENT		9
@@ -137,7 +161,7 @@
 #define QT602240_GRIPFACE_SUPEXTTO	11
 
 /* QT602240_PROCI_NOISE field */
-#define QT602240_NOISE_CTRL		0
+#define QT602240_NOISE_CTRL			0
 #define QT602240_NOISE_OUTFLEN		1
 #define QT602240_NOISE_GCAFUL_LSB	3
 #define QT602240_NOISE_GCAFUL_MSB	4
@@ -221,7 +245,7 @@ static const u8 init_vals_ver_22[] = {
 	0xFF, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00,
 	/* QT602240_TOUCH_KEYARRAY(15) */
-	0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x41, 0x1e, 0x02, 0x00,
+	0x00, 0x00, 0x00, 0x05, 0x03, 0x00, 0x41, 0x50, 0x02, 0x00,
 	0x00,
 	/* QT602240_SPT_GPIOPWM(19) */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -272,6 +296,40 @@ struct qt602240_message {
 	u8 reportid;
 	u8 message[7];
 	u8 checksum;
+};
+
+struct key {
+	int start_x;
+	int end_x;
+	int start_y;
+	int end_y;
+	int valid;
+	int status;
+	int code;
+	char character;
+};
+
+struct key keypad[] = {
+	{801, 874,0,159,1,0,KEY_BACK,'B'}, 		/* BACK key */
+	{801, 874,160,319,1,KEY_HOME,'H'},	/* HOME key */
+	{801, 874,320,479,1,0,KEY_MENU,'M'},	/* MENU key */
+
+	{875, 948,0,159,1,0,KEY_1,'1'}, 		/* 1 key */
+	{875, 948,160,319,1,0,KEY_2,'2'},		/* 2 key */
+	{875, 948,320,479,1,0,KEY_3,'3'},		/* 3 key */
+
+	{949, 1022,0,159,1,0,KEY_4,'4'}, 		/* 4 key */
+	{949, 1022,160,319,1,0,KEY_5,'5'},		/* 5 key */
+	{949, 1022,320,479,1,0,KEY_6,'6'},		/* 6 key */
+
+	{1023, 1096,0,159,1,0,KEY_7,'7'},		/* 7 key */
+	{1023, 1096,160,319,1,0,KEY_8,'8'},		/* 8 key */
+	{1023, 1096,320,479,1,0,KEY_9,'9'},		/* 9 key */
+
+	{1097, 1170,0,159,1,0,KEY_NUMERIC_STAR,'*'},/* * key */
+	{1097, 1170,160,319,1,0,KEY_0,'0'},			/* 0 key */
+	{1097, 1170,320,479,1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
+	{0,0,0,0,0,0,0,0},					/* End of keys */
 };
 
 struct qt602240_finger {
@@ -474,8 +532,8 @@ static int qt602240_read_object_table(struct i2c_client *client,
 				   object_buf);
 }
 
-static struct qt602240_object *
-qt602240_get_object(struct qt602240_data *data, u8 type)
+static struct qt602240_object *qt602240_get_object(struct qt602240_data *data, 
+			u8 type)
 {
 	struct qt602240_object *object;
 	int i;
@@ -490,6 +548,7 @@ qt602240_get_object(struct qt602240_data *data, u8 type)
 	return NULL;
 }
 
+#ifdef QT_DEBUG
 static int qt602240_dump_object(struct qt602240_data *data, u8 type)
 {
 	u16 reg;
@@ -497,9 +556,9 @@ static int qt602240_dump_object(struct qt602240_data *data, u8 type)
 	int i;
 
 	struct qt602240_object *object;
-	if ( (object = qt602240_get_object(data, type)) == NULL) {
-		return NULL;
-	};
+	object = qt602240_get_object(data, type);
+	if ( object == NULL )
+		return 0;
 	printk("QT - Object %d dump\n\t",type);
 	reg = object->start_address;
 	for ( i=0; i<=object->size; i++ ) {
@@ -509,7 +568,7 @@ static int qt602240_dump_object(struct qt602240_data *data, u8 type)
 	printk("\n");
 	return 1;
 }
-	
+#endif	
 		
 static int qt602240_read_message(struct qt602240_data *data,
 				 struct qt602240_message *message)
@@ -566,6 +625,11 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 		if (!finger[id].status)
 			continue;
 
+#ifdef TARR_DEBUG
+		printk("QT - [%d] x: %d y: %d %s\n",id,
+			finger[id].x,finger[id].y,
+			status & QT602240_MOVE ? "moved" : "pressed");
+#endif
 		input_report_abs(input_dev, ABS_MT_TOUCH_MAJOR,
 				finger[id].status != QT602240_RELEASE ?
 				finger[id].area : 0);
@@ -591,20 +655,96 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 	input_sync(input_dev);
 }
 
+static void report_key(struct qt602240_data *data, struct key *k, u8 status)
+{
+	struct input_dev *input_dev = data->input_dev;
+	/* static that holds the index of current key that is pressed */
+	static struct key *key_pressed = NULL;
+
+	/* Only presses and releases are reported */
+	/* Has the key been pressed already? */	
+	if ( k->status == 0 ) {
+		/* NOPE - is this a key press? */
+		if ( status & QT602240_PRESS ) {
+			/* YUPE */
+			k->status = 1;
+			key_pressed = k;
+			printk("KEY - %c pressed\n",k->character);
+			input_report_key(input_dev,key_pressed->code,1);
+			input_sync(input_dev);	
+			input_report_key(input_dev,key_pressed->code,0);
+			input_sync(input_dev);	
+			return;
+		}
+	} else {
+		/* YUPE */
+		/* is this a key release? */
+		if ( status &  QT602240_RELEASE ) {
+			/* YUPE */
+			k->status = 0;
+			key_pressed = NULL;
+			//printk("KEY - %c released\n",k->character);
+			//input_report_rel(input_dev,k->code,1);
+			//input_sync(input_dev);	
+			return;
+		}
+	}
+	return;
+}
+		
+
+static void keypad_input(struct qt602240_data *data, int x, int y, u8 status)
+{
+	struct key *k = &keypad[0];
+	int index = 0;
+
+	/* Walk through the keypad definition table to find the key */	
+	while ( k->start_x != 0 ) {
+		if ( k->start_x <= x && k->end_x >= x &&
+				 k->start_y <= y && k->end_y >= y ) {
+			/* Is it an active key? */
+			if ( k->valid ) {
+				report_key(data,k,status);
+			}
+			return;
+		}
+		index++;
+		k++;
+	}
+	return;
+}
+
 static void qt602240_input_touchevent(struct qt602240_data *data,
 				      struct qt602240_message *message, int id)
 {
 	struct qt602240_finger *finger = data->finger;
-	struct device *dev = &data->client->dev;
 	u8 status = message->message[0];
 	int x;
 	int y;
 	int area;
 
+	/* Tarr - x is reported in 12 bits, y is reported in 10 due to 
+       scaling size difference */
+	x = (message->message[1] << 4) | ((message->message[3] & ~0x0f) >> 4);
+	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
+	area = message->message[4];
+
+	if ( x > 800 ) {
+		keypad_input(data,x,y,message->message[0]);
+		return;
+	}
+
+#ifdef TARR_DEBUG
+	printk("QT - input [%d] %2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+			id,
+			message->message[0], message->message[1],
+			message->message[2], message->message[3],
+			message->message[4]);
+#endif
 	/* Check the touch is present on the screen */
 	if (!(status & QT602240_DETECT)) {
 		if (status & QT602240_RELEASE) {
-			printk("QT - [%d] released\n", id);
+			//printk("QT - [%d] released\n", id);
 			finger[id].status = QT602240_RELEASE;
 			qt602240_input_report(data, id);
 		}
@@ -615,18 +755,18 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	if (!(status & (QT602240_PRESS | QT602240_MOVE)))
 		return;
 
-	x = (message->message[1] << 2) | ((message->message[3] & ~0x3f) >> 6);
-	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
-	area = message->message[4];
-
-	printk("QT - [%d] %s x: %d, y: %d, area: %d\n", id,
+#ifdef TARR
+	printk("QT - input to report [%d] %s x: %d, y: %d, area: %d\n", id,
 		status & QT602240_MOVE ? "moved" : "pressed",
 		x, y, area);
+#endif
 
 	finger[id].status = status & QT602240_MOVE ?
 				QT602240_MOVE : QT602240_PRESS;
-	finger[id].x = x;
-	finger[id].y = y;
+
+	/* TARR - P1 wierdness due to display rotated 180 */
+	finger[id].x = 480-y;
+	finger[id].y = 800-x;
 	finger[id].area = area;
 
 	qt602240_input_report(data, id);
@@ -662,8 +802,16 @@ static irqreturn_t qt602240_interrupt(int irq, void *dev_id)
 
 		if (reportid >= min_reportid && reportid <= max_reportid) {
 			qt602240_input_touchevent(data, &message, id);
-		} //else
-			//qt602240_dump_message(dev, &message);
+		} else {
+#ifdef TARR_DEBUG
+			printk("QT - interrupt [%d] %2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+				id,
+				message.message[0], message.message[1],
+				message.message[2], message.message[3],
+				message.message[4])
+#endif
+			;
+		}
 	} while (reportid != 0xff);
 
 end:
@@ -937,7 +1085,7 @@ static int qt602240_initialize(struct qt602240_data *data)
 	int error;
 	u8 val;
 
-	printk("QT - qt602240 initialize()\n");
+	//printk("QT - qt602240 initialize()\n");
 
 	error = qt602240_get_info(data);
 	if (error)
@@ -1178,12 +1326,18 @@ static void qt602240_start(struct qt602240_data *data)
 	int i;
 	struct qt602240_message status;
 
-	printk("QT - Touchscreen START\n");
-	/* Touch enable */
+	//printk("QT - Touchscreen START\n");
+
+	/* MultiTouch start  */
 	qt602240_write_object(data,
 			QT602240_TOUCH_MULTI, QT602240_TOUCH_CTRL, 0x83);
 	qt602240_write_object(data,
 			QT602240_PROCI_ONETOUCH, QT602240_TOUCH_CTRL, 0x03);
+
+#ifdef TARR
+	qt602240_write_object(data,
+			QT602240_TOUCH_KEYARRAY, QT602240_TOUCH_CTRL, 0x03);
+#endif
 
 	msleep(100);
 	   /* Dump all current messages */
@@ -1230,6 +1384,7 @@ static int __devinit qt602240_probe(struct i2c_client *client,
 	struct qt602240_data *data;
 	struct input_dev *input_dev;
 	int error;
+	struct key *k;
 
 	if (!client->dev.platform_data)
 		return -EINVAL;
@@ -1250,7 +1405,14 @@ static int __devinit qt602240_probe(struct i2c_client *client,
 
 	__set_bit(EV_ABS, input_dev->evbit);
 	__set_bit(EV_KEY, input_dev->evbit);
+	__set_bit(EV_KEY, input_dev->keybit);
+	__set_bit(EV_REL, input_dev->evbit);
 	__set_bit(BTN_TOUCH, input_dev->keybit);
+
+	/* Setup the keypad */
+	for (k=&keypad[0]; k->start_x != 0; k++ ) {
+		__set_bit(k->code,input_dev->keybit);
+	}	
 
 	/* For single touch */
 	input_set_abs_params(input_dev, ABS_X,

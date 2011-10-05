@@ -422,34 +422,33 @@ static struct twl4030_usb_data omap3logic_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
 };
 
-static int board_keymap[] = {
-	KEY(0, 0, KEY_LEFT),
-	KEY(0, 1, KEY_RIGHT),
-	KEY(0, 2, KEY_A),
-	KEY(0, 3, KEY_B),
-	KEY(1, 0, KEY_DOWN),
-	KEY(1, 1, KEY_UP),
-	KEY(1, 2, KEY_E),
-	KEY(1, 3, KEY_F),
-	KEY(2, 0, KEY_ENTER),
-	KEY(2, 1, KEY_I),
-	KEY(2, 2, KEY_J),
-	KEY(2, 3, KEY_K),
-	KEY(3, 0, KEY_M),
-	KEY(3, 1, KEY_N),
-	KEY(3, 2, KEY_O),
-	KEY(3, 3, KEY_P)
+static int qt_keymap[] = {
+	KEY(0, 0, KEY_BACK),
+	KEY(0, 1, KEY_HOME),
+	KEY(0, 2, KEY_HOME),
+	KEY(1, 0, KEY_1),
+	KEY(1, 1, KEY_2),
+	KEY(1, 2, KEY_3),
+	KEY(2, 0, KEY_4),
+	KEY(2, 1, KEY_5),
+	KEY(2, 2, KEY_6),
+	KEY(3, 0, KEY_7),
+	KEY(3, 1, KEY_8),
+	KEY(3, 2, KEY_9),
+	KEY(4, 0, KEY_NUMERIC_STAR),
+	KEY(4, 1, KEY_0),
+	KEY(4, 2, KEY_NUMERIC_POUND),
 };
 
 static struct matrix_keymap_data board_map_data = {
-	.keymap			= board_keymap,
-	.keymap_size		= ARRAY_SIZE(board_keymap),
+	.keymap			= qt_keymap,
+	.keymap_size		= ARRAY_SIZE(qt_keymap),
 };
 
 static struct twl4030_keypad_data omap3logic_kp_data = {
 	.keymap_data	= &board_map_data,
 	.rows		= 4,
-	.cols		= 4,
+	.cols		= 3,
 	.rep		= 1,
 };
 
@@ -495,8 +494,7 @@ static struct twl4030_platform_data omap3logic_twldata = {
 	.irq_end	= TWL4030_IRQ_END,
 
 	/* platform_data for children goes here */
-	.bci            = &omap3logic_bci_data,
-	.keypad		= &omap3logic_kp_data,
+	.bci        = &omap3logic_bci_data,
 	.madc		= &omap3logic_madc_data,
 	.usb		= &omap3logic_usb_data,
 	.gpio		= &omap3logic_gpio_data,
@@ -556,14 +554,15 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
  *
  */
 struct qt602240_platform_data omap3logic_touchscreendata = {
-    .x_line = 13,
+    .x_line = 19,
     .y_line = 11,
-    .x_size = 800,
-    .y_size = 480,
+    .x_size = 1170,  /* Tarr - scaleing the x use same pixel density of the 
+						LCD across the entire length of the TouchScreen */
+    .y_size = 480,   /* Tarr - y is just the number of LCD pixels */
     .blen = 23,
-    .threshold = 65,
+    .threshold = 80,
     .voltage = 600,
-    .orient = QT602240_DIAGONAL_COUNTER
+    .orient = QT602240_NORMAL
 };
 
 static struct platform_device omap3logic_touch_device = {
