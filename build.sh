@@ -3,7 +3,7 @@
 [ -f ~/.bash-android ] && source ~/.bash-android
 [ -f $CLOUDSURFER_ROOT/bin/bash-android ] && source $CLOUDSURFER_ROOT/bin/bash-android
 
-source parseargs.sh
+source ./parseargs.sh
 
 export ARCH=arm
 export CROSS_COMPILE=arm-eabi-
