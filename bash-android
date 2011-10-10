@@ -1,7 +1,0 @@
-# all this will become generic
-# android-build-related environment variables
-#
-CLOUDSURFER_ROOT=$HOME/workspace/cloudsurfer-root
-DEPLOYMENT_DIR=/data/new-deploy		        # Where build products go.  On bacompiler, this is a separate disk & filesystem.
-ANDROID_BUILD_DIR=$CLOUDSURFER_ROOT/rfs
-KERNEL_BUILD_DIR=$ANDROID_BUILD_DIR/kernel

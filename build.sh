@@ -1,7 +1,6 @@
 #!/bin/bash -eu
 
 [ -f ~/.bash-android ] && source ~/.bash-android
-[ -f ./bash-android ] && source [ ./bash-android ]	# FIX: remove when done
 [ -f $CLOUDSURFER_ROOT/bin/bash-android ] && source $CLOUDSURFER_ROOT/bin/bash-android
 
 source parseargs.sh
