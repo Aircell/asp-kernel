@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -eux
 
 clean=""
 quiet=""
@@ -35,13 +35,13 @@ parseargs() {
         die $usage
         ;;
     esac
-
-    if [ "$quiet" ]; then
-      exec 3>$0.STATUS
-    else
-      exec 3>/dev/tty
-    fi
   done
+
+  if [ "$quiet" ]; then
+    exec 3>$0.STATUS
+  else
+    exec 3>/dev/tty
+  fi
 }
 
 parseargs $@
