@@ -8,6 +8,7 @@ source ./parseargs.sh
 export ARCH=arm
 export CROSS_COMPILE=arm-eabi-
 usage="usage: $0 [-s|-v|-c]"
+wifidrv=drivers/wl1271
 
 die() {
   echo $* >&2
@@ -50,7 +51,7 @@ kclean() {
   status cleaning kernel
 
   make distclean 
-  rm -rf $(< cleanfiles)
+  ( cd $wifidrv; rm -rf $(< cleanfiles) )
 }
 
 kbuild() {
@@ -65,7 +66,6 @@ build_wifi() {
 
   export KERNEL_DIR=$PWD
   export HOST_PLATFORM=omap3logic
-  wifidrv=drivers/wl1271
   export SDIOKOPATH=$wifidrv/external_drivers/omap3logic/Linux/proprietary_sdio
   pushd $wifidrv/platforms/os/linux &> /dev/null
   rm -f tiwlan_drv.ko
@@ -77,7 +77,7 @@ parseargs $*
 start
 
 if [ "$clean" ]; then
- kclean
+  kclean
 else
   kconfig
   kbuild

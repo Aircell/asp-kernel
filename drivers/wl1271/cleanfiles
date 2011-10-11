@@ -1,0 +1,6 @@
+# files that should be cleaned
+platforms/os/common/build/linux/.tmp_versions/
+platforms/os/linux/build/.tmp_versions/
+platforms/os/linux/build/Module.symvers
+platforms/os/linux/firmware.bin
+stad/build/linux/.tmp_versions/
