@@ -1,0 +1,26 @@
+# files that should be cleaned
+kernel/build.sh.ERR
+kernel/build.sh.OUT
+kernel/build.sh.STATUS
+kernel/drivers/wl1271/platforms/os/common/build/linux/.tmp_versions/
+kernel/drivers/wl1271/platforms/os/linux/build/.tmp_versions/
+kernel/drivers/wl1271/platforms/os/linux/build/Module.symvers
+kernel/drivers/wl1271/platforms/os/linux/firmware.bin
+kernel/drivers/wl1271/stad/build/linux/.tmp_versions/
+kernel/scripts/basic/.docproc.cmd
+kernel/scripts/basic/.fixdep.cmd
+kernel/scripts/basic/.hash.cmd
+kernel/scripts/basic/docproc
+kernel/scripts/basic/fixdep
+kernel/scripts/basic/hash
+kernel/scripts/kconfig/.conf.cmd
+kernel/scripts/kconfig/.conf.o.cmd
+kernel/scripts/kconfig/.kxgettext.o.cmd
+kernel/scripts/kconfig/.zconf.tab.o.cmd
+kernel/scripts/kconfig/conf
+kernel/scripts/kconfig/conf.o
+kernel/scripts/kconfig/kxgettext.o
+kernel/scripts/kconfig/lex.zconf.c
+kernel/scripts/kconfig/zconf.hash.c
+kernel/scripts/kconfig/zconf.tab.c
+kernel/scripts/kconfig/zconf.tab.o
