@@ -50,6 +50,7 @@ kclean() {
   status cleaning kernel
 
   make distclean 
+  rm -rf $(< cleanfiles)
 }
 
 kbuild() {
@@ -76,8 +77,9 @@ parseargs $*
 start
 
 if [ "$clean" ]; then
- kclean && kconfig
+ kclean
 else
+  kconfig
   kbuild
   build_wifi
 fi
