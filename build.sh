@@ -84,8 +84,8 @@ start
 if [ "$clean" ]; then
   kclean
 else
-#  kconfig
-#  kbuild
+  kconfig
+  kbuild
   build_wifi
 fi
 
