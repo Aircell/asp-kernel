@@ -70,11 +70,8 @@ build_wifi() {
   pushd $wifidrv/platforms/os/linux &> /dev/null
   rm -f tiwlan_drv.ko
   make
-  # this next should, I think, be handled in packaging
+  # this next is handled in packaging
   [ -e tiwlan_drv.ko ] || die "no ti_wlan_drv.ko"
-  for file in firmware.bin tiwlan_drv.ko ../../../config/tiwlan.ini; do
-    cp $file $ANDROID_BUILD_DIR/out/target/product/omap3logic/system/etc/wifi
-  done
 }
 
 parseargs $*
@@ -90,10 +87,3 @@ else
 fi
 
 finish
-
-
-
-    #if [ $? -eq 0 ] && [ -e tiwlan_drv.ko ]; then
-    #    for file in firmware.bin tiwlan_drv.ko ../../../config/tiwlan.ini; do
-    #        cp $file $TOPDIR/$ANDROID_DIR/out/target/product/omap3logic/system/etc/wifi
-    #    done
