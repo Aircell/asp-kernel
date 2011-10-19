@@ -178,6 +178,7 @@ struct isp_csi2_cfg_update {
 	struct isp_csi2_ctrl_cfg_update ctrl;
 };
 
+int isp_csi2_complexio_init(void);
 int isp_csi2_complexio_lanes_config(struct isp_csi2_lanes_cfg *reqcfg);
 int isp_csi2_complexio_lanes_update(bool force_update);
 int isp_csi2_complexio_lanes_count(int cnt);

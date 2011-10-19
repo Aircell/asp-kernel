@@ -524,12 +524,23 @@ static struct at24_platform_data m24c128 = {
             .page_size      = 64, 
 			.flags			= AT24_FLAG_ADDR16,
 };
+
+#ifdef CONFIG_CLOUDSURFER_P2
+extern struct ov7692_platform_data cloud_ov7692_platform_data;
+extern int cloud_cam_init();
+#endif
 	
 static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
     {    
         I2C_BOARD_INFO("eeprom", 0x50),
 		.platform_data = &m24c128,
     },
+#ifdef CONFIG_CLOUDSURFER_P2
+	{
+		I2C_BOARD_INFO("ov7692", 0x3C),
+		.platform_data = &cloud_ov7692_platform_data,
+	},
+#endif
 };
 
 /*
@@ -1106,7 +1117,7 @@ static void omap3logic_android_gadget_init(void)
 static void aircell_gpio_init(void)
 {
 
-#ifdef CLOUDSURFER_P1
+#ifdef CONFIG_CLOUDSURFER_P1
 	gpio_request(AIRCELL_5V_ENABLE,"AIRCELL_5V_ENABLE");
 	gpio_request(AIRCELL_33V_ENABLE,"AIRCELL_33V_ENABLE");
 	gpio_request(AIRCELL_23V_ENABLE,"AIRCELL_23V_ENABLE");
@@ -1118,7 +1129,7 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_23V_ENABLE,0);
 #endif
 
-#ifdef CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VAENABLE");
 	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");
 	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
@@ -1195,9 +1206,10 @@ static void aircell_gpio_init(void)
 static void __init omap3logic_init(void)
 {
 
-#ifdef CLOUDSURFER_P1
+#ifdef CONFIG_CLOUDSURFER_P1
 	printk(KERN_INFO "Aircell CloudSurfer P1\n");
-#else
+#endif
+#ifdef CONFIG_CLOUDSURFER_P2
 	printk(KERN_INFO "Aircell CloudSurfer P2\n");
 #endif
 
@@ -1232,6 +1244,10 @@ static void __init omap3logic_init(void)
 	omap3logic_init_wifi_mux();
 
 	omap3logic_init_audio_mux();
+
+#ifdef CONFIG_CLOUDSURFER_P2
+	cloud_cam_init();
+#endif
 
 
 	/* Must be here since on exit, omap2_init_devices(called later)

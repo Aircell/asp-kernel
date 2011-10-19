@@ -82,6 +82,33 @@ config MACH_OMAP3_TORPEDO
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 	select OMAP_PACKAGE_CBB
 
+config CLOUDSURFER
+	bool "Aircell Cloudsurfer Boards"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	select OMAP_PACKAGE_CBB
+
+if CLOUDSURFER
+
+choice 
+	prompt "Choose cloudsurfer version"
+	default CLOUDSURFER_P1
+
+config CLOUDSURFER_P1
+	bool "P1 Board"
+
+config CLOUDSURFER_P2
+	bool "P2 Board"
+
+endchoice 
+
+if CLOUDSURFER_P2
+config CLOUD_REGULATOR
+	bool "Use power regulator for Camera"
+
+endif
+
+endif
+
 menuconfig OMAP3LOGIC_BACKUP_BATTERY_ENABLE
 	default n
 	bool "OMAP3LOGIC backup battery charge enable"

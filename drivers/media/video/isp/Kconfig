@@ -6,6 +6,18 @@ config VIDEO_OMAP3_ISP
 	select VIDEOBUF_DMA_SG
 	select OMAP_IOMMU
 
+if VIDEO_OMAP3_ISP
+
+config VIDEO_OMAP3_ISP_PROC
+	bool "ISP Register debugging proc files"
+	depends on  VIDEO_OMAP3_ISP
+
+config VIDEO_OMAP3_ISP_DEBUG
+	bool "ISP Register dumps"
+	depends on  VIDEO_OMAP3_ISP
+
+endif
+
 config VIDEO_OMAP34XX_ISP_PREVIEWER
 	tristate "OMAP ISP Previewer"
 	depends on !ARCH_OMAP3410
