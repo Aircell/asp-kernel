@@ -10,8 +10,8 @@
  * published by the Free Software Foundation.
  */
 
-extern struct omap_dss_device omap3logic_lcd_device;
-extern struct platform_device omap3logic_dss_device;
+extern struct omap_dss_device lcd_device;
+extern struct platform_device dss_device;
 extern struct omap_sdrc_params *omap3logic_get_sdram_timings(void);
 extern int omap_zoom3_wifi_set_carddetect(int);
 extern void omap3logic_lcd_init(void);

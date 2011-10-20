@@ -165,17 +165,17 @@ static struct regulator_consumer_supply omap3logic_vaux1_supply = {
 static struct regulator_consumer_supply omap3logic_vpll2_supplies[] = {
 	{
 		.supply         = "vpll2",
-		.dev		= &omap3logic_lcd_device.dev,
+		.dev		= &lcd_device.dev,
 	},
 	{
 		.supply         = "vdds_dsi",
-		.dev		= &omap3logic_dss_device.dev,
+		.dev		= &dss_device.dev,
 	}
 };
 
 static struct regulator_consumer_supply omap3logic_vdda_dac_supply = {
 	.supply         = "vdda_dac",
-	.dev		= &omap3logic_dss_device.dev,
+	.dev		= &dss_device.dev,
 };
 
 static struct regulator_init_data omap3logic_vdda_dac = {
@@ -1148,6 +1148,9 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
+	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
+	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -1162,6 +1165,8 @@ static void aircell_gpio_init(void)
     gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
     gpio_direction_input(AIRCELL_HANDSET_DETECT);
     gpio_direction_output(AIRCELL_TOUCH_RESET,0);
+    gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
+    gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
     gpio_direction_input(AIRCELL_PROX_INTERRUPT);
 
 	gpio_export(AIRCELL_18V_ENABLE,0);
@@ -1182,6 +1187,9 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
+	gpio_export(AIRCELL_CAMERA_PWDN,0);
+	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
+	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
 
 }
 static void __init omap3logic_init(void)
