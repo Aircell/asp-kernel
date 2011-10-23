@@ -20,7 +20,7 @@
 /*
  * The Seiko 37WVF0HZ1 Panel is controlled by a LG 4573 LCD driver chip
  * using an SPI interface. Hence two documents are required/useful. One
- * is the LG 4573 Driver chip manual and teh otehr the Seiko 37WVF0HZ1
+ * is the LG 4573 Driver chip manual and the other the Seiko 37WVF0HZ1
  * Product Specification. 
  */
 

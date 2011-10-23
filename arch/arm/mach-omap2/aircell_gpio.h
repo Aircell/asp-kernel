@@ -1,5 +1,11 @@
 /* Aircell CloudSurfer GPIO Pins */
+<<<<<<< Updated upstream
 #ifdef CONFIG_CLOUDSURFER_P1
+=======
+#define CLOUDSURFER_P2
+
+#ifdef CLOUDSURFER_P1
+>>>>>>> Stashed changes
 #define AIRCELL_5V_ENABLE				159
 #define AIRCELL_33V_ENABLE				150
 #define AIRCELL_18V_ENABLE				149
@@ -26,7 +32,11 @@
 #define AIRCELL_BACKLIGHT_ENABLE		8
 #endif
 
+<<<<<<< Updated upstream
 #ifdef CONFIG_CLOUDSURFER_P2
+=======
+#ifdef CLOUDSURFER_P2
+>>>>>>> Stashed changes
 #define AIRCELL_5VA_ENABLE				134
 #define AIRCELL_5VD_ENABLE				150
 #define AIRCELL_18V_ENABLE				149
@@ -50,6 +60,9 @@
 #define AIRCELL_TOUCH_INTERRUPT			126
 #define AIRCELL_CAMERA_PWDN				95
 #define AIRCELL_BACKLIGHT_ENABLE		164
+<<<<<<< Updated upstream
 #define AIRCELL_LCD_POWER_ENABLE		155
+=======
+>>>>>>> Stashed changes
 #endif
 

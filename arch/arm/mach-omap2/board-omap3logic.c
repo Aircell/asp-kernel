@@ -73,6 +73,7 @@
 #include "omap3-opp.h"
 #include "board-omap3logic.h"
 #include <plat/sdrc.h>
+#include <linux/i2c/at24.h>
 
 #include "aircell_gpio.h"
 
@@ -241,6 +242,10 @@ static struct twl4030_hsmmc_info mmc3 = {
 	.gpio_wp	= -EINVAL,
 };
 
+/* GPIO.0 of TWL4030 */
+static int twl4030_base_gpio;
+
+#ifdef TARR
 static struct gpio_led omap3logic_leds[] = {
 	{
 		.name			= "led1",	/* D1 on baseboard */
@@ -331,6 +336,7 @@ static void omap3logic_led_init(void)
 		printk(KERN_ERR "Unable to register LED device\n");
 }
 
+#endif
 int brf6300_bt_nshutdown_gpio;
 
 int brf6300_request_bt_nshutdown_gpio(void)
@@ -414,42 +420,12 @@ static struct twl4030_gpio_platform_data omap3logic_gpio_data = {
 	.gpio_base	= OMAP_MAX_GPIO_LINES,
 	.irq_base	= TWL4030_GPIO_IRQ_BASE,
 	.irq_end	= TWL4030_GPIO_IRQ_END,
-	.use_leds	= true,
+	//.use_leds	= true,
 	.setup		= omap3logic_twl_gpio_setup,
 };
 
 static struct twl4030_usb_data omap3logic_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
-};
-
-static int qt_keymap[] = {
-	KEY(0, 0, KEY_BACK),
-	KEY(0, 1, KEY_HOME),
-	KEY(0, 2, KEY_HOME),
-	KEY(1, 0, KEY_1),
-	KEY(1, 1, KEY_2),
-	KEY(1, 2, KEY_3),
-	KEY(2, 0, KEY_4),
-	KEY(2, 1, KEY_5),
-	KEY(2, 2, KEY_6),
-	KEY(3, 0, KEY_7),
-	KEY(3, 1, KEY_8),
-	KEY(3, 2, KEY_9),
-	KEY(4, 0, KEY_NUMERIC_STAR),
-	KEY(4, 1, KEY_0),
-	KEY(4, 2, KEY_NUMERIC_POUND),
-};
-
-static struct matrix_keymap_data board_map_data = {
-	.keymap			= qt_keymap,
-	.keymap_size		= ARRAY_SIZE(qt_keymap),
-};
-
-static struct twl4030_keypad_data omap3logic_kp_data = {
-	.keymap_data	= &board_map_data,
-	.rows		= 4,
-	.cols		= 3,
-	.rep		= 1,
 };
 
 static struct twl4030_madc_platform_data omap3logic_madc_data = {
@@ -470,31 +446,11 @@ static struct twl4030_codec_data omap3logic_codec_data = {
 	.vibra = &omap3logic_vibra_data,
 };
 
-static int omap3logic_batt_table[] = {
-/* 0 C*/
-	30800, 29500, 28300, 27100,
-	26000, 24900, 23900, 22900, 22000, 21100, 20300, 19400, 18700, 17900,
-	17200, 16500, 15900, 15300, 14700, 14100, 13600, 13100, 12600, 12100,
-	11600, 11200, 10800, 10400, 10000, 9630,  9280,  8950,  8620,  8310,
-	8020,  7730,  7460,  7200,  6950,  6710,  6470,  6250,  6040,  5830,
-	5640,  5450,  5260,  5090,  4920,  4760,  4600,  4450,  4310,  4170,
-	4040,  3910,  3790,  3670,  3550
-};
-
-static struct twl4030_bci_platform_data omap3logic_bci_data = {
-	.battery_tmp_tbl	= omap3logic_batt_table,
-	.bb_chen		= BB_CHARGE_ENABLED,
-	.bb_current		= BB_CURRENT_150,
-	.bb_voltage		= BB_VOLTAGE_31,
-	.tblsize		= ARRAY_SIZE(omap3logic_batt_table),
-};
-
 static struct twl4030_platform_data omap3logic_twldata = {
 	.irq_base	= TWL4030_IRQ_BASE,
 	.irq_end	= TWL4030_IRQ_END,
 
 	/* platform_data for children goes here */
-	.bci        = &omap3logic_bci_data,
 	.madc		= &omap3logic_madc_data,
 	.usb		= &omap3logic_usb_data,
 	.gpio		= &omap3logic_gpio_data,
@@ -514,11 +470,9 @@ static struct i2c_board_info __initdata omap3logic_i2c_boardinfo[] = {
 	},
 };
 
-/*
- * 24LC128 EEPROM Support
- */ 
-#include <linux/i2c/at24.h>
-
+/* 
+ * Devices on I2C bus 2 are the EEPROM and the LED controller
+ */
 static struct at24_platform_data m24c128 = { 
             .byte_len       = 131072 / 8,
             .page_size      = 64, 
@@ -535,43 +489,34 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
         I2C_BOARD_INFO("eeprom", 0x50),
 		.platform_data = &m24c128,
     },
+<<<<<<< Updated upstream
 #ifdef CONFIG_CLOUDSURFER_P2
 	{
 		I2C_BOARD_INFO("ov7692", 0x3C),
 		.platform_data = &cloud_ov7692_platform_data,
 	},
 #endif
+=======
+    {    
+        I2C_BOARD_INFO("pca9626", 0x12),
+    },
+>>>>>>> Stashed changes
 };
+/*
+ * DEvices on I2C bus 3 are the touchscreen controller\
+ */
 
 /*
- * Touchscreen MultiTouch configuration 
- *
- * For Aircell CloudSurfer, only that part of the touchscreen that
- * overlays the LCD display is used for the MultiTouch.
- * The touchscreen is configured to map returning x and y touch coordinates
- * to the dsiplay coordinates. The touch screen is a matrix of 19 lines by
- * 11 lines of "channels". The LCD display is a 480 X 800 pixle display.
- * The display has the origin (0,0) in the upper left hand corner, (480,0)
- * in the upper right hand corner, (0,800) in the lower left hand corner and
- * (480,800) in the lower right hand corner. Since the since the touch screen 
- * also overlays the "keys" which are a different module, the size is smaller
- * than the x size is smaller that the full touch screen.
- *
- * Now for the really weird parts. The orientation field provides a 
- * reporting of the x,y touch coordinates to match the display. 
- * This makes the rest of the configuration stuff non intuitive.
- * What makes this even worse is that the LCD for P1+ versions
- * Have the display wired upside down......
- *
+ * Touch Screen Support
  */
+
 struct qt602240_platform_data omap3logic_touchscreendata = {
     .x_line = 19,
     .y_line = 11,
-    .x_size = 1170,  /* Tarr - scaleing the x use same pixel density of the 
-						LCD across the entire length of the TouchScreen */
-    .y_size = 480,   /* Tarr - y is just the number of LCD pixels */
-    .blen = 23,
-    .threshold = 80,
+    .x_size = 19,
+    .y_size = 11,
+    .blen = 0,
+    .threshold = 40,
     .voltage = 600,
     .orient = QT602240_NORMAL
 };
@@ -588,7 +533,7 @@ static struct platform_device omap3logic_touch_device = {
 static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("qt602440_ts", QT_I2C_ADDR),
-		.type	= "qt602240_ts",
+		.type		= "qt602240_ts",
 		.platform_data = &omap3logic_touchscreendata,
 		.irq = OMAP_GPIO_IRQ(AIRCELL_TOUCH_INTERRUPT),
 	},
@@ -596,14 +541,12 @@ static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 
 static void omap3logic_qt602240_init(void)
 {
-	printk("TARR - qt602240_init()\n");
-
     if (platform_device_register(&omap3logic_touch_device) < 0){
             printk(KERN_ERR "Unable to register touch device\n");
         return;
     }
-	//omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
-    //omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
+	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
+    omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
 	/* Take the touch screen out of reset */
 	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
@@ -1156,12 +1099,17 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_VOLUME_DOWN_DETECT,"AIRCELL_VOLUME_DOWN_DETECT");
 	gpio_request(AIRCELL_HANDSET_DETECT,"AIRCELL_HANDSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
+	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+<<<<<<< Updated upstream
 	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+=======
+	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
+>>>>>>> Stashed changes
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -1195,11 +1143,15 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
 	gpio_export(AIRCELL_HANDSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
+	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
 	gpio_export(AIRCELL_CAMERA_PWDN,0);
+<<<<<<< Updated upstream
 	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
+=======
+>>>>>>> Stashed changes
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
 
 }
@@ -1263,7 +1215,7 @@ static void __init omap3logic_init(void)
 void omap3logic_init_productid_specifics(void)
 {
 	omap3logic_init_twl_external_mute();
-	omap3logic_led_init();
+	//omap3logic_led_init();
 	brf6300_dev_init();
 }
 
