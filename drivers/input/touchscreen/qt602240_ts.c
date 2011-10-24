@@ -311,7 +311,7 @@ struct key {
 
 struct key keypad[] = {
 	{801, 874,0,159,1,0,KEY_BACK,'B'}, 		/* BACK key */
-	{801, 874,160,319,1,KEY_HOME,'H'},	/* HOME key */
+	{801, 874,160,319,1,0,KEY_HOME,'H'},	/* HOME key */
 	{801, 874,320,479,1,0,KEY_MENU,'M'},	/* MENU key */
 
 	{875, 948,0,159,1,0,KEY_1,'1'}, 		/* 1 key */
