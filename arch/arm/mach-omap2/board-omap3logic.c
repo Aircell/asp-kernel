@@ -489,18 +489,15 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
         I2C_BOARD_INFO("eeprom", 0x50),
 		.platform_data = &m24c128,
     },
-<<<<<<< Updated upstream
 #ifdef CONFIG_CLOUDSURFER_P2
 	{
 		I2C_BOARD_INFO("ov7692", 0x3C),
 		.platform_data = &cloud_ov7692_platform_data,
 	},
 #endif
-=======
     {    
         I2C_BOARD_INFO("pca9626", 0x12),
     },
->>>>>>> Stashed changes
 };
 /*
  * DEvices on I2C bus 3 are the touchscreen controller\
@@ -1103,13 +1100,9 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
-<<<<<<< Updated upstream
 	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
-=======
-	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
->>>>>>> Stashed changes
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -1148,10 +1141,7 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
 	gpio_export(AIRCELL_CAMERA_PWDN,0);
-<<<<<<< Updated upstream
 	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
-=======
->>>>>>> Stashed changes
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
 
 }

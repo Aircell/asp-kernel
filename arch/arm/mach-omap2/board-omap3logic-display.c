@@ -49,32 +49,8 @@ static struct lcd_data board_lcd_data = {
 	.gpio_backlight	= -EINVAL,
 };
 
-<<<<<<< Updated upstream
-static int panel_power_enable(int enable)
-{
-	int ret;
-	struct regulator *vpll2_reg;
-
-	vpll2_reg = regulator_get(NULL, "vpll2");
-	if (IS_ERR(vpll2_reg)) {
-		pr_err("Unable to get vpll2 regulator\n");
-		return PTR_ERR(vpll2_reg);
-	}
-
-	if (enable)
-		ret = regulator_enable(vpll2_reg);
-	else
-		ret = regulator_disable(vpll2_reg);
-
-	return ret;
-}
-
 int enable_lcd(struct omap_dss_device *dssdev)
 {
-=======
-int enable_lcd(struct omap_dss_device *dssdev)
-{
->>>>>>> Stashed changes
 	/* Bring up backlight */
 	gpio_set_value(board_lcd_data.gpio_backlight, 1);
 
@@ -84,14 +60,6 @@ int enable_lcd(struct omap_dss_device *dssdev)
 
 void disable_lcd(struct omap_dss_device *dssdev)
 {
-<<<<<<< Updated upstream
-	int ret;
-	ret = panel_power_enable(0);
-	if (ret < 0)
-		BUG();
-
-=======
->>>>>>> Stashed changes
 	gpio_set_value(board_lcd_data.gpio_backlight, 0);
 
 	board_lcd_data.lcd_enabled = 0;
@@ -129,14 +97,11 @@ static struct omap_dss_board_info dss_data = {
 	.default_device	= &lcd_device,
 };
 
-<<<<<<< Updated upstream
-=======
 struct platform_device backlight_device = {
 	.name 		= "cloudsurfer-backlight",
 	.id 		= -1,
 };
 
->>>>>>> Stashed changes
 struct platform_device dss_device = {
 	.name		= "omapdss",
 	.id		= -1,
@@ -144,54 +109,6 @@ struct platform_device dss_device = {
 		.platform_data = &dss_data,
 	},
 };
-
-<<<<<<< Updated upstream
-=======
-#ifdef TARR
->>>>>>> Stashed changes
-static struct regulator_consumer_supply vpll2_supplies[] = {
-	{
-		.supply         = "vpll2",
-		.dev		= &lcd_device.dev,
-	},
-	{
-		.supply         = "vdds_dsi",
-		.dev		= &dss_device.dev,
-	}
-};
-
-struct regulator_consumer_supply vdac_supply = {
-	.supply         = "vdda_dac",
-	.dev            = &dss_device.dev,
-};
-
-struct regulator_init_data vdac = {
-	.constraints = {
-		.min_uV                 = 1800000,
-		.max_uV                 = 1800000,
-		.valid_modes_mask       = REGULATOR_MODE_NORMAL
-		                        | REGULATOR_MODE_STANDBY,
-		.valid_ops_mask         = REGULATOR_CHANGE_MODE
-		                        | REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies  = 1,
-	.consumer_supplies      = &vdac_supply,
-};
-
-struct regulator_init_data vpll2 = {
-	.constraints = {
-		.min_uV                 = 1800000,
-		.max_uV                 = 1800000,
-		.valid_modes_mask       = REGULATOR_MODE_NORMAL
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask         = REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies  = ARRAY_SIZE(vpll2_supplies),
-	.consumer_supplies      = vpll2_supplies,
-};
-
-#endif
 
 static struct omap2_mcspi_device_config dss_lcd_mcspi_config =
 {
@@ -232,10 +149,8 @@ void __init board_lcd_init(void)
 	board_lcd_data.lcd_enabled = 0;
 
 	platform_device_register(&dss_device);
-<<<<<<< Updated upstream
-=======
+
 	platform_device_register(&backlight_device);
->>>>>>> Stashed changes
 
 	return;
 }
