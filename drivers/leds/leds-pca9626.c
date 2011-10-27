@@ -15,52 +15,72 @@
 #include <linux/i2c.h>
 #include <linux/leds.h>
 #include <linux/input.h>
-#include <linux/mutex.h>
-#include <linux/workqueue.h>
+#include <linux/leds-pca9626.h>
 
 #define ldev_to_led(c)       container_of(c, struct pca9626_led, ldev)
 
 /* local mnemomics */
 #define PCA9626_MODE1		0x00
-#define MODE1_RESET_VALUE	0x91
+#define MODE1_RESET_VALUE	0x11
+#define LED_REG_OFFSET		0x02
+#define LED_PWM_CONTROL		0x1d
 
 struct pca9626_data {
 	struct i2c_client *client;
-	struct mutex update_lock;
-	struct input_dev *idev;
-	struct work_struct work;
-	u8 pwm[2];
-	u8 psc[2];
+	struct pca9626_led *leds;
 };
+
+static struct pca9626_data *my_data;
 
 static int pca9626_read(struct i2c_client *client, u8 reg, u8 *value)
 {
 	struct i2c_msg xfer[2];
 	u8 buf[2];
-
+	
+	//printk("LED - read from address %d\n",client->addr);
 	buf[0] = reg;
 
 	/* Write the register */
     xfer[0].addr = client->addr;
     xfer[0].flags = 0;
-    xfer[0].len = 2;
+    xfer[0].len = 1;
     xfer[0].buf = buf;
 
     /* Read data */
     xfer[1].addr = client->addr;
     xfer[1].flags = I2C_M_RD;
-    xfer[1].len = 2;
+    xfer[1].len = 1;
     xfer[1].buf = buf;
 
     if (i2c_transfer(client->adapter, xfer, 2) != 2) {
+        dev_err(&client->dev, "%s: i2c read failed\n", __func__);
+        return -EIO;
+    }
+	//printk("LED - read 0x%2.2x 0x%2.2x\n",buf[0],buf[1]);
+	*value = buf[0];
+    return 0;
+}
+static int pca9626_write(struct i2c_client *client, u8 reg, u8 value)
+{
+	struct i2c_msg xfer;
+	u8 buf[2];
+	
+	//printk("LED - write %d to register %d\n",client->addr);
+	buf[0] = reg;
+	buf[1] = value;
+
+	/* Write the register */
+    xfer.addr = client->addr;
+    xfer.flags = 0;
+    xfer.len = 2;
+    xfer.buf = buf;
+
+    if (i2c_transfer(client->adapter, &xfer, 1) != 1) {
         dev_err(&client->dev, "%s: i2c transfer failed\n", __func__);
         return -EIO;
     }
-
-	printk("LED - read 0x%2.2x 0x%2.2x\n",buf[0],buf[1]);
     return 0;
 }
-static int pca9626_write(struct i2c_client *client, u8 reg, u8 value);
 
 static int pca9626_present(struct i2c_client *client) 
 {
@@ -74,54 +94,64 @@ static int pca9626_present(struct i2c_client *client)
 		return 1;
 }
 
-static int pca9626_probe(struct i2c_client *client,
-	const struct i2c_device_id *id);
-static int pca9626_remove(struct i2c_client *client);
+static void pca9626_set_brightness(struct led_classdev *led_cdev, 
+		enum led_brightness value)
+{
+	struct pca9626_led *led;
+		
+	led = ldev_to_led(led_cdev);
+	if ( pca9626_write(led->client,led->id+LED_REG_OFFSET,(u8)value) < 0 ) {
+		printk("LED - write failed\n");
+		return;
+	}
+	led->ldev.brightness = value;
+	return;
+}
+
 
 static const struct i2c_device_id pca9626_id[] = {
 	{ "pca9626", 0 },
 	{ }
 };
 
-
-static struct i2c_driver pca9626_driver = {
-	.driver = {
-		.name = "pca9626",
-	},
-	.probe = pca9626_probe,
-	.remove = pca9626_remove,
-	.id_table = pca9626_id,
-};
-
-static int pca9626_event(struct input_dev *dev, unsigned int type,
-	unsigned int code, int value)
-{
-	return 0;
-}
-
-static void pca9626_input_work(struct work_struct *work)
-{
-	return;
-
-}
-
-static void pca9626_led_work(struct work_struct *work)
-{
-	return;
-}
+MODULE_DEVICE_TABLE(i2c,pca9626_id);
 
 static int pca9626_configure(struct i2c_client *client,
-	struct pca9626_data *data, struct pca9626_platform_data *pdata)
+			struct pca9626_data *ld, 
+			struct pca9626_platform_data *pd)
 {
+	int i;
+	u8 value;
+	struct led_classdev *led_class;
+
+	/* set up the leds PWM control */
+	value = 0xaa;	
+	for (i=0; i<6; i++) {
+		if ( pca9626_write(client,i+LED_PWM_CONTROL,value) < 0 ) {
+			printk("LED - PWM control write failed\n");
+			return -EIO;
+		}
+	}
+	
+	for (i=0; i<PCA9626_MAX_LEDS; i++ ) {
+		pd->leds[i].client = client;			
+		led_class = &pd->leds[i].ldev;
+		led_class->brightness_set = pca9626_set_brightness;
+		if ( led_classdev_register(&client->dev, led_class) < 0 ) {
+			printk("LED - failed to register LED %d\n",i);
+			return -ENOMEM;
+		}
+		/* Set initital brightness */
+		pca9626_set_brightness(led_class,led_class->brightness);
+	}
 	return 0;
 }
 
 static int pca9626_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
-	struct pca9626_data *data = i2c_get_clientdata(client);
-	struct pca9626_platform_data *pca9626_pdata = client->dev.platform_data;
-	int err;
+	struct pca9626_data *local_data = i2c_get_clientdata(client);
+	struct pca9626_platform_data *platform_data = client->dev.platform_data;
 
 	printk("LED CONTROLLER Probe\n");
 
@@ -130,15 +160,26 @@ static int pca9626_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
-	data = kzalloc(sizeof(*data), GFP_KERNEL);
-	if (!data)
+	if ( !(local_data = kzalloc(sizeof(*local_data), GFP_KERNEL)) )
 		return -ENOMEM;
 
+	local_data->leds = platform_data->leds;
+	local_data->client = client;
 	dev_info(&client->dev, "setting platform data\n");
-	i2c_set_clientdata(client, data);
-	data->client = client;
-	mutex_init(&data->update_lock);
+	if ( pca9626_configure(client,local_data,platform_data) < 0 ) {
+		kfree(local_data);
+		return -ENOMEM;
+	}
+	my_data = local_data;
+	i2c_set_clientdata(client, local_data);
 
+	/* Take the controller out of sleep mode */
+	if ( pca9626_write(client,0x00,0x01) < 0 ) {
+		printk("LED - PWM control write failed\n");
+		return -EIO;
+	}
+	
+	printk("LEDS probe done\n");
 	return 0;
 }
 
@@ -150,6 +191,16 @@ static int pca9626_remove(struct i2c_client *client)
 	i2c_set_clientdata(client, NULL);
 	return 0;
 }
+
+static struct i2c_driver pca9626_driver = {
+	.driver = {
+		.name = "pca9626",
+		.owner = THIS_MODULE,
+	},
+	.probe = pca9626_probe,
+	.remove = pca9626_remove,
+	.id_table = pca9626_id,
+};
 
 static int __init pca9626_init(void)
 {

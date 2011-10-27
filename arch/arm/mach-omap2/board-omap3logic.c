@@ -74,7 +74,7 @@
 #include "board-omap3logic.h"
 #include <plat/sdrc.h>
 #include <linux/i2c/at24.h>
-
+#include <linux/leds-pca9626.h>
 #include "aircell_gpio.h"
 
 #define QT_I2C_ADDR			 0x4b
@@ -213,11 +213,6 @@ static struct regulator_init_data omap3logic_vaux1 = {
 		.name			= "VAUX1_30",
 		.apply_uV		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
-#if 0
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask		= REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-#endif
 	},
 	.num_consumer_supplies	= 1,
 	.consumer_supplies	= &omap3logic_vaux1_supply,
@@ -245,98 +240,6 @@ static struct twl4030_hsmmc_info mmc3 = {
 /* GPIO.0 of TWL4030 */
 static int twl4030_base_gpio;
 
-#ifdef TARR
-static struct gpio_led omap3logic_leds[] = {
-	{
-		.name			= "led1",	/* D1 on baseboard */
-		.default_trigger	= "heartbeat",
-		.gpio			= -EINVAL,	/* gets replaced */
-		.active_low		= false,
-	},
-	{
-		.name			= "led2",	/* D2 on baseboard */
-		.default_trigger	= "none",
-		.gpio			= -EINVAL,	/* gets replaced */
-		.active_low		= false,
-	},
-	{
-		.name			= "led3",	/* D1 on Torpedo module */
-		.default_trigger	= "none",
-		.gpio			= -EINVAL,	/* gets replaced */
-		.active_low		= true,
-	},
-};
- 
-static struct gpio_led_platform_data omap3logic_led_data = {
-	.leds		= omap3logic_leds,
-	.num_leds	= 0,	/* Initialized in omap3logic_led_init() */
- };
- 
-static struct platform_device omap3logic_led_device = {
-	.name	= "leds-gpio",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &omap3logic_led_data,
-	},
-};
- 
-/* GPIO.0 of TWL4030 */
-static int twl4030_base_gpio;
-
-#define GPIO_LED1_TORPEDO_POST_1013994 180
-#define GPIO_LED2_TORPEDO_POST_1013994 179
-
-#define GPIO_LED1_SOM 133
-#define GPIO_LED2_SOM 11
-
-static void omap3logic_led_init(void)
-{
-	u32 part_number;
-	int gpio_led1 = -EINVAL;
-	int gpio_led2 = -EINVAL;
-
-	if (machine_is_omap3_torpedo()) {
-		if (!twl4030_base_gpio) {
-			printk(KERN_ERR "Huh?!? twl4030_base_gpio not set!\n");
-			return;
-		}
-		if (!omap3logic_get_product_id_part_number (&part_number)) {
-
-			if (part_number >= 1013994) {
-				/* baseboard LEDs are MCSPIO2_SOMI, MCSPOI2_SIMO */
-				gpio_led1 = GPIO_LED1_TORPEDO_POST_1013994;
-				gpio_led2 = GPIO_LED2_TORPEDO_POST_1013994;
-			} else {
-				/* baseboard LEDS are BT_PCK_DR and BT_PCM_DX */
-				gpio_led1 = twl4030_base_gpio + 16;
-				gpio_led2 = twl4030_base_gpio + 17;
-			}
-		}
-
-		/* twl4030 vibra_p is the LED on the module */
-		omap3logic_leds[2].gpio = twl4030_base_gpio + TWL4030_GPIO_MAX + 1;
-		omap3logic_led_data.num_leds = 3;
-	} else {
-		gpio_led1 = GPIO_LED1_SOM;
-		omap3logic_leds[0].active_low = true;
-		gpio_led2 = GPIO_LED2_SOM;
-		omap3logic_leds[1].active_low = true;
-
-		/* SOM has only two LEDs */
-		omap3logic_led_data.num_leds = 2;
-	}
-
-	if (gpio_led2 < twl4030_base_gpio)
-		omap_mux_init_gpio(gpio_led2, OMAP_PIN_OUTPUT);
-	omap3logic_leds[1].gpio = gpio_led2;
-
-	omap3logic_led_data.num_leds = 2;
-
-	if (platform_device_register(&omap3logic_led_device) < 0)
-		printk(KERN_ERR "Unable to register LED device\n");
-}
-
-#endif
 int brf6300_bt_nshutdown_gpio;
 
 int brf6300_request_bt_nshutdown_gpio(void)
@@ -473,6 +376,112 @@ static struct i2c_board_info __initdata omap3logic_i2c_boardinfo[] = {
 /* 
  * Devices on I2C bus 2 are the EEPROM and the LED controller
  */
+
+/* Name for the LED regions - The names are associated with
+ * the LED number of the controller chip 
+ */
+
+static struct pca9626_platform_data cloud_pca9626_data = {
+	.leds = {
+		{	.id = 0,
+			.ldev.name = "LED_ZONE_0",
+			.ldev.brightness = 48,
+		},
+		{	.id = 1,
+			.ldev.name = "LED_ZONE_1",
+			.ldev.brightness = 48,
+		},
+		{	.id = 2,
+			.ldev.name = "LED_ZONE_2",
+			.ldev.brightness = 48,
+		},
+		{	.id = 3,
+			.ldev.name = "LED_ZONE_3",
+			.ldev.brightness = 28,
+		},
+		{	.id = 4,
+			.ldev.name = "LED_ZONE_4",
+			.ldev.brightness = 28,
+		},
+		{	.id = 5,
+			.ldev.name = "LED_ZONE_5",
+			.ldev.brightness = 28,
+		},
+		{	.id = 6,
+			.ldev.name = "LED_ZONE_6",
+			.ldev.brightness = 28,
+		},
+		{	.id = 7,
+			.ldev.name = "LED_ZONE_7",
+			.ldev.brightness = 28,
+		},
+		{	.id = 8,
+			.ldev.name = "LED_ZONE_8",
+			.ldev.brightness = 28,
+		},
+		{	.id = 9,
+			.ldev.name = "LED_ZONE_9",
+			.ldev.brightness = 28,
+		},
+		{	.id = 10,
+			.ldev.name = "LED_ZONE_S4",
+			.ldev.brightness = 0,
+		},
+		{	.id = 11,
+			.ldev.name = "LED_ZONE_ASTRIX",
+			.ldev.brightness = 28,
+		},
+		{	.id = 12,
+			.ldev.name = "LED_ZONE_P0UND",
+			.ldev.brightness = 28,
+		},
+		{	.id = 13,
+			.ldev.name = "LED_ZONE_BACK",
+			.ldev.brightness = 28,
+		},
+		{	.id = 14,
+			.ldev.name = "LED_ZONE_HOME",
+			.ldev.brightness = 28,
+		},
+		{	.id = 15,
+			.ldev.name = "LED_ZONE_MENU",
+			.ldev.brightness = 28,
+		},
+		{	.id = 16,
+			.ldev.name = "LED_ZONE_UP",
+			.ldev.brightness = 0,
+		},
+		{	.id = 17,
+			.ldev.name = "LED_ZONE_DOWN",
+			.ldev.brightness = 0,
+		},
+		{	.id = 18,
+			.ldev.name = "LED_ZONE_LEFT",
+			.ldev.brightness = 0,
+		},
+		{	.id = 19,
+			.ldev.name = "LED_ZONE_RIGHT",
+			.ldev.brightness = 0,
+		},
+		{	.id = 20,
+			.ldev.name = "LED_ZONE_S1",
+			.ldev.brightness = 0,
+		},
+		{	.id = 21,
+			.ldev.name = "LED_ZONE_S2",
+			.ldev.brightness = 0,
+		},
+		{	.id = 22,
+			.ldev.name = "LED_ZONE_S3",
+			.ldev.brightness = 0,
+		},
+		{	.id = 23,
+			.ldev.name = "NULL",
+			.ldev.brightness = 0,
+		},
+	},
+};
+
 static struct at24_platform_data m24c128 = { 
             .byte_len       = 131072 / 8,
             .page_size      = 64, 
@@ -481,8 +490,9 @@ static struct at24_platform_data m24c128 = {
 
 #ifdef CONFIG_CLOUDSURFER_P2
 extern struct ov7692_platform_data cloud_ov7692_platform_data;
-extern int cloud_cam_init();
+extern int cloud_cam_init(void);
 #endif
+
 	
 static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
     {    
@@ -497,10 +507,11 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 #endif
     {    
         I2C_BOARD_INFO("pca9626", 0x12),
+		.platform_data = &cloud_pca9626_data,
     },
 };
 /*
- * DEvices on I2C bus 3 are the touchscreen controller\
+ * D2vices on I2C bus 3 are the touchscreen controller\
  */
 
 /*
@@ -1107,10 +1118,10 @@ static void aircell_gpio_init(void)
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
     gpio_direction_input(AIRCELL_CRADLE_DETECT);
-    gpio_direction_output(AIRCELL_BLUE_ENABLE,0);
-    gpio_direction_output(AIRCELL_GREEN_ENABLE,0);
-    gpio_direction_output(AIRCELL_RED_ENABLE,0);
-    gpio_direction_output(AIRCELL_LED_ENABLE,0);
+    gpio_direction_output(AIRCELL_BLUE_ENABLE,1);
+    gpio_direction_output(AIRCELL_GREEN_ENABLE,1);
+    gpio_direction_output(AIRCELL_RED_ENABLE,1);
+    gpio_direction_output(AIRCELL_LED_ENABLE,1);
     gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
     gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
     gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
@@ -1145,6 +1156,7 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
 
 }
+
 static void __init omap3logic_init(void)
 {
 
