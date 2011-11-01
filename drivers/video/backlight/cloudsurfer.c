@@ -12,42 +12,53 @@
 #include <linux/i2c/twl.h>
 
 
-struct cloudsurfer {
-	int base;
+#define TWL_PWM0_ON_REG		0x00
+#define TWL_PWM0_OFF_REG	0x01
+
+struct cloudsurfer  {
+	int valid;
 };
 
-static void backlight_high(void)
-{
-	/* Set the backlight PWM to full on */
-		
-}
 static int cloudsurfer_backlight_update_status(struct backlight_device *bldev)
 {
+	int intensity = bldev->props.brightness;
+	u8 val;
+
+	if ( intensity == 0 ) {
+		/* simply disable the PWM */
+		twl_i2c_read_u8(TWL4030_MODULE_INTBR,&val,0x0c);
+		val &= ~0x05;
+		twl_i2c_write_u8(TWL4030_MODULE_INTBR,val,0x0c);
+	} else {
+		/* Leave the ON value alone, adjust only the OFF value to
+		 * something between 3 and 0x7F */	
+		val = intensity < 125 ? intensity : 125;
+    	twl_i2c_write_u8(TWL4030_MODULE_PWM0,intensity+2,TWL_PWM0_OFF_REG);
+		/* Makef sure the PWM is enabled */
+		twl_i2c_read_u8(TWL4030_MODULE_INTBR,&val,0x0c);
+		val |= 0x05;
+		twl_i2c_write_u8(TWL4030_MODULE_INTBR,val,0x0c);
+	}
+
 	return 0;
 }
 
 static int cloudsurfer_backlight_get_brightness(struct backlight_device *bldev)
 {
-	return 30;
-}
-
-static int cloudsurfer_backlight_check_fb(struct fb_info *fb)
-{
-	return 1;
+	return bldev->props.brightness;
 }
 
 static struct backlight_ops cloudsurfer_backlight_ops = {
 	.options = 0,
 	.update_status = cloudsurfer_backlight_update_status,
 	.get_brightness = cloudsurfer_backlight_get_brightness,
-	.check_fb = cloudsurfer_backlight_check_fb,
 };
 
 static int __devinit cloudsurfer_backlight_probe(struct platform_device *pdev)
 {
 	struct backlight_device *bldev;
-	struct resource *res;
 	struct cloudsurfer *cl;
+
 	int ret = 0;
 	u8 val;
 
@@ -87,8 +98,8 @@ static int __devinit cloudsurfer_backlight_probe(struct platform_device *pdev)
 	}
 
 	
-	bldev->props.max_brightness = 0xff;
-	bldev->props.brightness = 0xff;
+	bldev->props.max_brightness = 125;
+	bldev->props.brightness = 64;
 	bldev->props.power = FB_BLANK_UNBLANK;
 
 	platform_set_drvdata(pdev, bldev);
@@ -104,7 +115,7 @@ static int __devexit cloudsurfer_backlight_remove(struct platform_device *pdev)
 
 	bldev = platform_get_drvdata(pdev);
 	bldev->props.power = FB_BLANK_UNBLANK;
-	bldev->props.brightness = 0xff;
+	bldev->props.brightness = 0;
 	backlight_update_status(bldev);
 	backlight_device_unregister(bldev);
 	platform_set_drvdata(pdev, NULL);
