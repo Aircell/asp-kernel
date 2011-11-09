@@ -521,10 +521,10 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 struct qt602240_platform_data omap3logic_touchscreendata = {
     .x_line = 19,
     .y_line = 11,
-    .x_size = 19,
-    .y_size = 11,
-    .blen = 0,
-    .threshold = 40,
+    .x_size = 1170,
+    .y_size = 480,
+    .blen = 23,
+    .threshold = 80,
     .voltage = 600,
     .orient = QT602240_NORMAL
 };
