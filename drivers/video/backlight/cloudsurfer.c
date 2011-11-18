@@ -12,8 +12,9 @@
 #include <linux/i2c/twl.h>
 
 
-#define TWL_PWM0_ON_REG		0x00
-#define TWL_PWM0_OFF_REG	0x01
+#define TWL_PWM0_ON_REG			0x00
+#define TWL_PWM0_OFF_REG		0x01
+#define TWL_PWM0_OFF_DEFAULT	64
 
 struct cloudsurfer  {
 	int valid;
@@ -24,6 +25,7 @@ static int cloudsurfer_backlight_update_status(struct backlight_device *bldev)
 	int intensity = bldev->props.brightness;
 	u8 val;
 
+	
 	if ( intensity == 0 ) {
 		/* simply disable the PWM */
 		twl_i2c_read_u8(TWL4030_MODULE_INTBR,&val,0x0c);
@@ -62,7 +64,7 @@ static int __devinit cloudsurfer_backlight_probe(struct platform_device *pdev)
 	int ret = 0;
 	u8 val;
 
-	printk("BACKLIGHT PROBE\n");
+	printk("CLOUDSURFER BACKLIGHT PROBE\n");
 
 	cl = devm_kzalloc(&pdev->dev, sizeof(*cl), GFP_KERNEL);
 	if (!cl) {
@@ -76,7 +78,7 @@ static int __devinit cloudsurfer_backlight_probe(struct platform_device *pdev)
 	/* The PWM to maximum */
 	if ( twl_i2c_write_u8(TWL4030_MODULE_PWM0,0x02,0x00) < 0 ) 
 		printk("BACKLIGHT - PWM i2c write 1 failed\n");
-	if ( twl_i2c_write_u8(TWL4030_MODULE_PWM0,0x78,0x01) < 0 )
+	if ( twl_i2c_write_u8(TWL4030_MODULE_PWM0,TWL_PWM0_OFF_DEFAULT,0x01) < 0 )
 		printk("BACKLIGHT - PWM i2c write 2 failed\n");
 	/* Connect the PWM0 to the BGA pin */
 	twl_i2c_read_u8(TWL4030_MODULE_INTBR,&val,0x0d);
@@ -99,7 +101,7 @@ static int __devinit cloudsurfer_backlight_probe(struct platform_device *pdev)
 
 	
 	bldev->props.max_brightness = 125;
-	bldev->props.brightness = 64;
+	bldev->props.brightness = TWL_PWM0_OFF_DEFAULT;
 	bldev->props.power = FB_BLANK_UNBLANK;
 
 	platform_set_drvdata(pdev, bldev);
