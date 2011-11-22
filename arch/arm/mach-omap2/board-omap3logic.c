@@ -496,7 +496,7 @@ extern int cloud_cam_init(void);
 	
 static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
     {    
-        I2C_BOARD_INFO("eeprom", 0x50),
+        I2C_BOARD_INFO("at24", 0x50),
 		.platform_data = &m24c128,
     },
 #ifdef CONFIG_CLOUDSURFER_P2
