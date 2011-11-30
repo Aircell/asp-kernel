@@ -14,7 +14,7 @@
 
 #define TWL_PWM0_ON_REG			0x00
 #define TWL_PWM0_OFF_REG		0x01
-#define TWL_PWM0_OFF_DEFAULT	64
+#define TWL_PWM0_OFF_DEFAULT	120
 
 struct cloudsurfer  {
 	int valid;
