@@ -1,5 +1,5 @@
 /* Aircell CloudSurfer GPIO Pins */
-#define CONFIG_CLOUDSURFER_P1
+#define CONFIG_CLOUDSURFER_P2
 
 #ifdef CONFIG_CLOUDSURFER_P1
 #define AIRCELL_5V_ENABLE				159
