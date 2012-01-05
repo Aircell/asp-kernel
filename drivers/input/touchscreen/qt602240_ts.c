@@ -765,8 +765,10 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 				QT602240_MOVE : QT602240_PRESS;
 
 	/* TARR - P1 wierdness due to display rotated 180 */
-	finger[id].x = 480-y;
-	finger[id].y = 800-x;
+	finger[id].x = y;
+	//finger[id].x = 480-y;
+	finger[id].y = x;
+	//finger[id].y = 800-x;
 	finger[id].area = area;
 
 	qt602240_input_report(data, id);
