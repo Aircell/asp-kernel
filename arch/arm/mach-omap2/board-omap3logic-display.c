@@ -69,11 +69,11 @@ struct omap_dss_device lcd_device = {
 	.name						= "Seiko 37VWFOHZ1",
 	.driver_name				= "seiko_panel",
 	.type						= OMAP_DISPLAY_TYPE_DPI,
-	.phy.dpi.data_lines			= 24,
-	.panel.recommended_bpp		= 24,
-	.panel.config				= OMAP_DSS_LCD_TFT
-				| OMAP_DSS_LCD_IVS
-				| OMAP_DSS_LCD_IHS,
+	.phy.dpi.data_lines			= 16,
+	.panel.recommended_bpp		= 16,
+	.panel.config				= OMAP_DSS_LCD_TFT,
+//				| OMAP_DSS_LCD_IVS
+//				| OMAP_DSS_LCD_IHS,
 	.panel.timings.x_res		= 480,
 	.panel.timings.y_res		= 800,
 	.panel.timings.pixel_clock 	= 27000,
