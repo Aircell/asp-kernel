@@ -1161,7 +1161,7 @@ static void __init omap3logic_init(void)
 {
 
 #ifdef CONFIG_CLOUDSURFER_P1
-	printk(KERN_INFO "Aircell CloudSurfer P1\n");
+	printk("Aircell CloudSurfer P1\n");
 #endif
 #ifdef CONFIG_CLOUDSURFER_P2
 	printk(KERN_INFO "Aircell CloudSurfer P2\n");
@@ -1227,13 +1227,12 @@ static void __init omap3logic_map_io(void)
 	omap2_map_common_io();
 }
 
-MACHINE_START(OMAP3530_LV_SOM, "OMAP Logic 3530 LV SOM board")
-	/* Maintainer: Peter Barada <peterb@logicpd.com> */
-	.phys_io	= 0x48000000,
+MACHINE_START(OMAP3530_LV_SOM, "AirCell CloudSurfer OAMP3530")
+	.phys_io		= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
-	.map_io		= omap3logic_map_io,
-	.init_irq	= omap3logic_init_irq,
+	.map_io			= omap3logic_map_io,
+	.init_irq		= omap3logic_init_irq,
 	.init_machine	= omap3logic_init,
-	.timer		= &omap_timer,
+	.timer			= &omap_timer,
 MACHINE_END
