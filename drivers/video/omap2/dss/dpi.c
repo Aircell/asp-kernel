@@ -32,6 +32,12 @@
 
 #include "dss.h"
 
+/* Chris Read's spectrum spreading */
+#include <plat/control.h>
+#define DSI_DPLL_SPREADING_CONFIG	(0x00c10013)
+#define DSI_DPLL_ENABLE_BIT			(1 << 4)
+#define DSI_DPLL_STATUS				(1 << 7)
+
 static struct {
 	int update_enabled;
 } dpi;
@@ -110,6 +116,11 @@ static int dpi_set_mode(struct omap_dss_device *dssdev)
 	is_tft = (dssdev->panel.config & OMAP_DSS_LCD_TFT) != 0;
 
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+	/* Chris Read's spectrum spreading */
+	omap_ctrl_writel(DSI_DPLL_SPREADING_CONFIG, 
+			OMAP343X_CONTROL_DSS_DPLL_SPREADING_FREQ);
+	omap_ctrl_writel(DSI_DPLL_ENABLE_BIT,OMAP343X_CONTROL_DSS_DPLL_SPREADING);
+
 	r = dpi_set_dsi_clk(is_tft, t->pixel_clock * 1000,
 			&fck, &lck_div, &pck_div);
 #else
@@ -197,6 +208,11 @@ static int dpi_display_enable(struct omap_dss_device *dssdev)
 		goto err6;
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+
+	printk(KERN_ALERT "========= OMAP343X_CONTROL_DSS_DPLL_SPREADING = %04x\n",
+		omap_ctrl_readl(OMAP343X_CONTROL_DSS_DPLL_SPREADING));
+	printk(KERN_ALERT "========= Spread Spectrum is %s\n",
+		((omap_ctrl_readl(OMAP343X_CONTROL_DSS_DPLL_SPREADING) & DSI_DPLL_STATUS)) ? "Working!!!" : "not functioning");
 
 	return 0;
 
