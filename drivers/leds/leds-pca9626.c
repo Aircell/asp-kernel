@@ -153,7 +153,6 @@ static int pca9626_probe(struct i2c_client *client,
 	struct pca9626_data *local_data = i2c_get_clientdata(client);
 	struct pca9626_platform_data *platform_data = client->dev.platform_data;
 
-	printk("LED CONTROLLER Probe\n");
 
 	/* Is the device there? */
 	if ( !pca9626_present(client) ) {
@@ -165,7 +164,6 @@ static int pca9626_probe(struct i2c_client *client,
 
 	local_data->leds = platform_data->leds;
 	local_data->client = client;
-	dev_info(&client->dev, "setting platform data\n");
 	if ( pca9626_configure(client,local_data,platform_data) < 0 ) {
 		kfree(local_data);
 		return -ENOMEM;
@@ -175,11 +173,10 @@ static int pca9626_probe(struct i2c_client *client,
 
 	/* Take the controller out of sleep mode */
 	if ( pca9626_write(client,0x00,0x01) < 0 ) {
-		printk("LED - PWM control write failed\n");
+		printk(KERN_ERR "LED - PWM control write failed\n");
 		return -EIO;
 	}
 	
-	printk("LEDS probe done\n");
 	return 0;
 }
 
@@ -204,7 +201,7 @@ static struct i2c_driver pca9626_driver = {
 
 static int __init pca9626_init(void)
 {
-	printk("LED CONTROLLER Init\n");
+	printk(KERN_INFO "LED CONTROLLER PCA9626  Init\n");
 	return i2c_add_driver(&pca9626_driver);
 }
 

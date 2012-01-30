@@ -242,10 +242,12 @@ static int seiko_status(struct spi_device *spidev)
 	}
 	
 	mdelay(5);
+#ifdef SEIKO_DEBUG
 	printk("TARR - SEIKO - status: ");
 	for (i=0; i<6; i++) 
 		printk("0x%2.2X ",rbuf[i]);
 	printk("\n");
+#endif
 	return 0;
 
 }
@@ -261,7 +263,7 @@ static int seiko_cmd(struct spi_device *spidev, struct lg_cmd *c)
     spi_message_init(&msg);
 
     index_xfer.tx_buf = &c->data[0];
-#ifdef TARR_TEST
+#ifdef SEIKO_DEBUG
 	char *p = (char *)index_xfer.tx_buf;
 	printk("TARR - SEIKO init message: ");
 	for ( int i=0; i<index_xfer.len; i++,p++) {
@@ -352,7 +354,6 @@ static int __devinit seiko_panel_spi_probe(struct spi_device *spidev)
 {
 	int ret; 
 
-	printk("Seiko Panel SPI Probe\n");
 	spidev->mode = SPI_MODE_3; 
 	spidev->bits_per_word = 8;
 	spi_setup(spidev);
