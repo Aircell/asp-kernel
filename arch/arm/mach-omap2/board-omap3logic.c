@@ -136,9 +136,8 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 
 	omap3logic_smsc911x_resources[0].start = cs_mem_base + 0x0;
-
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xf;
+	//omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
+	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0x0f;
 
 	if (gpio_request(eth_gpio, "eth0") < 0) {
 		printk(KERN_ERR "Failed to request GPIO_%d for smsc911x IRQ\n",
@@ -159,7 +158,45 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 }
 
+/* TARR - FIXME: These values need to be updated based on more profiling
+ * Originals came from the 3430sdp
+ */
+static struct cpuidle_params cloudsurfer_cpuidle_params_table[] = {
+    /* C1 */
+    {1, 2, 2, 5},
+    /* C2 */
+    {1, 10, 10, 30},
+    /* C3 */
+    {1, 50, 50, 300},
+    /* C4 */
+    {1, 1500, 1800, 4000},
+    /* C5 */
+    {1, 2500, 7500, 12000},
+    /* C6 */
+    {1, 3000, 8500, 15000},
+    /* C7 */
+    {1, 10000, 30000, 300000},
+};
+
+static struct prm_setup_vc cloudsurfer_setuptime_table = {
+    .clksetup = 0xff,
+    .voltsetup_time1 = 0xfff,
+    .voltsetup_time2 = 0xfff,
+    .voltoffset = 0xff,
+    .voltsetup2 = 0xff,
+    .vdd0_on = 0x30,
+    .vdd0_onlp = 0x20,
+    .vdd0_ret = 0x1e,
+    .vdd0_off = 0x00,
+    .vdd1_on = 0x2c,
+    .vdd1_onlp = 0x20,
+    .vdd1_ret = 0x1e,
+    .vdd1_off = 0x00,
+};
+
+
 static struct regulator_consumer_supply omap3logic_vaux1_supply = {
+
 	.supply			= "vaux1",
 };
 
@@ -593,6 +630,10 @@ static void __init omap3logic_init_irq(void)
 {
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
+	/* TARR HERE - Setup pwoer management tables */
+    omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+    omap3_pm_init_vc(&cloudsurfer_setuptime_table);
+
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
 			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
 			     omap35x_l3_rate_table);
@@ -617,6 +658,8 @@ void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 #define NAND_BLOCK_SIZE		SZ_128K
 #define GPMC_CS0_BASE  0x60
 #define GPMC_CS_SIZE   0x30
+
+#ifdef CONFIG_MTD_OMAP_NOR
 #define OMAP3LOGIC_NORFLASH_CS 2
 
 static struct mtd_partition omap3logic_nor_partitions[] = {
@@ -646,6 +689,8 @@ static struct platform_device omap3logic_nor_device = {
 	.num_resources	= 1,
 	.resource	= &omap3logic_nor_resource,
 };
+
+#endif
 
 static struct mtd_partition omap3logic_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
@@ -725,6 +770,8 @@ static void __init omap3logic_flash_init(void)
 	u32 gpmc_base_add = OMAP34XX_GPMC_VIRT;
 	int nor_cs;
 	unsigned long cs_mem_base;
+
+#ifdef CONFIG_MTD_OMAP_NOR
 	int nor_size;
 		
 	if ((nor_size = omap3logic_NOR0_size()) > 0) {
@@ -739,6 +786,8 @@ static void __init omap3logic_flash_init(void)
 		if (platform_device_register(&omap3logic_nor_device) < 0)
 			printk(KERN_ERR "Unable to register NOR device\n");
 	}
+
+#endif
 
 	/* find out the chip-select on which NAND exists */
 	while (cs < GPMC_CS_NUM) {
