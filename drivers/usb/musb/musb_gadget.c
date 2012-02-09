@@ -193,12 +193,13 @@ static void nuke(struct musb_ep *ep, const int status)
 		ep->dma = NULL;
 	}
 
+	trys = 0;
 	while (!list_empty(&(ep->req_list))) {
 		/* TARR - if the list is hosed, this will continue
 		 * till the watchdog kill everything. So, only do it 
  	 	 * some fixed number of times max then bail 
+		if ( trys++ > 2 && status == -ESHUTDOWN ) break;
 		 */
-		if ( trys++ > 10 ) break;
  
 		req = container_of(ep->req_list.next, struct musb_request,
 				request.list);
