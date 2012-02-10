@@ -1166,6 +1166,7 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -1183,6 +1184,7 @@ static void aircell_gpio_init(void)
     gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
     gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
     gpio_direction_input(AIRCELL_PROX_INTERRUPT);
+    gpio_direction_output(AIRCELL_MUTE,0);
 
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
@@ -1206,6 +1208,7 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_CAMERA_PWDN,0);
 	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
+	gpio_export(AIRCELL_MUTE,0);
 
 }
 
