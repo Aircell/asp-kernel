@@ -525,7 +525,7 @@ static struct at24_platform_data m24c128 = {
 			.flags			= AT24_FLAG_ADDR16,
 };
 
-#ifdef CONFIG_CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 extern struct ov7692_platform_data cloud_ov7692_platform_data;
 extern int cloud_cam_init(void);
 #endif
@@ -536,7 +536,7 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
         I2C_BOARD_INFO("at24", 0x50),
 		.platform_data = &m24c128,
     },
-#ifdef CONFIG_CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 	{
 		I2C_BOARD_INFO("ov7692", 0x3C),
 		.platform_data = &cloud_ov7692_platform_data,
@@ -1254,7 +1254,7 @@ static void __init omap3logic_init(void)
 
 	omap3logic_init_audio_mux();
 
-#ifdef CONFIG_CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 	cloud_cam_init();
 #endif
 
