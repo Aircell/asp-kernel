@@ -156,4 +156,4 @@ obj-y					+= $(nand-m) $(nand-y)
 smc91x-$(CONFIG_SMC91X)			:= gpmc-smc91x.o
 obj-y					+= $(smc91x-m) $(smc91x-y)
 
-obj-$(CONFIG_CLOUDSURFER_P2)		+= board-cloudsurfer-camera.o
+obj-$(CONFIG_CLOUDSURFER_P2_CAMERA)		+= board-cloudsurfer-camera.o

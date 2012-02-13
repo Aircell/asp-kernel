@@ -136,9 +136,8 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 
 	omap3logic_smsc911x_resources[0].start = cs_mem_base + 0x0;
-
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xf;
+	//omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
+	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0x0f;
 
 	if (gpio_request(eth_gpio, "eth0") < 0) {
 		printk(KERN_ERR "Failed to request GPIO_%d for smsc911x IRQ\n",
@@ -159,7 +158,45 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 }
 
+/* TARR - FIXME: These values need to be updated based on more profiling
+ * Originals came from the 3430sdp
+ */
+static struct cpuidle_params cloudsurfer_cpuidle_params_table[] = {
+    /* C1 */
+    {1, 2, 2, 5},
+    /* C2 */
+    {1, 10, 10, 30},
+    /* C3 */
+    {1, 50, 50, 300},
+    /* C4 */
+    {1, 1500, 1800, 4000},
+    /* C5 */
+    {1, 2500, 7500, 12000},
+    /* C6 */
+    {1, 3000, 8500, 15000},
+    /* C7 */
+    {1, 10000, 30000, 300000},
+};
+
+static struct prm_setup_vc cloudsurfer_setuptime_table = {
+    .clksetup = 0xff,
+    .voltsetup_time1 = 0xfff,
+    .voltsetup_time2 = 0xfff,
+    .voltoffset = 0xff,
+    .voltsetup2 = 0xff,
+    .vdd0_on = 0x30,
+    .vdd0_onlp = 0x20,
+    .vdd0_ret = 0x1e,
+    .vdd0_off = 0x00,
+    .vdd1_on = 0x2c,
+    .vdd1_onlp = 0x20,
+    .vdd1_ret = 0x1e,
+    .vdd1_off = 0x00,
+};
+
+
 static struct regulator_consumer_supply omap3logic_vaux1_supply = {
+
 	.supply			= "vaux1",
 };
 
@@ -488,7 +525,7 @@ static struct at24_platform_data m24c128 = {
 			.flags			= AT24_FLAG_ADDR16,
 };
 
-#ifdef CONFIG_CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 extern struct ov7692_platform_data cloud_ov7692_platform_data;
 extern int cloud_cam_init(void);
 #endif
@@ -499,7 +536,7 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
         I2C_BOARD_INFO("at24", 0x50),
 		.platform_data = &m24c128,
     },
-#ifdef CONFIG_CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 	{
 		I2C_BOARD_INFO("ov7692", 0x3C),
 		.platform_data = &cloud_ov7692_platform_data,
@@ -556,6 +593,9 @@ static void omap3logic_qt602240_init(void)
 	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
     omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
+	/* 5V Digital is required for the touchscreen controller */
+	gpio_direction_output(AIRCELL_5VD_ENABLE, 1);
+
 	/* Take the touch screen out of reset */
 	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
     omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(AIRCELL_TOUCH_INTERRUPT);
@@ -590,6 +630,10 @@ static void __init omap3logic_init_irq(void)
 {
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
+	/* TARR HERE - Setup pwoer management tables */
+    omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+    omap3_pm_init_vc(&cloudsurfer_setuptime_table);
+
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
 			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
 			     omap35x_l3_rate_table);
@@ -614,6 +658,8 @@ void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 #define NAND_BLOCK_SIZE		SZ_128K
 #define GPMC_CS0_BASE  0x60
 #define GPMC_CS_SIZE   0x30
+
+#ifdef CONFIG_MTD_OMAP_NOR
 #define OMAP3LOGIC_NORFLASH_CS 2
 
 static struct mtd_partition omap3logic_nor_partitions[] = {
@@ -643,6 +689,8 @@ static struct platform_device omap3logic_nor_device = {
 	.num_resources	= 1,
 	.resource	= &omap3logic_nor_resource,
 };
+
+#endif
 
 static struct mtd_partition omap3logic_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
@@ -722,6 +770,8 @@ static void __init omap3logic_flash_init(void)
 	u32 gpmc_base_add = OMAP34XX_GPMC_VIRT;
 	int nor_cs;
 	unsigned long cs_mem_base;
+
+#ifdef CONFIG_MTD_OMAP_NOR
 	int nor_size;
 		
 	if ((nor_size = omap3logic_NOR0_size()) > 0) {
@@ -736,6 +786,8 @@ static void __init omap3logic_flash_init(void)
 		if (platform_device_register(&omap3logic_nor_device) < 0)
 			printk(KERN_ERR "Unable to register NOR device\n");
 	}
+
+#endif
 
 	/* find out the chip-select on which NAND exists */
 	while (cs < GPMC_CS_NUM) {
@@ -1114,6 +1166,7 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -1131,6 +1184,7 @@ static void aircell_gpio_init(void)
     gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
     gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
     gpio_direction_input(AIRCELL_PROX_INTERRUPT);
+    gpio_direction_output(AIRCELL_MUTE,0);
 
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
@@ -1154,6 +1208,7 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_CAMERA_PWDN,0);
 	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
+	gpio_export(AIRCELL_MUTE,0);
 
 }
 
@@ -1161,7 +1216,7 @@ static void __init omap3logic_init(void)
 {
 
 #ifdef CONFIG_CLOUDSURFER_P1
-	printk(KERN_INFO "Aircell CloudSurfer P1\n");
+	printk("Aircell CloudSurfer P1\n");
 #endif
 #ifdef CONFIG_CLOUDSURFER_P2
 	printk(KERN_INFO "Aircell CloudSurfer P2\n");
@@ -1199,7 +1254,7 @@ static void __init omap3logic_init(void)
 
 	omap3logic_init_audio_mux();
 
-#ifdef CONFIG_CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 	cloud_cam_init();
 #endif
 
@@ -1227,13 +1282,12 @@ static void __init omap3logic_map_io(void)
 	omap2_map_common_io();
 }
 
-MACHINE_START(OMAP3530_LV_SOM, "OMAP Logic 3530 LV SOM board")
-	/* Maintainer: Peter Barada <peterb@logicpd.com> */
-	.phys_io	= 0x48000000,
+MACHINE_START(OMAP3530_LV_SOM, "AirCell CloudSurfer OAMP3530")
+	.phys_io		= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
-	.map_io		= omap3logic_map_io,
-	.init_irq	= omap3logic_init_irq,
+	.map_io			= omap3logic_map_io,
+	.init_irq		= omap3logic_init_irq,
 	.init_machine	= omap3logic_init,
-	.timer		= &omap_timer,
+	.timer			= &omap_timer,
 MACHINE_END

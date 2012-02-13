@@ -65,7 +65,6 @@ static struct regulator *cloud_ov7692_reg2;
 
 
 
-#if defined(CONFIG_VIDEO_OV7692) || defined(CONFIG_VIDEO_OV7692_MODULE)
 
 static struct omap34xxcam_sensor_config ov7692_hwc = {
 	.sensor_isp  = 0,
@@ -263,7 +262,6 @@ struct ov7692_platform_data cloud_ov7692_platform_data = {
 	.csi2_ctx_update      = isp_csi2_ctx_update,
 	.csi2_calc_phy_cfg0   = isp_csi2_calc_phy_cfg0,
 };
-#endif
 
 void cloud_cam_init(void)
 {
