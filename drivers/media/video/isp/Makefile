@@ -5,6 +5,8 @@ isp-mod-objs += \
 	isppreview.o ispresizer.o isph3a.o isphist.o isp_af.o ispcsi2.o \
 	ispstat.o
 
+obj-$(CONFIG_VIDEO_OMAP3_ISP_PROC) += isp-debug.o
+
 obj-$(CONFIG_VIDEO_OMAP3_ISP) += isp-mod.o
 
 obj-$(CONFIG_VIDEO_OMAP34XX_ISP_PREVIEWER) += \

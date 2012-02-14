@@ -138,10 +138,12 @@ __acquires(ep->musb->lock)
 	}
 	if (request->status == 0)
 		DBG(5, "%s done request %p,  %d/%d\n",
+		//printk("TARR USB %s done request %p,  %d/%d\n",
 				ep->end_point.name, request,
 				req->request.actual, req->request.length);
 	else
-		DBG(2, "%s request %p, %d/%d fault %d\n",
+		//DBG(2, "%s request %p, %d/%d fault %d\n",
+		printk("TARR USB %s request %p, %d/%d fault %d\n",
 				ep->end_point.name, request,
 				req->request.actual, req->request.length,
 				request->status);
@@ -160,6 +162,7 @@ static void nuke(struct musb_ep *ep, const int status)
 {
 	struct musb_request	*req = NULL;
 	void __iomem *epio = ep->musb->endpoints[ep->current_epnum].regs;
+	int trys = 0;
 
 	ep->busy = 1;
 
@@ -190,7 +193,14 @@ static void nuke(struct musb_ep *ep, const int status)
 		ep->dma = NULL;
 	}
 
+	trys = 0;
 	while (!list_empty(&(ep->req_list))) {
+		/* TARR - if the list is hosed, this will continue
+		 * till the watchdog kill everything. So, only do it 
+ 	 	 * some fixed number of times max then bail 
+		if ( trys++ > 2 && status == -ESHUTDOWN ) break;
+		 */
+ 
 		req = container_of(ep->req_list.next, struct musb_request,
 				request.list);
 		musb_g_giveback(ep, &req->request, status);

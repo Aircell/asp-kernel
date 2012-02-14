@@ -50,6 +50,12 @@ config PANEL_SHARP_LQ10D368
         help
           LCD Panel used in Logic's OMAP boards
 
+config PANEL_SEIKO_37WVF0HZ1
+        tristate "Seiko 37WVF0HZ1 LCD Panel"
+        depends on OMAP2_DSS 
+        help
+          LCD Panel used on AirCell CloudSurfer P2
+
 config PANEL_SHARP_LQ121S1DG31
         tristate "Sharp LQ121S1DG31 LCD Panel"
         depends on OMAP2_DSS
@@ -61,6 +67,7 @@ config PANEL_SHARP_LQ64D343
         depends on OMAP2_DSS
         help
           LCD Panel used in Logic's OMAP boards
+
 config PANEL_TAAL
         tristate "Taal DSI Panel"
         depends on OMAP2_DSS_DSI

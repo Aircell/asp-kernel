@@ -73,7 +73,8 @@
 #include "omap3-opp.h"
 #include "board-omap3logic.h"
 #include <plat/sdrc.h>
-
+#include <linux/i2c/at24.h>
+#include <linux/leds-pca9626.h>
 #include "aircell_gpio.h"
 
 #define QT_I2C_ADDR			 0x4b
@@ -135,9 +136,8 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 
 	omap3logic_smsc911x_resources[0].start = cs_mem_base + 0x0;
-
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xf;
+	//omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
+	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0x0f;
 
 	if (gpio_request(eth_gpio, "eth0") < 0) {
 		printk(KERN_ERR "Failed to request GPIO_%d for smsc911x IRQ\n",
@@ -158,24 +158,62 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 }
 
+/* TARR - FIXME: These values need to be updated based on more profiling
+ * Originals came from the 3430sdp
+ */
+static struct cpuidle_params cloudsurfer_cpuidle_params_table[] = {
+    /* C1 */
+    {1, 2, 2, 5},
+    /* C2 */
+    {1, 10, 10, 30},
+    /* C3 */
+    {1, 50, 50, 300},
+    /* C4 */
+    {1, 1500, 1800, 4000},
+    /* C5 */
+    {1, 2500, 7500, 12000},
+    /* C6 */
+    {1, 3000, 8500, 15000},
+    /* C7 */
+    {1, 10000, 30000, 300000},
+};
+
+static struct prm_setup_vc cloudsurfer_setuptime_table = {
+    .clksetup = 0xff,
+    .voltsetup_time1 = 0xfff,
+    .voltsetup_time2 = 0xfff,
+    .voltoffset = 0xff,
+    .voltsetup2 = 0xff,
+    .vdd0_on = 0x30,
+    .vdd0_onlp = 0x20,
+    .vdd0_ret = 0x1e,
+    .vdd0_off = 0x00,
+    .vdd1_on = 0x2c,
+    .vdd1_onlp = 0x20,
+    .vdd1_ret = 0x1e,
+    .vdd1_off = 0x00,
+};
+
+
 static struct regulator_consumer_supply omap3logic_vaux1_supply = {
+
 	.supply			= "vaux1",
 };
 
 static struct regulator_consumer_supply omap3logic_vpll2_supplies[] = {
 	{
 		.supply         = "vpll2",
-		.dev		= &omap3logic_lcd_device.dev,
+		.dev		= &lcd_device.dev,
 	},
 	{
 		.supply         = "vdds_dsi",
-		.dev		= &omap3logic_dss_device.dev,
+		.dev		= &dss_device.dev,
 	}
 };
 
 static struct regulator_consumer_supply omap3logic_vdda_dac_supply = {
 	.supply         = "vdda_dac",
-	.dev		= &omap3logic_dss_device.dev,
+	.dev		= &dss_device.dev,
 };
 
 static struct regulator_init_data omap3logic_vdda_dac = {
@@ -212,11 +250,6 @@ static struct regulator_init_data omap3logic_vaux1 = {
 		.name			= "VAUX1_30",
 		.apply_uV		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
-#if 0
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask		= REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-#endif
 	},
 	.num_consumer_supplies	= 1,
 	.consumer_supplies	= &omap3logic_vaux1_supply,
@@ -241,95 +274,8 @@ static struct twl4030_hsmmc_info mmc3 = {
 	.gpio_wp	= -EINVAL,
 };
 
-static struct gpio_led omap3logic_leds[] = {
-	{
-		.name			= "led1",	/* D1 on baseboard */
-		.default_trigger	= "heartbeat",
-		.gpio			= -EINVAL,	/* gets replaced */
-		.active_low		= false,
-	},
-	{
-		.name			= "led2",	/* D2 on baseboard */
-		.default_trigger	= "none",
-		.gpio			= -EINVAL,	/* gets replaced */
-		.active_low		= false,
-	},
-	{
-		.name			= "led3",	/* D1 on Torpedo module */
-		.default_trigger	= "none",
-		.gpio			= -EINVAL,	/* gets replaced */
-		.active_low		= true,
-	},
-};
- 
-static struct gpio_led_platform_data omap3logic_led_data = {
-	.leds		= omap3logic_leds,
-	.num_leds	= 0,	/* Initialized in omap3logic_led_init() */
- };
- 
-static struct platform_device omap3logic_led_device = {
-	.name	= "leds-gpio",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &omap3logic_led_data,
-	},
-};
- 
 /* GPIO.0 of TWL4030 */
 static int twl4030_base_gpio;
-
-#define GPIO_LED1_TORPEDO_POST_1013994 180
-#define GPIO_LED2_TORPEDO_POST_1013994 179
-
-#define GPIO_LED1_SOM 133
-#define GPIO_LED2_SOM 11
-
-static void omap3logic_led_init(void)
-{
-	u32 part_number;
-	int gpio_led1 = -EINVAL;
-	int gpio_led2 = -EINVAL;
-
-	if (machine_is_omap3_torpedo()) {
-		if (!twl4030_base_gpio) {
-			printk(KERN_ERR "Huh?!? twl4030_base_gpio not set!\n");
-			return;
-		}
-		if (!omap3logic_get_product_id_part_number (&part_number)) {
-
-			if (part_number >= 1013994) {
-				/* baseboard LEDs are MCSPIO2_SOMI, MCSPOI2_SIMO */
-				gpio_led1 = GPIO_LED1_TORPEDO_POST_1013994;
-				gpio_led2 = GPIO_LED2_TORPEDO_POST_1013994;
-			} else {
-				/* baseboard LEDS are BT_PCK_DR and BT_PCM_DX */
-				gpio_led1 = twl4030_base_gpio + 16;
-				gpio_led2 = twl4030_base_gpio + 17;
-			}
-		}
-
-		/* twl4030 vibra_p is the LED on the module */
-		omap3logic_leds[2].gpio = twl4030_base_gpio + TWL4030_GPIO_MAX + 1;
-		omap3logic_led_data.num_leds = 3;
-	} else {
-		gpio_led1 = GPIO_LED1_SOM;
-		omap3logic_leds[0].active_low = true;
-		gpio_led2 = GPIO_LED2_SOM;
-		omap3logic_leds[1].active_low = true;
-
-		/* SOM has only two LEDs */
-		omap3logic_led_data.num_leds = 2;
-	}
-
-	if (gpio_led2 < twl4030_base_gpio)
-		omap_mux_init_gpio(gpio_led2, OMAP_PIN_OUTPUT);
-	omap3logic_leds[1].gpio = gpio_led2;
-
-	omap3logic_led_data.num_leds = 2;
-
-	if (platform_device_register(&omap3logic_led_device) < 0)
-		printk(KERN_ERR "Unable to register LED device\n");
-}
 
 int brf6300_bt_nshutdown_gpio;
 
@@ -414,42 +360,12 @@ static struct twl4030_gpio_platform_data omap3logic_gpio_data = {
 	.gpio_base	= OMAP_MAX_GPIO_LINES,
 	.irq_base	= TWL4030_GPIO_IRQ_BASE,
 	.irq_end	= TWL4030_GPIO_IRQ_END,
-	.use_leds	= true,
+	//.use_leds	= true,
 	.setup		= omap3logic_twl_gpio_setup,
 };
 
 static struct twl4030_usb_data omap3logic_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
-};
-
-static int qt_keymap[] = {
-	KEY(0, 0, KEY_BACK),
-	KEY(0, 1, KEY_HOME),
-	KEY(0, 2, KEY_HOME),
-	KEY(1, 0, KEY_1),
-	KEY(1, 1, KEY_2),
-	KEY(1, 2, KEY_3),
-	KEY(2, 0, KEY_4),
-	KEY(2, 1, KEY_5),
-	KEY(2, 2, KEY_6),
-	KEY(3, 0, KEY_7),
-	KEY(3, 1, KEY_8),
-	KEY(3, 2, KEY_9),
-	KEY(4, 0, KEY_NUMERIC_STAR),
-	KEY(4, 1, KEY_0),
-	KEY(4, 2, KEY_NUMERIC_POUND),
-};
-
-static struct matrix_keymap_data board_map_data = {
-	.keymap			= qt_keymap,
-	.keymap_size		= ARRAY_SIZE(qt_keymap),
-};
-
-static struct twl4030_keypad_data omap3logic_kp_data = {
-	.keymap_data	= &board_map_data,
-	.rows		= 4,
-	.cols		= 3,
-	.rep		= 1,
 };
 
 static struct twl4030_madc_platform_data omap3logic_madc_data = {
@@ -470,31 +386,11 @@ static struct twl4030_codec_data omap3logic_codec_data = {
 	.vibra = &omap3logic_vibra_data,
 };
 
-static int omap3logic_batt_table[] = {
-/* 0 C*/
-	30800, 29500, 28300, 27100,
-	26000, 24900, 23900, 22900, 22000, 21100, 20300, 19400, 18700, 17900,
-	17200, 16500, 15900, 15300, 14700, 14100, 13600, 13100, 12600, 12100,
-	11600, 11200, 10800, 10400, 10000, 9630,  9280,  8950,  8620,  8310,
-	8020,  7730,  7460,  7200,  6950,  6710,  6470,  6250,  6040,  5830,
-	5640,  5450,  5260,  5090,  4920,  4760,  4600,  4450,  4310,  4170,
-	4040,  3910,  3790,  3670,  3550
-};
-
-static struct twl4030_bci_platform_data omap3logic_bci_data = {
-	.battery_tmp_tbl	= omap3logic_batt_table,
-	.bb_chen		= BB_CHARGE_ENABLED,
-	.bb_current		= BB_CURRENT_150,
-	.bb_voltage		= BB_VOLTAGE_31,
-	.tblsize		= ARRAY_SIZE(omap3logic_batt_table),
-};
-
 static struct twl4030_platform_data omap3logic_twldata = {
 	.irq_base	= TWL4030_IRQ_BASE,
 	.irq_end	= TWL4030_IRQ_END,
 
 	/* platform_data for children goes here */
-	.bci        = &omap3logic_bci_data,
 	.madc		= &omap3logic_madc_data,
 	.usb		= &omap3logic_usb_data,
 	.gpio		= &omap3logic_gpio_data,
@@ -514,51 +410,156 @@ static struct i2c_board_info __initdata omap3logic_i2c_boardinfo[] = {
 	},
 };
 
-/*
- * 24LC128 EEPROM Support
- */ 
-#include <linux/i2c/at24.h>
+/* 
+ * Devices on I2C bus 2 are the EEPROM and the LED controller
+ */
+
+/* Name for the LED regions - The names are associated with
+ * the LED number of the controller chip 
+ */
+
+static struct pca9626_platform_data cloud_pca9626_data = {
+	.leds = {
+		{	.id = 0,
+			.ldev.name = "LED_ZONE_0",
+			.ldev.brightness = 16,
+		},
+		{	.id = 1,
+			.ldev.name = "LED_ZONE_1",
+			.ldev.brightness = 16,
+		},
+		{	.id = 2,
+			.ldev.name = "LED_ZONE_2",
+			.ldev.brightness = 16,
+		},
+		{	.id = 3,
+			.ldev.name = "LED_ZONE_3",
+			.ldev.brightness = 16,
+		},
+		{	.id = 4,
+			.ldev.name = "LED_ZONE_4",
+			.ldev.brightness = 16,
+		},
+		{	.id = 5,
+			.ldev.name = "LED_ZONE_5",
+			.ldev.brightness = 16,
+		},
+		{	.id = 6,
+			.ldev.name = "LED_ZONE_6",
+			.ldev.brightness = 16,
+		},
+		{	.id = 7,
+			.ldev.name = "LED_ZONE_7",
+			.ldev.brightness = 16,
+		},
+		{	.id = 8,
+			.ldev.name = "LED_ZONE_8",
+			.ldev.brightness = 16,
+		},
+		{	.id = 9,
+			.ldev.name = "LED_ZONE_9",
+			.ldev.brightness = 16,
+		},
+		{	.id = 10,
+			.ldev.name = "LED_ZONE_S4",
+			.ldev.brightness = 16,
+		},
+		{	.id = 11,
+			.ldev.name = "LED_ZONE_ASTRIX",
+			.ldev.brightness = 16,
+		},
+		{	.id = 12,
+			.ldev.name = "LED_ZONE_P0UND",
+			.ldev.brightness = 16,
+		},
+		{	.id = 13,
+			.ldev.name = "LED_ZONE_BACK",
+			.ldev.brightness = 16,
+		},
+		{	.id = 14,
+			.ldev.name = "LED_ZONE_HOME",
+			.ldev.brightness = 16,
+		},
+		{	.id = 15,
+			.ldev.name = "LED_ZONE_MENU",
+			.ldev.brightness = 16,
+		},
+		{	.id = 16,
+			.ldev.name = "LED_ZONE_UP",
+			.ldev.brightness = 16,
+		},
+		{	.id = 17,
+			.ldev.name = "LED_ZONE_DOWN",
+			.ldev.brightness = 16,
+		},
+		{	.id = 18,
+			.ldev.name = "LED_ZONE_LEFT",
+			.ldev.brightness = 16,
+		},
+		{	.id = 19,
+			.ldev.name = "LED_ZONE_RIGHT",
+			.ldev.brightness = 16,
+		},
+		{	.id = 20,
+			.ldev.name = "LED_ZONE_S1",
+			.ldev.brightness = 16,
+		},
+		{	.id = 21,
+			.ldev.name = "LED_ZONE_S2",
+			.ldev.brightness = 16,
+		},
+		{	.id = 22,
+			.ldev.name = "LED_ZONE_S3",
+			.ldev.brightness = 16,
+		},
+		{	.id = 23,
+			.ldev.name = "NULL",
+			.ldev.brightness = 0,
+		},
+	},
+};
 
 static struct at24_platform_data m24c128 = { 
             .byte_len       = 131072 / 8,
             .page_size      = 64, 
 			.flags			= AT24_FLAG_ADDR16,
 };
+
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
+extern struct ov7692_platform_data cloud_ov7692_platform_data;
+extern int cloud_cam_init(void);
+#endif
+
 	
 static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
     {    
-        I2C_BOARD_INFO("eeprom", 0x50),
+        I2C_BOARD_INFO("at24", 0x50),
 		.platform_data = &m24c128,
     },
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
+	{
+		I2C_BOARD_INFO("ov7692", 0x3C),
+		.platform_data = &cloud_ov7692_platform_data,
+	},
+#endif
+    {    
+        I2C_BOARD_INFO("pca9626", 0x12),
+		.platform_data = &cloud_pca9626_data,
+    },
 };
+/*
+ * D2vices on I2C bus 3 are the touchscreen controller\
+ */
 
 /*
- * Touchscreen MultiTouch configuration 
- *
- * For Aircell CloudSurfer, only that part of the touchscreen that
- * overlays the LCD display is used for the MultiTouch.
- * The touchscreen is configured to map returning x and y touch coordinates
- * to the dsiplay coordinates. The touch screen is a matrix of 19 lines by
- * 11 lines of "channels". The LCD display is a 480 X 800 pixle display.
- * The display has the origin (0,0) in the upper left hand corner, (480,0)
- * in the upper right hand corner, (0,800) in the lower left hand corner and
- * (480,800) in the lower right hand corner. Since the since the touch screen 
- * also overlays the "keys" which are a different module, the size is smaller
- * than the x size is smaller that the full touch screen.
- *
- * Now for the really weird parts. The orientation field provides a 
- * reporting of the x,y touch coordinates to match the display. 
- * This makes the rest of the configuration stuff non intuitive.
- * What makes this even worse is that the LCD for P1+ versions
- * Have the display wired upside down......
- *
+ * Touch Screen Support
  */
+
 struct qt602240_platform_data omap3logic_touchscreendata = {
     .x_line = 19,
     .y_line = 11,
-    .x_size = 1170,  /* Tarr - scaleing the x use same pixel density of the 
-						LCD across the entire length of the TouchScreen */
-    .y_size = 480,   /* Tarr - y is just the number of LCD pixels */
+    .x_size = 1170,
+    .y_size = 480,
     .blen = 23,
     .threshold = 80,
     .voltage = 600,
@@ -577,7 +578,7 @@ static struct platform_device omap3logic_touch_device = {
 static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("qt602440_ts", QT_I2C_ADDR),
-		.type	= "qt602240_ts",
+		.type		= "qt602240_ts",
 		.platform_data = &omap3logic_touchscreendata,
 		.irq = OMAP_GPIO_IRQ(AIRCELL_TOUCH_INTERRUPT),
 	},
@@ -585,14 +586,15 @@ static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 
 static void omap3logic_qt602240_init(void)
 {
-	printk("TARR - qt602240_init()\n");
-
     if (platform_device_register(&omap3logic_touch_device) < 0){
             printk(KERN_ERR "Unable to register touch device\n");
         return;
     }
-	//omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
-    //omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
+	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
+    omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
+
+	/* 5V Digital is required for the touchscreen controller */
+	gpio_direction_output(AIRCELL_5VD_ENABLE, 1);
 
 	/* Take the touch screen out of reset */
 	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
@@ -628,6 +630,10 @@ static void __init omap3logic_init_irq(void)
 {
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
+	/* TARR HERE - Setup pwoer management tables */
+    omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+    omap3_pm_init_vc(&cloudsurfer_setuptime_table);
+
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
 			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
 			     omap35x_l3_rate_table);
@@ -652,6 +658,8 @@ void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 #define NAND_BLOCK_SIZE		SZ_128K
 #define GPMC_CS0_BASE  0x60
 #define GPMC_CS_SIZE   0x30
+
+#ifdef CONFIG_MTD_OMAP_NOR
 #define OMAP3LOGIC_NORFLASH_CS 2
 
 static struct mtd_partition omap3logic_nor_partitions[] = {
@@ -681,6 +689,8 @@ static struct platform_device omap3logic_nor_device = {
 	.num_resources	= 1,
 	.resource	= &omap3logic_nor_resource,
 };
+
+#endif
 
 static struct mtd_partition omap3logic_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
@@ -760,6 +770,8 @@ static void __init omap3logic_flash_init(void)
 	u32 gpmc_base_add = OMAP34XX_GPMC_VIRT;
 	int nor_cs;
 	unsigned long cs_mem_base;
+
+#ifdef CONFIG_MTD_OMAP_NOR
 	int nor_size;
 		
 	if ((nor_size = omap3logic_NOR0_size()) > 0) {
@@ -774,6 +786,8 @@ static void __init omap3logic_flash_init(void)
 		if (platform_device_register(&omap3logic_nor_device) < 0)
 			printk(KERN_ERR "Unable to register NOR device\n");
 	}
+
+#endif
 
 	/* find out the chip-select on which NAND exists */
 	while (cs < GPMC_CS_NUM) {
@@ -1106,7 +1120,7 @@ static void omap3logic_android_gadget_init(void)
 static void aircell_gpio_init(void)
 {
 
-#ifdef CLOUDSURFER_P1
+#ifdef CONFIG_CLOUDSURFER_P1
 	gpio_request(AIRCELL_5V_ENABLE,"AIRCELL_5V_ENABLE");
 	gpio_request(AIRCELL_33V_ENABLE,"AIRCELL_33V_ENABLE");
 	gpio_request(AIRCELL_23V_ENABLE,"AIRCELL_23V_ENABLE");
@@ -1118,7 +1132,7 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_23V_ENABLE,0);
 #endif
 
-#ifdef CLOUDSURFER_P2
+#ifdef CONFIG_CLOUDSURFER_P2
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VAENABLE");
 	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");
 	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
@@ -1145,24 +1159,32 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_VOLUME_DOWN_DETECT,"AIRCELL_VOLUME_DOWN_DETECT");
 	gpio_request(AIRCELL_HANDSET_DETECT,"AIRCELL_HANDSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
+	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
+	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
+	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
+	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
     gpio_direction_input(AIRCELL_CRADLE_DETECT);
-    gpio_direction_output(AIRCELL_BLUE_ENABLE,0);
-    gpio_direction_output(AIRCELL_GREEN_ENABLE,0);
-    gpio_direction_output(AIRCELL_RED_ENABLE,0);
-    gpio_direction_output(AIRCELL_LED_ENABLE,0);
+    gpio_direction_output(AIRCELL_BLUE_ENABLE,1);
+    gpio_direction_output(AIRCELL_GREEN_ENABLE,1);
+    gpio_direction_output(AIRCELL_RED_ENABLE,1);
+    gpio_direction_output(AIRCELL_LED_ENABLE,1);
     gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
     gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
     gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
     gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
     gpio_direction_input(AIRCELL_HANDSET_DETECT);
     gpio_direction_output(AIRCELL_TOUCH_RESET,0);
+    gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
+    gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
     gpio_direction_input(AIRCELL_PROX_INTERRUPT);
+    gpio_direction_output(AIRCELL_MUTE,0);
 
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
@@ -1179,17 +1201,24 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
 	gpio_export(AIRCELL_HANDSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
+	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
+	gpio_export(AIRCELL_CAMERA_PWDN,0);
+	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
+	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
+	gpio_export(AIRCELL_MUTE,0);
 
 }
+
 static void __init omap3logic_init(void)
 {
 
-#ifdef CLOUDSURFER_P1
-	printk(KERN_INFO "Aircell CloudSurfer P1\n");
-#else
+#ifdef CONFIG_CLOUDSURFER_P1
+	printk("Aircell CloudSurfer P1\n");
+#endif
+#ifdef CONFIG_CLOUDSURFER_P2
 	printk(KERN_INFO "Aircell CloudSurfer P2\n");
 #endif
 
@@ -1225,6 +1254,10 @@ static void __init omap3logic_init(void)
 
 	omap3logic_init_audio_mux();
 
+#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
+	cloud_cam_init();
+#endif
+
 
 	/* Must be here since on exit, omap2_init_devices(called later)
 	 * setups up SPI devices - can't add boardinfo afterwards */
@@ -1239,7 +1272,7 @@ static void __init omap3logic_init(void)
 void omap3logic_init_productid_specifics(void)
 {
 	omap3logic_init_twl_external_mute();
-	omap3logic_led_init();
+	//omap3logic_led_init();
 	brf6300_dev_init();
 }
 
@@ -1249,13 +1282,12 @@ static void __init omap3logic_map_io(void)
 	omap2_map_common_io();
 }
 
-MACHINE_START(OMAP3530_LV_SOM, "OMAP Logic 3530 LV SOM board")
-	/* Maintainer: Peter Barada <peterb@logicpd.com> */
-	.phys_io	= 0x48000000,
+MACHINE_START(OMAP3530_LV_SOM, "AirCell CloudSurfer OAMP3530")
+	.phys_io		= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
-	.map_io		= omap3logic_map_io,
-	.init_irq	= omap3logic_init_irq,
+	.map_io			= omap3logic_map_io,
+	.init_irq		= omap3logic_init_irq,
 	.init_machine	= omap3logic_init,
-	.timer		= &omap_timer,
+	.timer			= &omap_timer,
 MACHINE_END
