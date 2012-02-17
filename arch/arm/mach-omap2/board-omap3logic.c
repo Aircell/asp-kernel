@@ -546,6 +546,9 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
         I2C_BOARD_INFO("pca9626", 0x12),
 		.platform_data = &cloud_pca9626_data,
     },
+	{
+		I2C_BOARD_INFO("bq27200", 0x55),
+    },
 };
 /*
  * D2vices on I2C bus 3 are the touchscreen controller\
