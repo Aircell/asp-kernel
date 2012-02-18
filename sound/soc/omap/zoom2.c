@@ -210,14 +210,6 @@ static int zoom2_twl4030_voice_init(struct snd_soc_codec *codec)
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link zoom2_dai[] = {
 	{
-		.name = "TWL4030 I2S",
-		.stream_name = "TWL4030 Audio",
-		.cpu_dai = &omap_mcbsp_dai[0],
-		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
-		.init = zoom2_twl4030_init,
-		.ops = &zoom2_ops,
-	},
-	{
 		.name = "TWL4030 PCM",
 		.stream_name = "TWL4030 Voice",
 		.cpu_dai = &omap_mcbsp_dai[1],
@@ -225,6 +217,16 @@ static struct snd_soc_dai_link zoom2_dai[] = {
 		.init = zoom2_twl4030_voice_init,
 		.ops = &zoom2_voice_ops,
 	},
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
+	{
+		.name = "TWL4030 I2S",
+		.stream_name = "TWL4030 Audio",
+		.cpu_dai = &omap_mcbsp_dai[0],
+		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
+		.init = zoom2_twl4030_init,
+		.ops = &zoom2_ops,
+	},
+#endif
 };
 
 /* Audio machine driver */
@@ -238,7 +240,9 @@ static struct snd_soc_card snd_soc_zoom2 = {
 /* EXTMUTE callback function */
 void zoom2_set_hs_extmute(int mute)
 {
+#if 0
 	gpio_set_value(ZOOM2_HEADSET_EXTMUTE_GPIO, mute);
+#endif
 }
 
 /* twl4030 setup */
@@ -276,19 +280,21 @@ static int __init zoom2_soc_init(void)
 
 	platform_set_drvdata(zoom2_snd_device, &zoom2_snd_devdata);
 	zoom2_snd_devdata.dev = &zoom2_snd_device->dev;
-	*(unsigned int *)zoom2_dai[0].cpu_dai->private_data = 1; /* McBSP2 */
-	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 2; /* McBSP3 */
-
+	*(unsigned int *)zoom2_dai[0].cpu_dai->private_data = 2; /* McBSP3 */
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
+	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 1; /* McBSP2 */
+#endif
 	ret = platform_device_add(zoom2_snd_device);
 	if (ret)
 		goto err1;
 
+#if 0
 	BUG_ON(gpio_request(ZOOM2_HEADSET_MUX_GPIO, "hs_mux") < 0);
 	gpio_direction_output(ZOOM2_HEADSET_MUX_GPIO, 0);
 
 	BUG_ON(gpio_request(ZOOM2_HEADSET_EXTMUTE_GPIO, "ext_mute") < 0);
 	gpio_direction_output(ZOOM2_HEADSET_EXTMUTE_GPIO, 0);
-
+#endif
 	return 0;
 
 err1:
@@ -301,9 +307,10 @@ module_init(zoom2_soc_init);
 
 static void __exit zoom2_soc_exit(void)
 {
+#if 0
 	gpio_free(ZOOM2_HEADSET_MUX_GPIO);
 	gpio_free(ZOOM2_HEADSET_EXTMUTE_GPIO);
-
+#endif
 	platform_device_unregister(zoom2_snd_device);
 }
 module_exit(zoom2_soc_exit);
