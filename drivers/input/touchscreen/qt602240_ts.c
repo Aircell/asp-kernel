@@ -1390,7 +1390,7 @@ static int __devinit qt602240_probe(struct i2c_client *client,
 		goto err_free_mem;
 	}
 
-	input_dev->name = "AT42QT602240/ATMXT224 Touchscreen";
+	input_dev->name = "AT42QT602240-Touchscreen";
 	input_dev->id.bustype = BUS_I2C;
 	input_dev->dev.parent = &client->dev;
 	input_dev->open = qt602240_input_open;
