@@ -8,6 +8,8 @@
 #include <plat/omap3logic-productid.h>
 #include "mux.h"
 
+#include "aircell_gpio.h"
+
 static int omap3logic_extern_audio_mute = -EINVAL;
 
 static void setup_mute_io_mux(void)
@@ -23,6 +25,24 @@ static void setup_mute_io_mux(void)
 		gpio_direction_output(omap3logic_extern_audio_mute, 1);
 	}
 }
+
+int twl4030_get_headset_int(void) 
+{
+	return AIRCELL_HANDSET_DETECT;
+}
+EXPORT_SYMBOL(twl4030_get_headset_int);
+
+int twl4030_get_headset_enable(void) 
+{
+	return AIRCELL_EARPIECE_ENABLE;
+}
+EXPORT_SYMBOL(twl4030_get_headset_enable);
+
+int twl4030_get_ringer_enable(void) 
+{
+	return AIRCELL_RINGER_ENABLE;
+}
+EXPORT_SYMBOL(twl4030_get_ringer_enable);
 
 // The following function is used by the SOC code to set digital muting
 // on startup/shutdown of the output path (as it comes in pairs, don't

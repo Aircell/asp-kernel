@@ -40,8 +40,15 @@
 #endif
 #include "twl4030.h"
 
+
+/* These fucntions are define in arch/arm/mach-omap2/board-omap3logic-audio.c */
+extern int twl4030_get_headset_int(void);
+extern int twl4030_get_headset_enable(void);
+extern int twl4030_get_ringer_enable(void);
+
 /*
  * twl4030 register cache & default register settings
+ * TARR - These are from ATD
  */
 static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* this register not used		*/
@@ -62,8 +69,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_VOICE_IF		(0xF)	*/
 	0x00, /* REG_ARXR1PGA		(0x10)	*/
 	0x00, /* REG_ARXL1PGA		(0x11)	*/
-	0x3F, /* REG_ARXR2PGA		(0x12)	*/
-	0x3F, /* REG_ARXL2PGA		(0x13)	*/
+	0xFF, /* REG_ARXR2PGA		(0x12)	*/
+	0xFF, /* REG_ARXL2PGA		(0x13)	*/
 	0x00, /* REG_VRXPGA		(0x14)	*/
 	0x00, /* REG_VSTPGA		(0x15)	*/
 	0x00, /* REG_VRX2ARXPGA		(0x16)	*/
@@ -141,6 +148,12 @@ struct twl4030_priv {
 	/* Headset output state handling */
 	unsigned int hsl_enabled;
 	unsigned int hsr_enabled;
+
+	/* Cloudsurfer specifc stuff */
+	unsigned int headset_detect_gpio;
+	unsigned int ringer_amp_enable_gpio;
+	unsigned int earpeice_amp_enable_gpio;
+
 };
 
 /*
@@ -2157,6 +2170,11 @@ static int twl4030_soc_probe(struct platform_device *pdev)
 	snd_soc_add_controls(codec, twl4030_snd_controls,
 				ARRAY_SIZE(twl4030_snd_controls));
 	twl4030_add_widgets(codec);
+
+	/* get the Cloudsurfer gpios */
+	twl4030->headset_detect_gpio = twl4030_get_headset_int();	
+	twl4030->ringer_amp_enable_gpio = twl4030_get_ringer_enable();
+	twl4030->earpeice_amp_enable_gpio = twl4030_get_headset_enable();
 
 	return 0;
 }
