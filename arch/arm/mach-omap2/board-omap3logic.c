@@ -1139,7 +1139,7 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VAENABLE");
 	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");
 	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
-	gpio_direction_output(AIRCELL_5VA_ENABLE,0);
+	gpio_direction_output(AIRCELL_5VA_ENABLE,1);
 	gpio_direction_output(AIRCELL_5VD_ENABLE,0);
 	gpio_direction_output(AIRCELL_CAMERA_PWDN,1);
 	gpio_export(AIRCELL_5VA_ENABLE,0);
@@ -1172,14 +1172,15 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
+    gpio_direction_output(AIRCELL_18V_ENABLE,1);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
     gpio_direction_input(AIRCELL_CRADLE_DETECT);
     gpio_direction_output(AIRCELL_BLUE_ENABLE,1);
-    gpio_direction_output(AIRCELL_GREEN_ENABLE,1);
-    gpio_direction_output(AIRCELL_RED_ENABLE,1);
+    gpio_direction_output(AIRCELL_GREEN_ENABLE,0);
+    gpio_direction_output(AIRCELL_RED_ENABLE,0);
     gpio_direction_output(AIRCELL_LED_ENABLE,1);
     gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
-    gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
+    gpio_direction_output(AIRCELL_RINGER_ENABLE,1);
     gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
     gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
     gpio_direction_input(AIRCELL_HANDSET_DETECT);
