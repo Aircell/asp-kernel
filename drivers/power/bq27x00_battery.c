@@ -261,7 +261,7 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 #endif
 
 		/* Do we have a battery */
-		if(!(value & 0x0004))
+		if(!(value & 0x0008))
 		{
 			val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
 			break;
@@ -320,7 +320,7 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 		}
 
 		/* Do we have a battery */
-		if(!(value & 0x0004))
+		if(!(value & 0x0008))
 		{
 			val->intval = POWER_SUPPLY_HEALTH_UNKNOWN;
 			break;
