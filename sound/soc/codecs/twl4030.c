@@ -1,4 +1,4 @@
-/*
+/* Modified for Aircell Cloudsurfer 2012 by Tarr
  * ALSA SoC TWL4030 codec driver
  *
  * Author:      Steve Sakoman, <steve@sakoman.com>
@@ -40,35 +40,25 @@
 #endif
 #include "twl4030.h"
 
-#define AIRCELL
+
+/* These fucntions are define in arch/arm/mach-omap2/board-omap3logic-audio.c */
+extern int twl4030_get_headset_int(void);
+extern int twl4030_get_headset_enable(void);
+extern int twl4030_get_ringer_enable(void);
 
 /*
  * twl4030 register cache & default register settings
+ * TARR - These are from ATD
  */
 static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* this register not used		*/
-	0x91, /* REG_CODEC_MODE		(0x1)	*/
+	0x00, /* REG_CODEC_MODE		(0x1)TARR Fs = 8 kHz, Option 2 */
 	0xc3, /* REG_OPTION		(0x2)	*/
 	0x00, /* REG_UNKNOWN		(0x3)	*/
-#ifdef AIRCELL
 	0x03, /* REG_MICBIAS_CTL	(0x4): Enable MICBIAS1,2	*/
-#else
-	0x00, /* REG_MICBIAS_CTL	(0x4)	*/
-#endif
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
-#ifdef AIRCELL
 	0x15, /* REG_ANAMICL		(0x5): use the Mic	*/
 	0x15, /* REG_ANAMICR		(0x6): use the Mic	*/
-#else
-	/* Use the AUX inputs, not carkit or microphone */
-	0x14, /* REG_ANAMICL		(0x5)	*/
-	0x14, /* REG_ANAMICR		(0x6)	*/
-#endif
-#else
-	0x34, /* REG_ANAMICL		(0x5)	*/
-	0x14, /* REG_ANAMICR		(0x6)	*/
-#endif
-	0x00, /* REG_AVADC_CTL		(0x7)	*/
+	0x0e, /* REG_AVADC_CTL		(0x7)TARR ADCL_EN, AVADC_CLK_PRIORITY, ADCR_EN*/
 	0x00, /* REG_ADCMICSEL		(0x8)	*/
 	0x00, /* REG_DIGMIXING		(0x9)	*/
 	0x0c, /* REG_ATXL1PGA		(0xA)	*/
@@ -79,8 +69,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_VOICE_IF		(0xF)	*/
 	0x00, /* REG_ARXR1PGA		(0x10)	*/
 	0x00, /* REG_ARXL1PGA		(0x11)	*/
-	0x6c, /* REG_ARXR2PGA		(0x12)	*/
-	0x6c, /* REG_ARXL2PGA		(0x13)	*/
+	0xFF, /* REG_ARXR2PGA		(0x12)	*/
+	0xFF, /* REG_ARXL2PGA		(0x13)	*/
 	0x00, /* REG_VRXPGA		(0x14)	*/
 	0x00, /* REG_VSTPGA		(0x15)	*/
 	0x00, /* REG_VRX2ARXPGA		(0x16)	*/
@@ -88,8 +78,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_ARX2VTXPGA		(0x18)	*/
 	0x00, /* REG_ARXL1_APGA_CTL	(0x19)	*/
 	0x00, /* REG_ARXR1_APGA_CTL	(0x1A)	*/
-	0x4b, /* REG_ARXL2_APGA_CTL	(0x1B)	*/
-	0x4b, /* REG_ARXR2_APGA_CTL	(0x1C)	*/
+	0x32, /* REG_ARXL2_APGA_CTL	(0x1B)	*/
+	0x32, /* REG_ARXR2_APGA_CTL	(0x1C)	*/
 	0x00, /* REG_ATX2ARXPGA		(0x1D)	*/
 	0x00, /* REG_BT_IF		(0x1E)	*/
 	0x00, /* REG_BTPGA		(0x1F)	*/
@@ -123,7 +113,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_DTMF_CTL		(0x3B)	*/
 	0x00, /* REG_DTMF_PGA_CTL2	(0x3C)	*/
 	0x00, /* REG_DTMF_PGA_CTL1	(0x3D)	*/
-	0x00, /* REG_MISC_SET_1		(0x3E)	*/
+	0x02, /* REG_MISC_SET_1		(0x3E)	*/
 	0x00, /* REG_PCMBTMUX		(0x3F)	*/
 	0x00, /* not used		(0x40)	*/
 	0x00, /* not used		(0x41)	*/
@@ -158,6 +148,12 @@ struct twl4030_priv {
 	/* Headset output state handling */
 	unsigned int hsl_enabled;
 	unsigned int hsr_enabled;
+
+	/* Cloudsurfer specifc stuff */
+	unsigned int headset_detect_gpio;
+	unsigned int ringer_amp_enable_gpio;
+	unsigned int earpeice_amp_enable_gpio;
+
 };
 
 /*
@@ -2174,6 +2170,11 @@ static int twl4030_soc_probe(struct platform_device *pdev)
 	snd_soc_add_controls(codec, twl4030_snd_controls,
 				ARRAY_SIZE(twl4030_snd_controls));
 	twl4030_add_widgets(codec);
+
+	/* get the Cloudsurfer gpios */
+	twl4030->headset_detect_gpio = twl4030_get_headset_int();	
+	twl4030->ringer_amp_enable_gpio = twl4030_get_ringer_enable();
+	twl4030->earpeice_amp_enable_gpio = twl4030_get_headset_enable();
 
 	return 0;
 }
