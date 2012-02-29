@@ -107,7 +107,13 @@ config SND_OMAP_SOC_OMAP3LOGIC
 	select SND_OMAP_SOC_MCBSP
 	select SND_SOC_TWL4030
 	help
-	  Say Y if you want to add support for SoC audio on the Beagleboard.
+	  Say Y if you want to add support for SoC voice channel on the Beagleboard.
+
+config SND_OMAP_SOC_ZOOM2_AUDIO
+	tristate "Include Audio Channel for OMAP3 Logic"
+	depends on SND_OMAP_SOC_OMAP3LOGIC
+	help
+	  Say Y if you want to add support for SoC audio
 
 config SND_OMAP_SOC_ZOOM2
 	tristate "SoC Audio support for Zoom2"

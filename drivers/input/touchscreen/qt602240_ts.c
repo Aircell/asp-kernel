@@ -662,36 +662,29 @@ static void report_key(struct qt602240_data *data, struct key *k, u8 status)
 	static struct key *key_pressed = NULL;
 
 	/* Only presses and releases are reported */
-	/* Has the key been pressed already? */	
-	if ( k->status == 0 ) {
-		/* NOPE - is this a key press? */
-		if ( status & QT602240_PRESS ) {
-			/* YUPE */
-			k->status = 1;
-			key_pressed = k;
-			printk("KEY - %c pressed\n",k->character);
-			input_report_key(input_dev,key_pressed->code,1);
-			input_sync(input_dev);	
+	/* Has the key been pressed already? */
+	if ( key_pressed != NULL ) {
+		/* A key is currently down. We may want to release it. */
+		/* One key at a time, please!*/
+		if ( status & QT602240_RELEASE || k != key_pressed ) {
+			printk("KEY - %c released\n",key_pressed->character);
 			input_report_key(input_dev,key_pressed->code,0);
-			input_sync(input_dev);	
-			return;
-		}
-	} else {
-		/* YUPE */
-		/* is this a key release? */
-		if ( status &  QT602240_RELEASE ) {
-			/* YUPE */
-			k->status = 0;
+			//input_report_rel(input_dev,key_pressed->code,1);
+			input_sync(input_dev);
+			key_pressed->status = 0;
 			key_pressed = NULL;
-			//printk("KEY - %c released\n",k->character);
-			//input_report_rel(input_dev,k->code,1);
-			//input_sync(input_dev);	
-			return;
 		}
+	}
+	if ( status & QT602240_PRESS && k->status == 0 ) {
+		/* A (previously up) key has been pressed */
+		k->status = 1;
+		key_pressed = k;
+		printk("KEY - %c pressed\n",k->character);
+		input_report_key(input_dev,key_pressed->code,1);
+		input_sync(input_dev);
 	}
 	return;
 }
-		
 
 static void keypad_input(struct qt602240_data *data, int x, int y, u8 status)
 {
@@ -1399,7 +1392,7 @@ static int __devinit qt602240_probe(struct i2c_client *client,
 		goto err_free_mem;
 	}
 
-	input_dev->name = "AT42QT602240/ATMXT224 Touchscreen";
+	input_dev->name = "AT42QT602240-Touchscreen";
 	input_dev->id.bustype = BUS_I2C;
 	input_dev->dev.parent = &client->dev;
 	input_dev->open = qt602240_input_open;
