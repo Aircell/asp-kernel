@@ -109,7 +109,7 @@ static int bq27x00_battery_temperature(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_TEMP, &temp, 0, di);
 	if (ret) {
-		dev_err(di->dev, "error reading temperature\n");
+		dev_dbg(di->dev, "error reading temperature\n");
 		return ret;
 	}
 
@@ -127,7 +127,7 @@ static int bq27x00_battery_voltage(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_VOLT, &volt, 0, di);
 	if (ret) {
-		dev_err(di->dev, "error reading voltage\n");
+		dev_dbg(di->dev, "error reading voltage\n");
 		return ret;
 	}
 
@@ -149,12 +149,12 @@ static int bq27x00_battery_current(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_AI, &curr, 0, di);
 	if (ret) {
-		dev_err(di->dev, "error reading current\n");
+		dev_dbg(di->dev, "error reading current\n");
 		return 0;
 	}
 	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
 	if (ret < 0) {
-		dev_err(di->dev, "error reading flags\n");
+		dev_dbg(di->dev, "error reading flags\n");
 		return 0;
 	}
 	if ((flags & (1 << 7)) != 0) {
@@ -171,7 +171,7 @@ static int bq27x00_battery_flags(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_FLAGS, &val, 0, di);
 	if (ret < 0) {
-		dev_err(di->dev, "error reading flags\n");
+		dev_dbg(di->dev, "error reading flags\n");
 		return 0;
 	}
 
@@ -185,7 +185,7 @@ int bq27x00_battery_timetofull(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_TTF, &val, 0, di);
 	if (ret < 0) {
-		dev_err(di->dev, "error reading time to full\n");
+		dev_dbg(di->dev, "error reading time to full\n");
 		return 0;
 	}
 
@@ -199,7 +199,7 @@ int bq27x00_battery_timetoempty(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_TTE, &val, 0, di);
 	if (ret < 0) {
-		dev_err(di->dev, "error reading time to empty\n");
+		dev_dbg(di->dev, "error reading time to empty\n");
 		return 0;
 	}
 
@@ -217,7 +217,7 @@ static int bq27x00_battery_rsoc(struct bq27x00_device_info *di)
 
 	ret = bq27x00_read(BQ27x00_REG_RSOC, &rsoc, 0, di);
 	if (ret) {
-		dev_err(di->dev, "error reading relative State-of-Charge\n");
+		dev_dbg(di->dev, "error reading relative State-of-Charge\n");
 		return ret;
 	}
 
