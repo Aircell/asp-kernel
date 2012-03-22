@@ -159,6 +159,8 @@ source "drivers/usb/gadget/Kconfig"
 
 source "drivers/usb/otg/Kconfig"
 
+source "drivers/usb/isp1763/Kconfig"
+
 source "drivers/usb/pehcd/Kconfig"
 
 endif # USB_SUPPORT

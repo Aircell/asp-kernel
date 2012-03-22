@@ -31,8 +31,6 @@
 
 #if defined(CONFIG_VIDEO_OMAP2) || defined(CONFIG_VIDEO_OMAP2_MODULE)
 
-#define AIRCELL
-
 static struct resource cam_resources[] = {
 	{
 		.start		= OMAP24XX_CAMERA_BASE,
@@ -623,14 +621,12 @@ static inline void omap2_mmc_mux(struct omap_mmc_platform_data *mmc_controller,
 			if (mmc_controller->slots[0].wires == 8) {
 				omap_mux_init_signal("sdmmc1_dat4",
 					OMAP_PIN_INPUT_PULLUP);
-#ifndef AIRCELL
 				omap_mux_init_signal("sdmmc1_dat5",
 					OMAP_PIN_INPUT_PULLUP);
 				omap_mux_init_signal("sdmmc1_dat6",
 					OMAP_PIN_INPUT_PULLUP);
 				omap_mux_init_signal("sdmmc1_dat7",
 					OMAP_PIN_INPUT_PULLUP);
-#endif
 			}
 		}
 		if (controller_nr == 1) {
@@ -767,6 +763,8 @@ static struct platform_device omap_hdq_dev = {
 };
 static inline void omap_hdq_init(void)
 {
+	omap_mux_init_signal("hdq_sio.hdq_sio", OMAP_PIN_INPUT);
+
 	(void) platform_device_register(&omap_hdq_dev);
 }
 #else

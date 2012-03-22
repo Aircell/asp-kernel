@@ -525,18 +525,9 @@ static struct omap_mux __initdata omap3_muxmodes[] = {
 	_OMAP3_MUXENTRY(SDMMC1_DAT3, 125,
 		"sdmmc1_dat3", NULL, NULL, NULL,
 		"gpio_125", NULL, NULL, "safe_mode"),
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
-	/* Since gpio_126 is routed to both cam_strobe and sdmmc1_dat4
-	   need to make only one pin route to gpio_126.  We use 
-	   cam_strobe as uP_nIRQc - disable gpio_126 on sdmmc1_dat4 */
-	_OMAP3_MUXENTRY(SDMMC1_DAT4, 0,
-		"sdmmc1_dat4", NULL, "sim_io", NULL,
-		NULL, NULL, NULL, "safe_mode"),
-#else
 	_OMAP3_MUXENTRY(SDMMC1_DAT4, 126,
 		"sdmmc1_dat4", NULL, "sim_io", NULL,
 		"gpio_126", NULL, NULL, "safe_mode"),
-#endif
 	_OMAP3_MUXENTRY(SDMMC1_DAT5, 127,
 		"sdmmc1_dat5", NULL, "sim_clk", NULL,
 		"gpio_127", NULL, NULL, "safe_mode"),
@@ -658,6 +649,62 @@ static struct omap_mux __initdata omap3_muxmodes[] = {
 	_OMAP3_MUXENTRY(UART3_TX_IRTX, 166,
 		"uart3_tx_irtx", NULL, NULL, NULL,
 		"gpio_166", NULL, NULL, "safe_mode"),
+
+	/* Only on 3630, see omap36xx_cbp_subset for the signals */
+	_OMAP3_MUXENTRY(GPMC_A11, 0,
+		"gpmc_a11", NULL, NULL, NULL,
+		NULL, NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(SAD2D_MBUSFLAG, 0,
+		"sad2d_mbusflag", "mad2d_sbusflag", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MREAD, 0,
+		"sad2d_mread", "mad2d_mread", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MWRITE, 0,
+		"sad2d_mwrite", "mad2d_mwrite", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_SBUSFLAG, 0,
+		"sad2d_sbusflag", "mad2d_mbusflag", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_SREAD, 0,
+		"sad2d_sread", "mad2d_mread", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_SWRITE, 0,
+		"sad2d_swrite", "mad2d_mwrite", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD28, 0,
+		"sad2d_mcad28", "mad2d_mc28", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD29, 0,
+		"sad2d_mcad29", "mad2d_mc29", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD32, 0,
+		"sad2d_mcad32", "mad2d_mcad32", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD33, 0,
+		"sad2d_mcad33", "mad2d_mcad33", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD34, 0,
+		"sad2d_mcad34", "mad2d_mcad34", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD35, 0,
+		"sad2d_mcad35", "mad2d_mcad35", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(SAD2D_MCAD36, 0,
+		"sad2d_mcad36", "mad2d_mcad36", NULL, NULL,
+		NULL, NULL, NULL, NULL),
+	_OMAP3_MUXENTRY(36XX_GPIO_126, 126,
+		"reserved-gpio_126", NULL, NULL, NULL,
+		"gpio_126", NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(36XX_GPIO_127, 127,
+		"reserved-gpio_127", NULL, NULL, NULL,
+		"gpio_127", NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(36XX_GPIO_128, 128,
+		"reserved-gpio_128", NULL, NULL, NULL,
+		"gpio_128", NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(36XX_GPIO_129, 129,
+		"reserved-gpio_129", NULL, NULL, NULL,
+		"gpio_129", NULL, NULL, "safe_mode"),
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 
@@ -665,7 +712,7 @@ static struct omap_mux __initdata omap3_muxmodes[] = {
  * Signals different on CBC package compared to the superset
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_OMAP_PACKAGE_CBC)
-struct omap_mux __initdata omap3_cbc_subset[] = {
+static struct omap_mux __initdata omap3_cbc_subset[] = {
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 #else
@@ -683,7 +730,7 @@ struct omap_mux __initdata omap3_cbc_subset[] = {
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_DEBUG_FS)	\
 		&& defined(CONFIG_OMAP_PACKAGE_CBC)
-struct omap_ball __initdata omap3_cbc_ball[] = {
+static struct omap_ball __initdata omap3_cbc_ball[] = {
 	_OMAP3_BALLENTRY(CAM_D0, "ae16", NULL),
 	_OMAP3_BALLENTRY(CAM_D1, "ae15", NULL),
 	_OMAP3_BALLENTRY(CAM_D10, "d25", NULL),
@@ -893,7 +940,7 @@ struct omap_ball __initdata omap3_cbc_ball[] = {
  * Signals different on CUS package compared to superset
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_OMAP_PACKAGE_CUS)
-struct omap_mux __initdata omap3_cus_subset[] = {
+static struct omap_mux __initdata omap3_cus_subset[] = {
 	_OMAP3_MUXENTRY(CAM_D10, 109,
 		"cam_d10", NULL, NULL, NULL,
 		"gpio_109", NULL, NULL, "safe_mode"),
@@ -1039,7 +1086,7 @@ struct omap_mux __initdata omap3_cus_subset[] = {
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_DEBUG_FS)		\
 		&& defined(CONFIG_OMAP_PACKAGE_CUS)
-struct omap_ball __initdata omap3_cus_ball[] = {
+static struct omap_ball __initdata omap3_cus_ball[] = {
 	_OMAP3_BALLENTRY(CAM_D0, "ab18", NULL),
 	_OMAP3_BALLENTRY(CAM_D1, "ac18", NULL),
 	_OMAP3_BALLENTRY(CAM_D10, "f21", NULL),
@@ -1231,7 +1278,7 @@ struct omap_ball __initdata omap3_cus_ball[] = {
  * Signals different on CBB package comapared to superset
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_OMAP_PACKAGE_CBB)
-struct omap_mux __initdata omap3_cbb_subset[] = {
+static struct omap_mux __initdata omap3_cbb_subset[] = {
 	_OMAP3_MUXENTRY(CAM_D10, 109,
 		"cam_d10", NULL, NULL, NULL,
 		"gpio_109", NULL, NULL, "safe_mode"),
@@ -1286,24 +1333,6 @@ struct omap_mux __initdata omap3_cbb_subset[] = {
 	_OMAP3_MUXENTRY(DSS_PCLK, 66,
 		"dss_pclk", NULL, NULL, NULL,
 		"gpio_66", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SYS_BOOT0, 2,
-		"sys_boot0", NULL, NULL, "dss_data18",
-		"gpio_2", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SYS_BOOT1, 3,
-		"sys_boot1", NULL, NULL, "dss_data19",
-		"gpio_3", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SYS_BOOT3, 5,
-		"sys_boot3", NULL, NULL, "dss_data20",
-		"gpio_5", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SYS_BOOT4, 6,
-		"sys_boot4", "sdmmc2_dir_dat2", NULL, "dss_data21",
-		"gpio_6", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SYS_BOOT5, 7,
-		"sys_boot5", "sdmmc2_dir_dat3", NULL, "dss_data22",
-		"gpio_7", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SYS_BOOT6, 8,
-		"sys_boot6", NULL, NULL, "dss_data23",
-		"gpio_8", NULL, NULL, "safe_mode"),
 	_OMAP3_MUXENTRY(ETK_CLK, 12,
 		"etk_clk", "mcbsp5_clkx", "sdmmc3_clk", "hsusb1_stp",
 		"gpio_12", "mm1_rxdp", "hsusb1_tll_stp", NULL),
@@ -1358,6 +1387,18 @@ struct omap_mux __initdata omap3_cbb_subset[] = {
 	_OMAP3_MUXENTRY(ETK_D9, 23,
 		"etk_d9", "sys_secure_indicator", "sdmmc3_dat5", "hsusb1_nxt",
 		"gpio_23", "mm1_rxdm", "hsusb1_tll_nxt", NULL),
+	_OMAP3_MUXENTRY(SDMMC1_DAT4, 126,
+		"sdmmc1_dat4", NULL, "sim_io", NULL,
+		"gpio_126", NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(SDMMC1_DAT5, 127,
+		"sdmmc1_dat5", NULL, "sim_clk", NULL,
+		"gpio_127", NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(SDMMC1_DAT6, 128,
+		"sdmmc1_dat6", NULL, "sim_pwrctrl", NULL,
+		"gpio_128", NULL, NULL, "safe_mode"),
+	_OMAP3_MUXENTRY(SDMMC1_DAT7, 129,
+		"sdmmc1_dat7", NULL, "sim_rst", NULL,
+		"gpio_129", NULL, NULL, "safe_mode"),
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 #else
@@ -1370,7 +1411,7 @@ struct omap_mux __initdata omap3_cbb_subset[] = {
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_DEBUG_FS)		\
 		&& defined(CONFIG_OMAP_PACKAGE_CBB)
-struct omap_ball __initdata omap3_cbb_ball[] = {
+static struct omap_ball __initdata omap3_cbb_ball[] = {
 	_OMAP3_BALLENTRY(CAM_D0, "ag17", NULL),
 	_OMAP3_BALLENTRY(CAM_D1, "ah17", NULL),
 	_OMAP3_BALLENTRY(CAM_D10, "b25", NULL),
@@ -1580,7 +1621,7 @@ struct omap_ball __initdata omap3_cbb_ball[] = {
  * Signals different on 36XX CBP package comapared to 34XX CBC package
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_OMAP_PACKAGE_CBP)
-struct omap_mux __initdata omap36xx_cbp_subset[] = {
+static struct omap_mux __initdata omap36xx_cbp_subset[] = {
 	_OMAP3_MUXENTRY(CAM_D0, 99,
 		"cam_d0", NULL, "csi2_dx2", NULL,
 		"gpio_99", NULL, NULL, "safe_mode"),
@@ -1747,17 +1788,17 @@ struct omap_mux __initdata omap36xx_cbp_subset[] = {
 	_OMAP3_MUXENTRY(SDRC_CKE1, 0,
 		"sdrc_cke1", NULL, NULL, NULL,
 		NULL, NULL, NULL, "safe_mode_out1"),
-	_OMAP3_MUXENTRY(SIM_IO, 126,
-		"sim_io", "sim_io_low_impedance", NULL, NULL,
+	_OMAP3_MUXENTRY(36XX_GPIO_126, 126,
+		"reserved-gpio_126", NULL, NULL, NULL,
 		"gpio_126", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SIM_CLK, 127,
-		"sim_clk", NULL, NULL, NULL,
+	_OMAP3_MUXENTRY(36XX_GPIO_127, 127,
+		"reserved-gpio_127", NULL, NULL, NULL,
 		"gpio_127", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SIM_PWRCTRL, 128,
-		"sim_pwrctrl", NULL, NULL, NULL,
+	_OMAP3_MUXENTRY(36XX_GPIO_128, 128,
+		"reserved-gpio_128", NULL, NULL, NULL,
 		"gpio_128", NULL, NULL, "safe_mode"),
-	_OMAP3_MUXENTRY(SIM_RST, 129,
-		"sim_rst", NULL, NULL, NULL,
+	_OMAP3_MUXENTRY(36XX_GPIO_129, 129,
+		"reserved-gpio_129", NULL, NULL, NULL,
 		"gpio_129", NULL, NULL, "safe_mode"),
 	_OMAP3_MUXENTRY(SYS_BOOT0, 2,
 		"sys_boot0", NULL, NULL, "dss_data18",
@@ -1798,7 +1839,7 @@ struct omap_mux __initdata omap36xx_cbp_subset[] = {
  */
 #if defined(CONFIG_OMAP_MUX) && defined(CONFIG_DEBUG_FS)		\
 		&& defined (CONFIG_OMAP_PACKAGE_CBP)
-struct omap_ball __initdata omap36xx_cbp_ball[] = {
+static struct omap_ball __initdata omap36xx_cbp_ball[] = {
 	_OMAP3_BALLENTRY(CAM_D0, "ag17", NULL),
 	_OMAP3_BALLENTRY(CAM_D1, "ah17", NULL),
 	_OMAP3_BALLENTRY(CAM_D10, "b25", NULL),
@@ -1881,26 +1922,16 @@ struct omap_ball __initdata omap36xx_cbp_ball[] = {
 	_OMAP3_BALLENTRY(GPMC_A8, "m3", "ab18"),
 	_OMAP3_BALLENTRY(GPMC_A9, "l3", "ac19"),
 	_OMAP3_BALLENTRY(GPMC_CLK, "t4", "w2"),
-	_OMAP3_BALLENTRY(GPMC_D0, "k1", "m2"),
-	_OMAP3_BALLENTRY(GPMC_D1, "l1", "m1"),
 	_OMAP3_BALLENTRY(GPMC_D10, "p1", "ab4"),
 	_OMAP3_BALLENTRY(GPMC_D11, "r1", "ac4"),
 	_OMAP3_BALLENTRY(GPMC_D12, "r2", "ab6"),
 	_OMAP3_BALLENTRY(GPMC_D13, "t2", "ac6"),
 	_OMAP3_BALLENTRY(GPMC_D14, "w1", "ab7"),
 	_OMAP3_BALLENTRY(GPMC_D15, "y1", "ac7"),
-	_OMAP3_BALLENTRY(GPMC_D2, "l2", "n2"),
-	_OMAP3_BALLENTRY(GPMC_D3, "p2", "n1"),
-	_OMAP3_BALLENTRY(GPMC_D4, "t1", "r2"),
-	_OMAP3_BALLENTRY(GPMC_D5, "v1", "r1"),
-	_OMAP3_BALLENTRY(GPMC_D6, "v2", "t2"),
-	_OMAP3_BALLENTRY(GPMC_D7, "w2", "t1"),
 	_OMAP3_BALLENTRY(GPMC_D8, "h2", "ab3"),
 	_OMAP3_BALLENTRY(GPMC_D9, "k2", "ac3"),
-	_OMAP3_BALLENTRY(GPMC_NADV_ALE, "f3", "w1"),
 	_OMAP3_BALLENTRY(GPMC_NBE0_CLE, "g3", "ac12"),
 	_OMAP3_BALLENTRY(GPMC_NBE1, "u3", NULL),
-	_OMAP3_BALLENTRY(GPMC_NCS0, "g4", "y2"),
 	_OMAP3_BALLENTRY(GPMC_NCS1, "h3", "y1"),
 	_OMAP3_BALLENTRY(GPMC_NCS2, "v8", NULL),
 	_OMAP3_BALLENTRY(GPMC_NCS3, "u8", NULL),
@@ -1908,10 +1939,7 @@ struct omap_ball __initdata omap36xx_cbp_ball[] = {
 	_OMAP3_BALLENTRY(GPMC_NCS5, "r8", NULL),
 	_OMAP3_BALLENTRY(GPMC_NCS6, "p8", NULL),
 	_OMAP3_BALLENTRY(GPMC_NCS7, "n8", NULL),
-	_OMAP3_BALLENTRY(GPMC_NOE, "g2", "v2"),
-	_OMAP3_BALLENTRY(GPMC_NWE, "f4", "v1"),
 	_OMAP3_BALLENTRY(GPMC_NWP, "h1", "ab10"),
-	_OMAP3_BALLENTRY(GPMC_WAIT0, "m8", "ab12"),
 	_OMAP3_BALLENTRY(GPMC_WAIT1, "l8", "ac10"),
 	_OMAP3_BALLENTRY(GPMC_WAIT2, "k8", NULL),
 	_OMAP3_BALLENTRY(GPMC_WAIT3, "j8", NULL),
@@ -1928,8 +1956,6 @@ struct omap_ball __initdata omap36xx_cbp_ball[] = {
 	_OMAP3_BALLENTRY(HSUSB0_DIR, "r28", NULL),
 	_OMAP3_BALLENTRY(HSUSB0_NXT, "t26", NULL),
 	_OMAP3_BALLENTRY(HSUSB0_STP, "t25", NULL),
-	_OMAP3_BALLENTRY(I2C1_SCL, "k21", NULL),
-	_OMAP3_BALLENTRY(I2C1_SDA, "j21", NULL),
 	_OMAP3_BALLENTRY(I2C2_SCL, "af15", NULL),
 	_OMAP3_BALLENTRY(I2C2_SDA, "ae15", NULL),
 	_OMAP3_BALLENTRY(I2C3_SCL, "af14", NULL),
@@ -1938,11 +1964,6 @@ struct omap_ball __initdata omap36xx_cbp_ball[] = {
 	_OMAP3_BALLENTRY(I2C4_SDA, "ae26", NULL),
 	_OMAP3_BALLENTRY(JTAG_EMU0, "aa11", NULL),
 	_OMAP3_BALLENTRY(JTAG_EMU1, "aa10", NULL),
-	_OMAP3_BALLENTRY(JTAG_RTCK, "aa12", NULL),
-	_OMAP3_BALLENTRY(JTAG_TCK, "aa13", NULL),
-	_OMAP3_BALLENTRY(JTAG_TDI, "aa20", NULL),
-	_OMAP3_BALLENTRY(JTAG_TDO, "aa19", NULL),
-	_OMAP3_BALLENTRY(JTAG_TMS_TMSC, "aa18", NULL),
 	_OMAP3_BALLENTRY(MCBSP1_CLKR, "y21", NULL),
 	_OMAP3_BALLENTRY(MCBSP1_CLKX, "w21", NULL),
 	_OMAP3_BALLENTRY(MCBSP1_DR, "u21", NULL),
@@ -1990,77 +2011,12 @@ struct omap_ball __initdata omap36xx_cbp_ball[] = {
 	_OMAP3_BALLENTRY(SDMMC2_DAT5, "ah3", NULL),
 	_OMAP3_BALLENTRY(SDMMC2_DAT6, "af3", NULL),
 	_OMAP3_BALLENTRY(SDMMC2_DAT7, "ae3", NULL),
-	_OMAP3_BALLENTRY(SDRC_A0, NULL, "n22"),
-	_OMAP3_BALLENTRY(SDRC_A1, NULL, "n23"),
-	_OMAP3_BALLENTRY(SDRC_A10, NULL, "v22"),
-	_OMAP3_BALLENTRY(SDRC_A11, NULL, "v23"),
-	_OMAP3_BALLENTRY(SDRC_A12, NULL, "w22"),
-	_OMAP3_BALLENTRY(SDRC_A13, NULL, "w23"),
-	_OMAP3_BALLENTRY(SDRC_A14, NULL, "y22"),
-	_OMAP3_BALLENTRY(SDRC_A2, NULL, "p22"),
-	_OMAP3_BALLENTRY(SDRC_A3, NULL, "p23"),
-	_OMAP3_BALLENTRY(SDRC_A4, NULL, "r22"),
-	_OMAP3_BALLENTRY(SDRC_A5, NULL, "r23"),
-	_OMAP3_BALLENTRY(SDRC_A6, NULL, "t22"),
-	_OMAP3_BALLENTRY(SDRC_A7, NULL, "t23"),
-	_OMAP3_BALLENTRY(SDRC_A8, NULL, "u22"),
-	_OMAP3_BALLENTRY(SDRC_A9, NULL, "u23"),
-	_OMAP3_BALLENTRY(SDRC_BA0, "h9", "ab21"),
-	_OMAP3_BALLENTRY(SDRC_BA1, "h10", "ac21"),
 	_OMAP3_BALLENTRY(SDRC_CKE0, "h16", "j22"),
 	_OMAP3_BALLENTRY(SDRC_CKE1, "h17", "j23"),
-	_OMAP3_BALLENTRY(SDRC_CLK, "a13", "a11"),
-	_OMAP3_BALLENTRY(SDRC_D0, NULL, "j2"),
-	_OMAP3_BALLENTRY(SDRC_D1, NULL, "j1"),
-	_OMAP3_BALLENTRY(SDRC_D10, "c15", "b14"),
-	_OMAP3_BALLENTRY(SDRC_D11, "b16", "a14"),
-	_OMAP3_BALLENTRY(SDRC_D12, "d17", "b16"),
-	_OMAP3_BALLENTRY(SDRC_D13, "c17", "a16"),
-	_OMAP3_BALLENTRY(SDRC_D14, "b17", "b19"),
-	_OMAP3_BALLENTRY(SDRC_D15, "d18", "a19"),
-	_OMAP3_BALLENTRY(SDRC_D16, NULL, "b3"),
-	_OMAP3_BALLENTRY(SDRC_D17, NULL, "a3"),
-	_OMAP3_BALLENTRY(SDRC_D18, NULL, "b5"),
-	_OMAP3_BALLENTRY(SDRC_D19, NULL, "a5"),
-	_OMAP3_BALLENTRY(SDRC_D2, NULL, "g2"),
-	_OMAP3_BALLENTRY(SDRC_D20, NULL, "b8"),
-	_OMAP3_BALLENTRY(SDRC_D21, NULL, "a8"),
-	_OMAP3_BALLENTRY(SDRC_D22, NULL, "b9"),
-	_OMAP3_BALLENTRY(SDRC_D23, NULL, "a9"),
-	_OMAP3_BALLENTRY(SDRC_D24, NULL, "b21"),
-	_OMAP3_BALLENTRY(SDRC_D25, NULL, "a21"),
-	_OMAP3_BALLENTRY(SDRC_D26, NULL, "d22"),
-	_OMAP3_BALLENTRY(SDRC_D27, NULL, "d23"),
-	_OMAP3_BALLENTRY(SDRC_D28, NULL, "e22"),
-	_OMAP3_BALLENTRY(SDRC_D29, NULL, "e23"),
-	_OMAP3_BALLENTRY(SDRC_D3, NULL, "g1"),
-	_OMAP3_BALLENTRY(SDRC_D30, NULL, "g22"),
-	_OMAP3_BALLENTRY(SDRC_D31, NULL, "g23"),
-	_OMAP3_BALLENTRY(SDRC_D4, NULL, "f2"),
-	_OMAP3_BALLENTRY(SDRC_D5, NULL, "f1"),
-	_OMAP3_BALLENTRY(SDRC_D6, NULL, "d2"),
-	_OMAP3_BALLENTRY(SDRC_D7, NULL, "d1"),
-	_OMAP3_BALLENTRY(SDRC_D8, "c14", "b13"),
-	_OMAP3_BALLENTRY(SDRC_D9, "b14", "a13"),
-	_OMAP3_BALLENTRY(SDRC_DM0, NULL, "c1"),
-	_OMAP3_BALLENTRY(SDRC_DM1, "a16", "a17"),
-	_OMAP3_BALLENTRY(SDRC_DM2, NULL, "a6"),
-	_OMAP3_BALLENTRY(SDRC_DM3, NULL, "a20"),
-	_OMAP3_BALLENTRY(SDRC_DQS0, NULL, "c2"),
-	_OMAP3_BALLENTRY(SDRC_DQS1, "a17", "b17"),
-	_OMAP3_BALLENTRY(SDRC_DQS2, NULL, "b6"),
-	_OMAP3_BALLENTRY(SDRC_DQS3, NULL, "b20"),
-	_OMAP3_BALLENTRY(SDRC_NCAS, "h13", "l22"),
-	_OMAP3_BALLENTRY(SDRC_NCLK, "a14", "b11"),
-	_OMAP3_BALLENTRY(SDRC_NCS0, "h11", "m22"),
-	_OMAP3_BALLENTRY(SDRC_NCS1, "h12", "m23"),
-	_OMAP3_BALLENTRY(SDRC_NRAS, "h14", "l23"),
-	_OMAP3_BALLENTRY(SDRC_NWE, "h15", "k23"),
-	_OMAP3_BALLENTRY(SIM_CLK, "p26", NULL),
-	_OMAP3_BALLENTRY(SIM_IO, "p27", NULL),
-	_OMAP3_BALLENTRY(SIM_PWRCTRL, "r27", NULL),
-	_OMAP3_BALLENTRY(SIM_RST, "r25", NULL),
-	_OMAP3_BALLENTRY(SYS_32K, "ae25", NULL),
+	_OMAP3_BALLENTRY(36XX_GPIO_127, "p26", NULL),
+	_OMAP3_BALLENTRY(36XX_GPIO_126, "p27", NULL),
+	_OMAP3_BALLENTRY(36XX_GPIO_128, "r27", NULL),
+	_OMAP3_BALLENTRY(36XX_GPIO_129, "r25", NULL),
 	_OMAP3_BALLENTRY(SYS_BOOT0, "ah26", NULL),
 	_OMAP3_BALLENTRY(SYS_BOOT1, "ag26", NULL),
 	_OMAP3_BALLENTRY(SYS_BOOT2, "ae14", NULL),
@@ -2098,29 +2054,29 @@ int __init omap3_mux_init(struct omap_board_mux *board_subset, int flags)
 	struct omap_ball *package_balls;
 
 	switch (flags & OMAP_PACKAGE_MASK) {
-	case (OMAP_PACKAGE_CBC):
+	case OMAP_PACKAGE_CBC:
 		package_subset = omap3_cbc_subset;
 		package_balls = omap3_cbc_ball;
 		break;
-	case (OMAP_PACKAGE_CBB):
+	case OMAP_PACKAGE_CBB:
 		package_subset = omap3_cbb_subset;
 		package_balls = omap3_cbb_ball;
 		break;
-	case (OMAP_PACKAGE_CUS):
+	case OMAP_PACKAGE_CUS:
 		package_subset = omap3_cus_subset;
 		package_balls = omap3_cus_ball;
 		break;
-	case (OMAP_PACKAGE_CBP):
+	case OMAP_PACKAGE_CBP:
 		package_subset = omap36xx_cbp_subset;
 		package_balls = omap36xx_cbp_ball;
 		break;
 	default:
-		printk(KERN_ERR "mux: Unknown omap package, mux disabled\n");
+		pr_err("%s Unknown omap package, mux disabled\n", __func__);
 		return -EINVAL;
 	}
 
 	return omap_mux_init(OMAP3_CONTROL_PADCONF_MUX_PBASE,
 			     OMAP3_CONTROL_PADCONF_MUX_SIZE,
-				omap3_muxmodes, package_subset, board_subset,
-				package_balls);
+			     omap3_muxmodes, package_subset, board_subset,
+			     package_balls);
 }

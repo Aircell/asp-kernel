@@ -19,7 +19,7 @@ config MMC_UNSAFE_RESUME
 
 config MMC_EMBEDDED_SDIO
 	boolean "MMC embedded SDIO device support (EXPERIMENTAL)"
-	depends on EXPERIMENTAL
+	depends on MACH_OMAP_ZOOM3 || MACH_OMAP3517EVM || MACH_OMAP3530_LV_SOM || MACH_DM3730_SOM_LV
 	help
 	  If you say Y here, support will be added for embedded SDIO
 	  devices which do not contain the necessary enumeration

@@ -72,258 +72,6 @@ config MACH_OMAP_LDP
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 	select OMAP_PACKAGE_CBB
 
-config MACH_OMAP3530_LV_SOM
-	bool "OMAP3 Logic 3530 LV SOM board"
-	depends on ARCH_OMAP3 && ARCH_OMAP34XX
-	select OMAP_PACKAGE_CBB
-
-config MACH_OMAP3_TORPEDO
-	bool "OMAP3 Logic 35x Torpedo board"
-	depends on ARCH_OMAP3 && ARCH_OMAP34XX
-	select OMAP_PACKAGE_CBB
-
-config CLOUDSURFER
-	bool "Aircell Cloudsurfer Boards"
-	depends on ARCH_OMAP3 && ARCH_OMAP34XX
-	select OMAP_PACKAGE_CBB
-
-if CLOUDSURFER
-
-choice 
-	prompt "Choose cloudsurfer version"
-	default CLOUDSURFER_P1
-
-config CLOUDSURFER_P1
-	bool "P1 Board"
-
-config CLOUDSURFER_P2
-	bool "P2 Board"
-
-endchoice 
-
-if CLOUDSURFER_P2
-config CLOUD_REGULATOR
-	bool "Use power regulator for Camera"
-
-endif
-
-endif
-
-menuconfig OMAP3LOGIC_BACKUP_BATTERY_ENABLE
-	default n
-	bool "OMAP3LOGIC backup battery charge enable"
-	depends on (MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO) && TWL4030_BCI_BATTERY
-
-if OMAP3LOGIC_BACKUP_BATTERY_ENABLE
-
-choice
-	prompt "Battery charge current"
-	default OMAP3LOGIC_BACKUP_BATTERY_C25
-
-config OMAP3LOGIC_BACKUP_BATTERY_C25
-	bool "25uA"
-	help
-		Selects a backup battery charge current of 25uA
-
-config OMAP3LOGIC_BACKUP_BATTERY_C150
-	bool "150uA"
-	help
-		Selects a backup battery charge current of 150uA
-
-config OMAP3LOGIC_BACKUP_BATTERY_C500
-	bool "500uA"
-	help
-		Selects a backup battery charge current of 500uA
-
-config OMAP3LOGIC_BACKUP_BATTERY_C1000
-	bool "1000uA"
-	help
-		Selects a backup battery charge current of 1000uA
-endchoice
-
-choice
-	prompt "Battery charge voltage"
-	default OMAP3LOGIC_BACKUP_BATTERY_V26
-
-config OMAP3LOGIC_BACKUP_BATTERY_V25
-	bool "2.5V"
-	help
-		Selects a backup battery charge voltage of 2.5V
-
-config OMAP3LOGIC_BACKUP_BATTERY_V30
-	bool "3.0V"
-	help
-		Selects a backup battery charge current of 3.0V
-
-config OMAP3LOGIC_BACKUP_BATTERY_V31
-	bool "3.1V"
-	help
-		Selects a backup battery charge current of 3.1V
-
-config OMAP3LOGIC_BACKUP_BATTERY_V32
-	bool "3.2V"
-	help
-		Selects a backup battery charge current of 3.2V
-endchoice
-
-endif # if OMAP3LOGIC_BACKUP_BATTERY_ENABLE
-
-menu "OMAP3LOGIC serial ports"
-	depends on MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO
-
-config OMAP3LOGIC_UART_A
-	bool "OMAP3 Logic UART A"
-	depends on MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO
-	default y
-	help
-	  Mux/Enable UART A (OMAP UART1) on omap3logic platform
-
-config OMAP3LOGIC_UART_B
-	bool "OMAP3 Logic UART B"
-	depends on MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO
-	default n
-	help
-	  Mux/Enable UART B (OMAP UART3) on omap3logic platform
-
-config OMAP3LOGIC_UART_C
-	bool "OMAP3 Logic UART C"
-	depends on MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO
-	default n
-	help
-	  Mux/Enable UART C (OMAP UART2) on omap3logic platform
-endmenu
-
-menu "OMAP3LOGIC MTD layout"
-	depends on (MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO)
-
-config OMAP3LOGIC_NOR_PARTITION_ONE_NAME
-	string "Name of 1st NOR partition"
-	depends on (MACH_OMAP3530_LV_SOM)
-	default "NOR fs #1"
-	help
-         Name of the first NOR partition
-
-config OMAP3LOGIC_NOR_PARTITION_ONE_SIZE
-       int "Size of 1st NOR partition (in 128KB sectors)"
-	depends on (MACH_OMAP3530_LV_SOM)
-       default 0
-       help
-         Size of first NOR partition in 128KB sectors, zero for the rest of the device
-
-config OMAP3LOGIC_NOR_PARTITION_ONE_READONLY
-       bool "Set if the 1st NOR partition should be read only"
-	depends on (MACH_OMAP3530_LV_SOM)
-       default false
-       help
-         Set the readonly status of the first NOR partition
-       
-config OMAP3LOGIC_NOR_PARTITION_TWO_NAME
-       string "Name of 2nd NOR partition"
-       depends on (MACH_OMAP3530_LV_SOM) && (OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0)
-       default "NOR fs #2"
-       help
-         Name of the second NOR partition
-
-config OMAP3LOGIC_NOR_PARTITION_TWO_SIZE
-       int "Size of 2nd NOR partition (in 128KB sectors)"
-       depends on (MACH_OMAP3530_LV_SOM) && (OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0)
-       default 0
-       help
-         Size of 2nd NOR partition in 128KB sectors, zero for the rest of the device
-config OMAP3LOGIC_NOR_PARTITION_TWO_READONLY
-       bool "Set if the 2n NOR partition should be read only"
-       depends on (MACH_OMAP3530_LV_SOM) && (OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0)
-       default false
-       help
-         Set the readonly status of the second NOR partition
-
-config OMAP3LOGIC_NOR_PARTITION_THREE_NAME
-       string "Name of 3rd extra NOR partition"
-       depends on (OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0) && (OMAP3LOGIC_NOR_PARTITION_TWO_SIZE != 0)
-       default "NOR fs #3"
-       help
-         Name of the third NOR partition
-       
-config OMAP3LOGIC_NOR_PARTITION_THREE_SIZE
-       int "Size of 3rd NOR partition (in 128KB sectors)"
-       depends on (OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0) && (OMAP3LOGIC_NOR_PARTITION_TWO_SIZE != 0)
-       default 0
-       help
-         Size of third NOR partition in 128KB sectors, zero for the rest of the device
-
-config OMAP3LOGIC_NOR_PARTITION_THREE_READONLY
-       bool "Set if the 3rd NOR partition should be read only"
-       depends on (OMAP3LOGIC_NOR_PARTITION_ONE_SIZE != 0) && (OMAP3LOGIC_NOR_PARTITION_TWO_SIZE != 0)
-       default false
-       help
-         Set the readonly status of the third NOR partition
-
-
-config OMAP3LOGIC_NAND_PARTITION_ONE_NAME
-       string "Name of 1st extra NAND partition"
-	depends on (MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO)
-       default "NAND fs #1"
-       help
-         Name of first extra NAND partition
-       
-config OMAP3LOGIC_NAND_PARTITION_ONE_SIZE
-       int "Size of 1st extra NAND partition"
-	depends on (MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO)
-       default 0
-       help
-         Size of first extra NAND partition in 128KB blocks, zero for the rest of the device
-       
-config OMAP3LOGIC_NAND_PARTITION_ONE_READONLY
-       bool "Set if the 1st partition should be read only"
-	depends on (MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO)
-       default false
-       help
-         Set the readonly status of the first extra NAND partition
-
-config OMAP3LOGIC_NAND_PARTITION_TWO_NAME
-       string "Name of 2nd extra NAND partition"
-       depends on (OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0)
-       default "NAND fs #2"
-       help
-         Name of second extra NAND partition
-
-config OMAP3LOGIC_NAND_PARTITION_TWO_SIZE
-       int "Name of 2nd extra NAND partition"
-       depends on (OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0)
-       default 0
-       help
-         Size of second extra NAND partition in 128KB blocks, zero for the rest of the device
-
-config OMAP3LOGIC_NAND_PARTITION_TWO_READONLY
-       bool "Set if the 2nd partition should be read only"
-       depends on (OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0)
-       default false
-       help
-         Set the readonly status of the second extra NAND partition
-
-config OMAP3LOGIC_NAND_PARTITION_THREE_NAME
-       string "Name of 3rd extra NAND partition"
-       depends on (OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0) && (OMAP3LOGIC_NAND_PARTITION_TWO_SIZE != 0)
-       default "NAND fs #3"
-       help
-         Name of the third extra NAND partition
-
-config OMAP3LOGIC_NAND_PARTITION_THREE_SIZE
-       int "Size of 3rd extra NAND partition"
-       depends on (OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0) && (OMAP3LOGIC_NAND_PARTITION_TWO_SIZE != 0)
-       default 0
-       help
-         Size of the third extra NAND partition in 128KB blocks, zero for the rest of the device
-
-config OMAP3LOGIC_NAND_PARTITION_THREE_READONLY
-       bool "Set if the 3rd partition should be read only"
-       depends on (OMAP3LOGIC_NAND_PARTITION_ONE_SIZE != 0) && (OMAP3LOGIC_NAND_PARTITION_TWO_SIZE != 0)
-       default false
-       help
-         Set the readonly status of the third extra NAND partition
-
-endmenu
-
 config MACH_OVERO
 	bool "Gumstix Overo board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
@@ -334,10 +82,223 @@ config MACH_OMAP3EVM
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 	select OMAP_PACKAGE_CBB
 
+config CLOUDSURFER
+    bool "Aircell Cloudsurfer Boards with DM3730"
+    depends on ARCH_OMAP3 && ARCH_OMAP34XX
+    select OMAP_PACKAGE_CBP
+
+config MACH_DM3730_SOM_LV
+	bool "DM3730 Logic SOM LV reference board"
+	depends on ARCH_OMAP3
+	default y
+	select OMAP_PACKAGE_CBP
+	help
+	 Support for the LogicPD DM37x SOM LV Development kit
+	 for full description please see the products webpage at
+	 http://www.logicpd.com/products
+
+config MACH_DM3730_TORPEDO
+	bool "DM3730 Logic Torpedo reference board"
+	depends on ARCH_OMAP3
+	default y
+	select OMAP_PACKAGE_CBP
+	help
+	 Support for the LogicPD DM37x SOM LV Development kit
+	 for full description please see the products webpage at
+	 http://www.logicpd.com/products
+
+menu "DM3730 setup"
+     depends on MACH_DM3730_SOM_LV || MACH_DM3730_TORPEDO
+
+menu "DM3730LOGIC SPI Config"
+
+comment "BRF6300 uses McSPI1/CS0"
+	depends on BT_HCIBRF6300_SPI
+
+config OMAP3LOGIC_AT25160AN
+	bool "AT25160AN on Torpeodo is present on the Torpeodo baseboard"
+	depends on MACH_DM3730_TORPEDO
+	default y
+
+config DM3730LOGIC_SPI1_CS0
+	bool "Enable SPIDEV for MFP_D8  (McSPI1.CS0)"
+	depends on SPI_SPIDEV
+
+config DM3730LOGIC_SPI1_CS1
+	bool "Enable SPIDEV for MFP_D13 (McSPI1.CS1)"
+	depends on SPI_SPIDEV && MACH_DM3730_TORPEDO
+
+config DM3730LOGIC_SPI1_CS2
+	bool "Enable SPIDEV for MFP_D12/CONFIG3 (McSPI1.CS2)"
+	depends on SPI_SPIDEV && MACH_DM3730_TORPEDO
+
+config DM3730LOGIC_SPI1_CS3
+	bool "Enable SPIDEV for CONFIG1 (McSPI1.CS3)"
+	depends on SPI_SPIDEV && MACH_DM3730_TORPEDO
+
+config DM3730LOGIC_SPI3_CS0
+	bool "Enable SPIDEV for uP_SPI_CS0/CONFIG21 (McSPI3.CS0)"
+	depends on SPI_SPIDEV
+
+config DM3730LOGIC_SPI3_CS1
+	bool "Enable SPIDEV for uP_SPI_CS1/CONFIG20 (McSPI3.CS1)"
+	depends on SPI_SPIDEV
+endmenu
+
+menu "DM3730 serial ports"
+
+config DM3730LOGIC_UART_A
+	bool "OMAP3 Logic UART A"
+	default y
+	help
+	  Mux/Enable UART A (OMAP UART1) on dm3730 SOM LV/Torpedo platform
+
+config DM3730LOGIC_UART_B
+	bool "OMAP3 Logic UART B"
+	default n
+	help
+	  Mux/Enable UART B (OMAP UART3) on dm3730 SOM LV/Torpedo platform
+
+config DM3730LOGIC_UART_C
+	bool "OMAP3 Logic UART C"
+	default n
+	help
+	  Mux/Enable UART C (OMAP UART2) on dm3730 SOM LV/Torpedo platform
+endmenu
+
+menu "DM3730 SOM LV/Torpedo MTD layout"
+
+config DM3730LOGIC_NOR_PARTITION_ONE_NAME
+	string "Name of 1st NOR partition"
+	depends on (MACH_DM3730_SOM_LV)
+	default "NOR fs #1"
+	help
+         Name of the first NOR partition
+
+config DM3730LOGIC_NOR_PARTITION_ONE_SIZE
+       int "Size of 1st NOR partition (in 128KB sectors)"
+	depends on (MACH_DM3730_SOM_LV)
+       default 0
+       help
+         Size of first NOR partition in 128KB sectors, zero for the rest of the device
+
+config DM3730LOGIC_NOR_PARTITION_ONE_READONLY
+       bool "Set if the 1st NOR partition should be read only"
+	depends on (MACH_DM3730_SOM_LV)
+       default false
+       help
+         Set the readonly status of the first NOR partition
+       
+config DM3730LOGIC_NOR_PARTITION_TWO_NAME
+       string "Name of 2nd NOR partition"
+       depends on (MACH_DM3730_SOM_LV) && (DM3730LOGIC_NOR_PARTITION_ONE_SIZE != 0)
+       default "NOR fs #2"
+       help
+         Name of the second NOR partition
+
+config DM3730LOGIC_NOR_PARTITION_TWO_SIZE
+       int "Size of 2nd NOR partition (in 128KB sectors)"
+       depends on (MACH_DM3730_SOM_LV) && (DM3730LOGIC_NOR_PARTITION_ONE_SIZE != 0)
+       default 0
+       help
+         Size of 2nd NOR partition in 128KB sectors, zero for the rest of the device
+config DM3730LOGIC_NOR_PARTITION_TWO_READONLY
+       bool "Set if the 2n NOR partition should be read only"
+       depends on (MACH_DM3730_SOM_LV) && (DM3730LOGIC_NOR_PARTITION_ONE_SIZE != 0)
+       default false
+       help
+         Set the readonly status of the second NOR partition
+
+config DM3730LOGIC_NOR_PARTITION_THREE_NAME
+       string "Name of 3rd extra NOR partition"
+       depends on (DM3730LOGIC_NOR_PARTITION_ONE_SIZE != 0) && (DM3730LOGIC_NOR_PARTITION_TWO_SIZE != 0)
+       default "NOR fs #3"
+       help
+         Name of the third NOR partition
+       
+config DM3730LOGIC_NOR_PARTITION_THREE_SIZE
+       int "Size of 3rd NOR partition (in 128KB sectors)"
+       depends on (DM3730LOGIC_NOR_PARTITION_ONE_SIZE != 0) && (DM3730LOGIC_NOR_PARTITION_TWO_SIZE != 0)
+       default 0
+       help
+         Size of third NOR partition in 128KB sectors, zero for the rest of the device
+
+config DM3730LOGIC_NOR_PARTITION_THREE_READONLY
+       bool "Set if the 3rd NOR partition should be read only"
+       depends on (DM3730LOGIC_NOR_PARTITION_ONE_SIZE != 0) && (DM3730LOGIC_NOR_PARTITION_TWO_SIZE != 0)
+       default false
+       help
+         Set the readonly status of the third NOR partition
+
+
+config DM3730LOGIC_NAND_PARTITION_ONE_NAME
+       string "Name of 1st extra NAND partition"
+       default "NAND fs #1"
+       help
+         Name of first extra NAND partition
+       
+config DM3730LOGIC_NAND_PARTITION_ONE_SIZE
+       int "Size of 1st extra NAND partition"
+       default 0
+       help
+         Size of first extra NAND partition in 128KB blocks, zero for the rest of the device
+       
+config DM3730LOGIC_NAND_PARTITION_ONE_READONLY
+       bool "Set if the 1st partition should be read only"
+       default false
+       help
+         Set the readonly status of the first extra NAND partition
+
+config DM3730LOGIC_NAND_PARTITION_TWO_NAME
+       string "Name of 2nd extra NAND partition"
+       depends on (DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0)
+       default "NAND fs #2"
+       help
+         Name of second extra NAND partition
+
+config DM3730LOGIC_NAND_PARTITION_TWO_SIZE
+       int "Name of 2nd extra NAND partition"
+       depends on (DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0)
+       default 0
+       help
+         Size of second extra NAND partition in 128KB blocks, zero for the rest of the device
+
+config DM3730LOGIC_NAND_PARTITION_TWO_READONLY
+       bool "Set if the 2nd partition should be read only"
+       depends on (DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0)
+       default false
+       help
+         Set the readonly status of the second extra NAND partition
+
+config DM3730LOGIC_NAND_PARTITION_THREE_NAME
+       string "Name of 3rd extra NAND partition"
+       depends on (DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0) && (DM3730LOGIC_NAND_PARTITION_TWO_SIZE != 0)
+       default "NAND fs #3"
+       help
+         Name of the third extra NAND partition
+
+config DM3730LOGIC_NAND_PARTITION_THREE_SIZE
+       int "Size of 3rd extra NAND partition"
+       depends on (DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0) && (DM3730LOGIC_NAND_PARTITION_TWO_SIZE != 0)
+       default 0
+       help
+         Size of the third extra NAND partition in 128KB blocks, zero for the rest of the device
+
+config DM3730LOGIC_NAND_PARTITION_THREE_READONLY
+       bool "Set if the 3rd partition should be read only"
+       depends on (DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0) && (DM3730LOGIC_NAND_PARTITION_TWO_SIZE != 0)
+       default false
+       help
+         Set the readonly status of the third extra NAND partition
+
+endmenu
+
+endmenu
+
 config PMIC_TWL4030
 	bool "TWL4030/TPS65950 Power Module"
 	default y
-	depends on TWL4030_CORE && MACH_OMAP3EVM || MACH_OMAP3530_LV_SOM || MACH_OMAP3_TORPEDO
+	depends on TWL4030_CORE && (MACH_OMAP3EVM || MACH_DM3730_SOM_LV || MACH_DM3730_TORPEDO)
 	select REGULATOR_TWL4030 if REGULATOR
 	help
 	  Say yes here if you are using the TWL4030/TPS65950 based power module
@@ -403,6 +364,35 @@ config MACH_OMAP_ZOOM3
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 	select OMAP_PACKAGE_CBP
 
+config MACH_CM_T35
+	bool "CompuLab CM-T35 module"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	select OMAP_PACKAGE_CUS
+	select OMAP_MUX
+
+config MACH_IGEP0020
+	bool "IGEP0020"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	select OMAP_PACKAGE_CBB
+
+config MACH_OMAP_3630SDP
+	bool "OMAP3630 SDP board"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	select OMAP_PACKAGE_CBP
+
+config MACH_OMAP_4430SDP
+	bool "OMAP 4430 SDP board"
+	depends on ARCH_OMAP4
+
+config DEBUG_SUSPEND_ENTRY
+	depends on ARCH_OMAP3 && DEBUG_FS
+	bool "Capture OMAP PM registers on suspend entry"
+	help
+	  Say Y here to enable code to captur OMAP PM registers on entry
+	  into suspend, availble in debugfs (pm_debug/regusters/on_suspend)
+          on resume.  Used to determine why power/clock domains don't go
+	  idle.
+
 config WLAN_1273
         bool "TI WLAN 1273 support"
 	select TIWLAN_SDIO
@@ -435,25 +425,14 @@ config TIWLAN_MMC_CONTROLLER
 	connected to. TI WLAN has SDIO host controller that will control
 	this MMC port.
 
-config MACH_CM_T35
-	bool "CompuLab CM-T35 module"
-	depends on ARCH_OMAP3 && ARCH_OMAP34XX
-	select OMAP_PACKAGE_CUS
-	select OMAP_MUX
-
-config MACH_IGEP0020
-	bool "IGEP0020"
-	depends on ARCH_OMAP3 && ARCH_OMAP34XX
-	select OMAP_PACKAGE_CBB
-
-config MACH_OMAP_3630SDP
-	bool "OMAP3630 SDP board"
-	depends on ARCH_OMAP3 && ARCH_OMAP34XX
-	select OMAP_PACKAGE_CBP
-
-config MACH_OMAP_4430SDP
-	bool "OMAP 4430 SDP board"
-	depends on ARCH_OMAP4
+config DEBUG_SUSPEND_ENTRY
+	depends on ARCH_OMAP3 && DEBUG_FS
+	bool "Capture OMAP PM registers on suspend entry"
+	help
+	  Say Y here to enable code to captur OMAP PM registers on entry
+	  into suspend, availble in debugfs (pm_debug/regusters/on_suspend)
+          on resume.  Used to determine why power/clock domains don't go
+	  idle.
 
 config OMAP3_EMU
 	bool "OMAP3 debugging peripherals"

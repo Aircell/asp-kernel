@@ -176,9 +176,13 @@ struct twl4030_bci_device_info {
 static int usb_charger_flag;
 static int LVL_1, LVL_2, LVL_3, LVL_4;
 
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 static int read_bci_val(u8 reg_1);
+#endif
 static inline int clear_n_set(u8 mod_no, u8 clear, u8 set, u8 reg);
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 static int twl4030charger_presence(void);
+#endif
 
 /*
  * Report and clear the charger presence event.
@@ -217,6 +221,7 @@ static inline int twl4030charger_presence_evt(void)
  * USB_PRES (USB charger presence) CHG_PRES (AC charger presence) events
  *
  */
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 static irqreturn_t twl4030charger_interrupt(int irq, void *_di)
 {
 	struct twl4030_bci_device_info *di = _di;
@@ -276,6 +281,7 @@ static int twl4030battery_presence_evt(void)
 	return 0;
 }
 
+
 /*
  * This function handles the twl4030 battery voltage level interrupt.
  */
@@ -324,6 +330,7 @@ static int twl4030battery_level_evt(void)
  * VBATOV (main battery voltage threshold) events
  *
  */
+
 static irqreturn_t twl4030battery_interrupt(int irq, void *_di)
 {
 	u8 isr1a_val, isr2a_val, clear_2a, clear_1a;
@@ -602,6 +609,7 @@ static int twl4030battery_current(void)
 	else /* slope of 0.88 mV/mA */
 		return (curr * CURR_STEP_SIZE) / CURR_PSR_R2;
 }
+#endif /* !DM3730_SOM_LV && !DM3730_TORPEDO */
 
 /*
  * Return the battery backup voltage
@@ -632,6 +640,7 @@ static int twl4030backupbatt_voltage(void)
  *
  * Or < 0 on failure.
  */
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 static int twl4030charger_presence(void)
 {
 	int ret;
@@ -655,6 +664,7 @@ static int twl4030charger_presence(void)
 	return ret;
 
 }
+#endif
 
 /*
  * Returns the main charge FSM status
@@ -675,6 +685,7 @@ static int twl4030bci_status(void)
 	return (int) (status & BCIMSTAT_MASK);
 }
 
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 static int read_bci_val(u8 reg)
 {
 	int ret, temp;
@@ -696,6 +707,7 @@ static int read_bci_val(u8 reg)
 
 	return temp | val;
 }
+#endif
 
 /*
  * Settup the twl4030 BCI module to enable backup
@@ -887,6 +899,7 @@ static void twl4030_bk_bci_battery_work(struct work_struct *work)
 	schedule_delayed_work(&di->twl4030_bk_bci_monitor_work, 500);
 }
 
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 static void twl4030_bci_battery_read_status(struct twl4030_bci_device_info *di)
 {
 	di->temp_C = twl4030battery_temperature();
@@ -914,7 +927,7 @@ static void twl4030_bci_battery_work(struct work_struct *work)
 	twl4030_bci_battery_update_status(di);
 	schedule_delayed_work(&di->twl4030_bci_monitor_work, 100);
 }
-
+#endif
 
 #define to_twl4030_bci_device_info(x) container_of((x), \
 			struct twl4030_bci_device_info, bat);
@@ -1020,7 +1033,9 @@ static int __init twl4030_bci_battery_probe(struct platform_device *pdev)
 {
 	struct twl4030_bci_platform_data *pdata = pdev->dev.platform_data;
 	struct twl4030_bci_device_info *di;
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	int irq;
+#endif
 	int ret;
 
 	therm_tbl = pdata->battery_tmp_tbl;
@@ -1053,10 +1068,12 @@ static int __init twl4030_bci_battery_probe(struct platform_device *pdev)
 	di->bb_current = pdata->bb_current;
 	di->bb_chen    = pdata->bb_chen;
 
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	twl4030charger_ac_en(ENABLE);
 	twl4030charger_usb_en(ENABLE);
 	twl4030battery_hw_level_en(ENABLE);
 	twl4030battery_hw_presence_en(ENABLE);
+#endif
 
 	platform_set_drvdata(pdev, di);
 
@@ -1071,7 +1088,7 @@ static int __init twl4030_bci_battery_probe(struct platform_device *pdev)
 		goto voltage_setup_fail;
 
 
-#ifdef CONFIG_MACH_OMAP3_TORPEDO
+#if defined(CONFIG_MACH_OMAP3_TORPEDO) || defined(CONFIG_MACH_DM3730_TORPEDO)
 	ret = twl4030batt_voltage_setup(di);
 	if (ret)
 		goto voltage_setup_fail;
@@ -1079,6 +1096,7 @@ static int __init twl4030_bci_battery_probe(struct platform_device *pdev)
 
 	/* REVISIT do we need to request both IRQs ?? */
 
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	/* request BCI interruption */
 	irq = platform_get_irq(pdev, 1);
 	ret = request_irq(irq, twl4030battery_interrupt,
@@ -1110,6 +1128,7 @@ static int __init twl4030_bci_battery_probe(struct platform_device *pdev)
 				twl4030_bci_battery_work);
 	schedule_delayed_work(&di->twl4030_bci_monitor_work, 0);
 
+#endif /* DM3730_SOM_LV || DM3730_TORPEDO */
 	ret = power_supply_register(&pdev->dev, &di->bk_bat);
 	if (ret) {
 		dev_dbg(&pdev->dev, "failed to register backup battery\n");
@@ -1123,19 +1142,25 @@ static int __init twl4030_bci_battery_probe(struct platform_device *pdev)
 	return 0;
 
 bk_batt_failed:
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	power_supply_unregister(&di->bat);
+#endif
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 batt_failed:
 	free_irq(irq, di);
 chg_irq_fail:
 	irq = platform_get_irq(pdev, 1);
 	free_irq(irq, NULL);
 batt_irq_fail:
+#endif
 voltage_setup_fail:
 temp_setup_fail:
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	twl4030charger_ac_en(DISABLE);
 	twl4030charger_usb_en(DISABLE);
 	twl4030battery_hw_level_en(DISABLE);
 	twl4030battery_hw_presence_en(DISABLE);
+#endif
 	kfree(di);
 
 	return ret;
@@ -1146,10 +1171,12 @@ static int __exit twl4030_bci_battery_remove(struct platform_device *pdev)
 	struct twl4030_bci_device_info *di = platform_get_drvdata(pdev);
 	int irq;
 
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	twl4030charger_ac_en(DISABLE);
 	twl4030charger_usb_en(DISABLE);
 	twl4030battery_hw_level_en(DISABLE);
 	twl4030battery_hw_presence_en(DISABLE);
+#endif
 
 	irq = platform_get_irq(pdev, 0);
 	free_irq(irq, di);
@@ -1158,7 +1185,9 @@ static int __exit twl4030_bci_battery_remove(struct platform_device *pdev)
 	free_irq(irq, NULL);
 
 	flush_scheduled_work();
+#if !defined(CONFIG_MACH_DM3730_SOM_LV) && !defined(CONFIG_MACH_DM3730_TORPEDO)
 	power_supply_unregister(&di->bat);
+#endif
 	power_supply_unregister(&di->bk_bat);
 	platform_set_drvdata(pdev, NULL);
 	kfree(di);

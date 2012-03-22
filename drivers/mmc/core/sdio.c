@@ -113,7 +113,7 @@ static int sdio_read_cccr(struct mmc_card *card)
 
 	if (data & SDIO_CCCR_CAP_SMB)
 		card->cccr.multi_block = 1;
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_DM3730_SOM_LV)
 	/* If the slot can't handle multi-block commands, then clear
 	 * the multi-block flag */
 	if (card->host->caps & MMC_CAP_NO_MULTI_BLOCK)

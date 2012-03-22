@@ -152,7 +152,7 @@ struct mmc_host {
 #define MMC_CAP_NONREMOVABLE	(1 << 8)	/* Nonremovable e.g. eMMC */
 #define MMC_CAP_WAIT_WHILE_BUSY	(1 << 9)	/* Waits while card is busy */
 
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_DM3730_SOM_LV)
 #define MMC_CAP_NO_MULTI_BLOCK	(1 << 10)	/* slot can't handle multi-block commands */
 #define MMC_CAP_FUNKY_F0_WRITEB_STATUS	(1 << 11)	/* slot's chip returns funky writeb status */
 #endif

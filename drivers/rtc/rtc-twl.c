@@ -144,9 +144,16 @@ const static u8 twl6030_rtc_reg_map[] = {
 #define BIT_RTC_INTERRUPTS_REG_IT_TIMER_M        0x04
 #define BIT_RTC_INTERRUPTS_REG_IT_ALARM_M        0x08
 
+/* RTC_HOUR_REG bitfields */
+#define BIT_RTC_HOUR_REG_PM_NAM                  0x80
 
 /* REG_SECONDS_REG through REG_YEARS_REG is how many registers? */
 #define ALL_TIME_REGS		6
+
+/* Use single-word I2C transactions instead of bulk (something's wonky
+   with mutil-word transactions, the first few words are right but ending
+   words are weird... */
+#define RTC_USE_SINGLE_WORD_RW
 
 /*----------------------------------------------------------------------*/
 static u8  *rtc_reg_map;
@@ -242,6 +249,34 @@ static int twl_rtc_update_irq_enable(struct device *dev, unsigned enabled)
 	return ret;
 }
 
+static inline int twl_rtc_convert_from_12h(int reg)
+{
+	int hour;
+	hour = bcd2bin(reg & ~BIT_RTC_HOUR_REG_PM_NAM);
+
+	if (reg & BIT_RTC_HOUR_REG_PM_NAM) {
+		if(hour != 12)
+			hour += 12;
+	} else {
+		if(hour == 12)
+			hour = 0;
+	}
+
+	return hour;
+}
+
+static inline int twl_rtc_convert_to_12h(int hour)
+{
+	int am;
+
+	am = (hour < 12) ? 0 : BIT_RTC_HOUR_REG_PM_NAM;
+	hour %= 12;
+	if(hour == 0)
+		hour = 12;
+
+	return bin2bcd(hour) | am;
+}
+
 /*
  * Gets current TWL RTC time and date parameters.
  *
@@ -267,37 +302,23 @@ static int twl_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	if (ret < 0)
 		return ret;
 
-	ret = twl_rtc_read_u8(&rtc_data[0], REG_SECONDS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_time error %d\n", ret);
-		return ret;
-	}
+#ifdef RTC_USE_SINGLE_WORD_RW
+	ret = twl_rtc_read_u8(&rtc_data[0], rtc_reg_map[REG_SECONDS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[1], rtc_reg_map[REG_MINUTES_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[2], rtc_reg_map[REG_HOURS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[3], rtc_reg_map[REG_DAYS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[4], rtc_reg_map[REG_MONTHS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[5], rtc_reg_map[REG_YEARS_REG]);
+#else
+	ret = twl_i2c_read(TWL_MODULE_RTC, rtc_data,
+			(rtc_reg_map[REG_SECONDS_REG]), ALL_TIME_REGS);
+#endif
 
-	ret = twl_rtc_read_u8(&rtc_data[1], REG_MINUTES_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[2], REG_HOURS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[3], REG_DAYS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[4], REG_MONTHS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[5], REG_YEARS_REG);
 	if (ret < 0) {
 		dev_err(dev, "rtc_read_time error %d\n", ret);
 		return ret;
@@ -305,7 +326,11 @@ static int twl_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	tm->tm_sec = bcd2bin(rtc_data[0]);
 	tm->tm_min = bcd2bin(rtc_data[1]);
-	tm->tm_hour = bcd2bin(rtc_data[2]);
+	if (save_control & BIT_RTC_CTRL_REG_MODE_12_24_M) {
+		tm->tm_hour = twl_rtc_convert_from_12h(rtc_data[2]);
+	} else {
+		tm->tm_hour = bcd2bin(rtc_data[2]);
+	}
 	tm->tm_mday = bcd2bin(rtc_data[3]);
 	tm->tm_mon = bcd2bin(rtc_data[4]) - 1;
 	tm->tm_year = bcd2bin(rtc_data[5]) + 100;
@@ -321,7 +346,6 @@ static int twl_rtc_set_time(struct device *dev, struct rtc_time *tm)
 
 	rtc_data[1] = bin2bcd(tm->tm_sec);
 	rtc_data[2] = bin2bcd(tm->tm_min);
-	rtc_data[3] = bin2bcd(tm->tm_hour);
 	rtc_data[4] = bin2bcd(tm->tm_mday);
 	rtc_data[5] = bin2bcd(tm->tm_mon + 1);
 	rtc_data[6] = bin2bcd(tm->tm_year - 100);
@@ -336,40 +360,33 @@ static int twl_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	if (ret < 0)
 		goto out;
 
-	ret = twl_rtc_write_u8(rtc_data[1], REG_SECONDS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_time error %d\n", ret);
-		return ret;
-	}
+	/* If the RTC is in 12-hour mode, then adjust for it */
+	if (save_control & BIT_RTC_CTRL_REG_MODE_12_24_M)
+		rtc_data[3] = twl_rtc_convert_to_12h(tm->tm_hour);
+	else
+		rtc_data[3] = bin2bcd(tm->tm_hour);
 
-	ret = twl_rtc_write_u8(rtc_data[2], REG_MINUTES_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_time error %d\n", ret);
-		return ret;
-	}
+	/* update all the time registers in one shot */
+#ifdef RTC_USE_SINGLE_WORD_RW
+	ret = twl_rtc_write_u8(rtc_data[1], rtc_reg_map[REG_SECONDS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(rtc_data[2], rtc_reg_map[REG_MINUTES_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(rtc_data[3], rtc_reg_map[REG_HOURS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(rtc_data[4], rtc_reg_map[REG_DAYS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(rtc_data[5], rtc_reg_map[REG_MONTHS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(rtc_data[6], rtc_reg_map[REG_YEARS_REG]);
+#else
+	ret = twl_i2c_write(TWL_MODULE_RTC, rtc_data,
+		(rtc_reg_map[REG_SECONDS_REG]), ALL_TIME_REGS);
+#endif
 
-	ret = twl_rtc_write_u8(rtc_data[3], REG_HOURS_REG);
 	if (ret < 0) {
 		dev_err(dev, "rtc_set_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_write_u8(rtc_data[4], REG_DAYS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_write_u8(rtc_data[5], REG_MONTHS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_time error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_write_u8(rtc_data[6], REG_YEARS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_time error %d\n", ret);
-		return ret;
+		goto out;
 	}
 
 	/* Start back RTC */
@@ -387,38 +404,29 @@ static int twl_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alm)
 {
 	unsigned char rtc_data[ALL_TIME_REGS + 1];
 	int ret;
+	u8 save_control;
 
-	ret = twl_rtc_read_u8(&rtc_data[0], REG_SECONDS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_alarm error %d\n", ret);
+	ret = twl_rtc_read_u8(&save_control, REG_RTC_CTRL_REG);
+	if (ret < 0)
 		return ret;
-	}
 
-	ret = twl_rtc_read_u8(&rtc_data[1], REG_MINUTES_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_alarm error %d\n", ret);
-		return ret;
-	}
+#ifdef RTC_USE_SINGLE_WORD_RW
+	ret = twl_rtc_read_u8(&rtc_data[0], rtc_reg_map[REG_ALARM_SECONDS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[1], rtc_reg_map[REG_ALARM_MINUTES_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[2], rtc_reg_map[REG_ALARM_HOURS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[3], rtc_reg_map[REG_ALARM_DAYS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[4], rtc_reg_map[REG_ALARM_MONTHS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_read_u8(&rtc_data[5], rtc_reg_map[REG_ALARM_YEARS_REG]);
+#else
+	ret = twl_i2c_read(TWL_MODULE_RTC, rtc_data,
+			(rtc_reg_map[REG_ALARM_SECONDS_REG]), ALL_TIME_REGS);
+#endif
 
-	ret = twl_rtc_read_u8(&rtc_data[2], REG_HOURS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_alarm error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[3], REG_DAYS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_alarm error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[4], REG_MONTHS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_read_alarm error %d\n", ret);
-		return ret;
-	}
-
-	ret = twl_rtc_read_u8(&rtc_data[5], REG_YEARS_REG);
 	if (ret < 0) {
 		dev_err(dev, "rtc_read_alarm error %d\n", ret);
 		return ret;
@@ -427,7 +435,12 @@ static int twl_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	/* some of these fields may be wildcard/"match all" */
 	alm->time.tm_sec = bcd2bin(rtc_data[0]);
 	alm->time.tm_min = bcd2bin(rtc_data[1]);
-	alm->time.tm_hour = bcd2bin(rtc_data[2]);
+
+	if (save_control & BIT_RTC_CTRL_REG_MODE_12_24_M)
+		alm->time.tm_hour = twl_rtc_convert_from_12h(rtc_data[2]);
+	else
+		alm->time.tm_hour = bcd2bin(rtc_data[2]);
+
 	alm->time.tm_mday = bcd2bin(rtc_data[3]);
 	alm->time.tm_mon = bcd2bin(rtc_data[4]) - 1;
 	alm->time.tm_year = bcd2bin(rtc_data[5]) + 100;
@@ -441,8 +454,13 @@ static int twl_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alm)
 
 static int twl_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 {
+	unsigned char save_control;
 	unsigned char alarm_data[ALL_TIME_REGS + 1];
 	int ret;
+
+	ret = twl_rtc_read_u8(&save_control, REG_RTC_CTRL_REG);
+	if (ret < 0)
+		goto out;
 
 	ret = twl_rtc_alarm_irq_enable(dev, 0);
 	if (ret)
@@ -450,47 +468,39 @@ static int twl_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 
 	alarm_data[1] = bin2bcd(alm->time.tm_sec);
 	alarm_data[2] = bin2bcd(alm->time.tm_min);
-	alarm_data[3] = bin2bcd(alm->time.tm_hour);
+
+	/* If the RTC is in 12-hour mode, then adjust for it */
+	if (save_control & BIT_RTC_CTRL_REG_MODE_12_24_M)
+		alarm_data[3] = twl_rtc_convert_to_12h(alm->time.tm_hour);
+	else
+		alarm_data[3] = bin2bcd(alm->time.tm_hour);
+
 	alarm_data[4] = bin2bcd(alm->time.tm_mday);
 	alarm_data[5] = bin2bcd(alm->time.tm_mon + 1);
 	alarm_data[6] = bin2bcd(alm->time.tm_year - 100);
 
-	ret = twl_rtc_write_u8(alarm_data[1], REG_SECONDS_REG);
-	if (ret < 0) {
+	/* update all the alarm registers in one shot */
+#ifdef RTC_USE_SINGLE_WORD_RW
+	ret = twl_rtc_write_u8(alarm_data[1], rtc_reg_map[REG_ALARM_SECONDS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(alarm_data[2], rtc_reg_map[REG_ALARM_MINUTES_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(alarm_data[3], rtc_reg_map[REG_ALARM_HOURS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(alarm_data[4], rtc_reg_map[REG_ALARM_DAYS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(alarm_data[5], rtc_reg_map[REG_ALARM_MONTHS_REG]);
+	if (ret >= 0)
+		ret = twl_rtc_write_u8(alarm_data[6], rtc_reg_map[REG_ALARM_YEARS_REG]);
+#else
+	ret = twl_i2c_write(TWL_MODULE_RTC, alarm_data,
+		(rtc_reg_map[REG_ALARM_SECONDS_REG]), ALL_TIME_REGS);
+#endif
+
+	if (ret) {
 		dev_err(dev, "rtc_set_alarm error %d\n", ret);
 		goto out;
 	}
-
-	ret = twl_rtc_write_u8(alarm_data[2], REG_MINUTES_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_alarm error %d\n", ret);
-		goto out;
-	}
-
-	ret = twl_rtc_write_u8(alarm_data[3], REG_HOURS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_alarm error %d\n", ret);
-		goto out;
-	}
-
-	ret = twl_rtc_write_u8(alarm_data[4], REG_DAYS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_alarm error %d\n", ret);
-		goto out;
-	}
-
-	ret = twl_rtc_write_u8(alarm_data[5], REG_MONTHS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_alarm error %d\n", ret);
-		goto out;
-	}
-
-	ret = twl_rtc_write_u8(alarm_data[6], REG_YEARS_REG);
-	if (ret < 0) {
-		dev_err(dev, "rtc_set_alarm error %d\n", ret);
-		goto out;
-	}
-
 
 	if (alm->enabled)
 		ret = twl_rtc_alarm_irq_enable(dev, 1);

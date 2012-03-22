@@ -476,6 +476,13 @@ config VIRTIO_BLK
 	  This is the virtual block driver for virtio.  It can be used with
           lguest or QEMU based VMMs (like KVM or Xen).  Say Y or M.
 
+config DM3730LOGIC_COMPACT_FLASH
+	tristate "dm3730logic SOM LV CF support"
+	depends on MACH_DM3730_SOM_LV
+	help
+	  Include support for the DM3730 SOM LV CompactFlash
+	  interface for memory cards only.
+
 config BLK_DEV_HD
 	bool "Very old hard disk (MFM/RLL/IDE) driver"
 	depends on HAVE_IDE

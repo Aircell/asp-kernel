@@ -85,6 +85,11 @@ extern void nand_wait_ready(struct mtd_info *mtd);
 #define NAND_CMD_RNDOUTSTART	0xE0
 #define NAND_CMD_CACHEDPROG	0x15
 
+/* Extended commands for ONFI devices */
+#define NAND_CMD_READ_PARAM	0xec
+#define NAND_CMD_GET_FEATURES	0xee
+#define NAND_CMD_SET_FEATURES	0xef
+
 /* Extended commands for AG-AND device */
 /*
  * Note: the command for NAND_CMD_DEPLETE1 is really 0x00 but

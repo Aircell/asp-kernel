@@ -69,6 +69,7 @@
 
 #define OMAP2_L4_IO_OFFSET	0xb2000000
 #define OMAP2_L4_IO_ADDRESS(pa)	IOMEM((pa) + OMAP2_L4_IO_OFFSET) /* L4 */
+#define OMAP2_L4_IO_PA(va)	(((void *)(va)) - OMAP2_L4_IO_OFFSET) /* L4 */
 
 #define OMAP4_L3_IO_OFFSET	0xb4000000
 #define OMAP4_L3_IO_ADDRESS(pa)	IOMEM((pa) + OMAP4_L3_IO_OFFSET) /* L3 */

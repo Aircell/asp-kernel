@@ -324,19 +324,32 @@ static inline void mtd_erase_callback(struct erase_info *instr)
 /*
  * Debugging macro and defines
  */
-#define MTD_DEBUG_LEVEL0	(0)	/* Quiet   */
-#define MTD_DEBUG_LEVEL1	(1)	/* Audible */
-#define MTD_DEBUG_LEVEL2	(2)	/* Loud    */
-#define MTD_DEBUG_LEVEL3	(3)	/* Noisy   */
+#define MTD_DEBUG_LEVEL0	(1)	/* Quiet   */
+#define MTD_DEBUG_LEVEL1	(2)	/* Audible */
+#define MTD_DEBUG_LEVEL2	(3)	/* Loud    */
+#define MTD_DEBUG_LEVEL3	(4)	/* Noisy   */
+
+#define MTD_DEBUG_FLAG		0x80000000
+#define MTD_DEBUG_FLAG0		(MTD_DEBUG_FLAG | 0x1)	/* Quiet   */
+#define MTD_DEBUG_FLAG1		(MTD_DEBUG_FLAG | 0x2)	/* Audible */
+#define MTD_DEBUG_FLAG2		(MTD_DEBUG_FLAG | 0x4)	/* Loud    */
+#define MTD_DEBUG_FLAG3		(MTD_DEBUG_FLAG | 0x8)	/* Noisy   */
+#define MTD_DEBUG_FLAG4		(MTD_DEBUG_FLAG | 0x10)	/* Noisy   */
+#define MTD_DEBUG_FLAG5		(MTD_DEBUG_FLAG | 0x20)	/* Noisy   */
+#define MTD_DEBUG_FLAG6		(MTD_DEBUG_FLAG | 0x40)	/* Noisy   */
 
 #ifdef CONFIG_MTD_DEBUG
+#define MTD_DEBUG_FLAG_SET(flag) (((flag) & MTD_DEBUG_FLAG) && ((mtd_debug_verbose < 0) && (mtd_debug_verbose & (flag) & ~MTD_DEBUG_FLAG)))
+#define MTD_DEBUG_LEVEL_SET(level) ((((level) & MTD_DEBUG_FLAG) == 0) && ((mtd_debug_verbose >= 0) && ((level) <= mtd_debug_verbose)))
 extern int mtd_debug_verbose;
-#define DEBUG(n, args...)				\
-	do {						\
-		if (n <= mtd_debug_verbose)	\
-			printk(KERN_INFO args);		\
-	} while(0)
+#define DEBUG(n, args...)						\
+	do {								\
+		if (MTD_DEBUG_FLAG_SET(n) || MTD_DEBUG_LEVEL_SET(n))	\
+			printk(KERN_INFO args);				\
+ 	} while(0)
 #else /* CONFIG_MTD_DEBUG */
+#define MTD_DEBUG_LEVEL_SET(level) 0
+#define MTD_DEBUG_FLAG_SET(level) 0
 #define DEBUG(n, args...)				\
 	do {						\
 		if (0)					\

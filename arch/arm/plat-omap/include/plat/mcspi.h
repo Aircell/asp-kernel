@@ -1,7 +1,6 @@
 #ifndef _OMAP2_MCSPI_H
 #define _OMAP2_MCSPI_H
 
-
 #define OMAP2_MCSPI_MASTER		0
 #define OMAP2_MCSPI_SLAVE		1
 

@@ -770,6 +770,13 @@ config SENSORS_SMSC47B397
 	  This driver can also be built as a module.  If so, the module
 	  will be called smsc47b397.
 
+config SENSORS_OMAP34XX
+         tristate "TI OMAP34xx internal temperature sensor"
+         depends on ARCH_OMAP3 && HIGH_RES_TIMERS
+         help
+           If you say yes here you get support for Texas Instruments OMAP34XX
+           internal core temperature sensor.
+
 config SENSORS_ADS7828
 	tristate "Texas Instruments ADS7828"
 	depends on I2C

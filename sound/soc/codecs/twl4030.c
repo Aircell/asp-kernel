@@ -35,9 +35,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <asm/mach-types.h>
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
-#include <plat/board-omap3logic.h>
-#endif
+#include <plat/board-dm3730logic-audio.h>
 #include "twl4030.h"
 
 
@@ -166,10 +164,8 @@ static inline unsigned int twl4030_read_reg_cache(struct snd_soc_codec *codec,
 
 	if (reg >= TWL4030_CACHEREGNUM)
 		return -EIO;
-	if (machine_is_omap3530_lv_som() || machine_is_omap3_torpedo()) {
-		if (reg == TWL4030_REG_EXT_MUTE)
-			return twl4030_get_ext_mute();
-	}
+	if (reg == TWL4030_REG_EXT_MUTE)
+		return twl4030_get_ext_mute();
 	return cache[reg];
 }
 
@@ -183,11 +179,9 @@ static inline void twl4030_write_reg_cache(struct snd_soc_codec *codec,
 
 	if (reg >= TWL4030_CACHEREGNUM)
 		return;
-	if (machine_is_omap3530_lv_som() || machine_is_omap3_torpedo()) {
-		if (reg == TWL4030_REG_EXT_MUTE) {
-			twl4030_set_ext_mute(value);
-			return;
-		}
+	if (reg == TWL4030_REG_EXT_MUTE) {
+		twl4030_set_ext_mute(value);
+		return;
 	}
 	cache[reg] = value;
 }
@@ -1112,11 +1106,9 @@ static const struct snd_kcontrol_new twl4030_snd_controls[] = {
 	SOC_DOUBLE_TLV_TWL4030("Headset Playback Volume",
 		TWL4030_REG_HS_GAIN_SET, 0, 2, 3, 0, output_tvl),
 
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
 	SOC_SINGLE("Master Playback Switch",
-		 TWL4030_REG_EXT_MUTE, 
-		0, 1, 0),
-#endif
+		 TWL4030_REG_EXT_MUTE, 0, 1, 0),
+
 	SOC_DOUBLE_R_TLV_TWL4030("Carkit Playback Volume",
 		TWL4030_REG_PRECKL_CTL, TWL4030_REG_PRECKR_CTL,
 		4, 3, 0, output_tvl),
@@ -2192,16 +2184,12 @@ static int twl4030_soc_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
 static int twl4030_mute(struct snd_soc_dai *dai, int mute)
 {
 	twl4030_set_path_mute(!mute);
 
 	return 0;
 }
-#endif
 
 static int __devinit twl4030_codec_probe(struct platform_device *pdev)
 {
@@ -2227,11 +2215,10 @@ static int __devinit twl4030_codec_probe(struct platform_device *pdev)
 	twl4030_dai[0].dev = &pdev->dev;
 	twl4030_dai[1].dev = &pdev->dev;
 
-#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_OMAP3_TORPEDO)
 	/* If the Logic board is new enough then it has mute FETs,
 	 * the mute entry handles either case (i.e. NOP if no FETs) */
 	twl4030_dai_ops.digital_mute = twl4030_mute;
-#endif
+
 	mutex_init(&codec->mutex);
 	INIT_LIST_HEAD(&codec->dapm_widgets);
 	INIT_LIST_HEAD(&codec->dapm_paths);

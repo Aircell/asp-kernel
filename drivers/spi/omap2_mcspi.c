@@ -456,7 +456,6 @@ static void omap2_mcspi_restore_ctx(struct omap2_mcspi *mcspi)
 {
 	struct spi_master *spi_cntrl;
 	struct omap2_mcspi_cs *cs;
-
 	spi_cntrl = mcspi->master;
 
 	/* McSPI: context restore */
@@ -473,7 +472,6 @@ static void omap2_mcspi_restore_ctx(struct omap2_mcspi *mcspi)
 			node)
 		__raw_writel(cs->chconf0, cs->base + OMAP2_MCSPI_CHCONF0);
 }
-
 static void omap2_mcspi_disable_clocks(struct omap2_mcspi *mcspi)
 {
 	clk_disable(mcspi->ick);
@@ -854,7 +852,6 @@ static int omap2_mcspi_setup_transfer(struct spi_device *spi,
 	/* standard 4-wire master mode:  SCK, MOSI/out, MISO/in, nCS
 	 * REVISIT: this controller could support SPI_3WIRE mode.
 	 */
-
 	if (mcspi->mcspi_mode == OMAP2_MCSPI_MASTER) {
 		l &= ~(OMAP2_MCSPI_CHCONF_IS|OMAP2_MCSPI_CHCONF_DPE1);
 		l |= OMAP2_MCSPI_CHCONF_DPE0;
@@ -1096,7 +1093,7 @@ static void omap2_mcspi_work(struct work_struct *work)
 				omap2_mcspi_force_cs(spi, 1);
 				cs_active = 1;
 			}
-
+			
 			chconf = mcspi_cached_chconf0(spi);
 			chconf &= ~OMAP2_MCSPI_CHCONF_TRM_MASK;
 			if (t->tx_buf == NULL)

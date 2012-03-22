@@ -104,7 +104,7 @@ struct omap_mmc_platform_data {
 		/* switch pin can be for card detect (default) or card cover */
 		unsigned cover:1;
 
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_DM3730_SOM_LV)
 		/* set if slot can't handle multi-block comamnds */
 		unsigned no_multi_block:1;
 		/* set if slot has funky f0 write byte status */

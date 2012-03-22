@@ -110,6 +110,16 @@ config MTD_NAND_OMAP_PREFETCH_DMA
 	 or in DMA interrupt mode.
 	 Say y for DMA mode or MPU mode will be used
 
+config MTD_NAND_OMAP_HWECC
+	depends on MTD_NAND_OMAP2
+	bool "Use HW ECC layout"
+	default n
+	help
+	 If selected use ECC method compatible with the ECC representation
+	 used by the OMAP BootROM (1-bit hamming, 3x512 bytes, ECC bytes 2-13)
+	 on NAND chips that do not require use of internal-NAND ECC engine
+	 and associated layout
+
 config MTD_NAND_TS7250
 	tristate "NAND Flash device on TS-7250 board"
 	depends on MACH_TS72XX

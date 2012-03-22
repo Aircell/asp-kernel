@@ -256,8 +256,8 @@ do \
 #endif
 
 /*Debug For HAL Initialisation and Mem Initialisation */ 
-//#undef HAL_DEBUG_LEVEL3
-#define HAL_DEBUG_LEVEL3
+#undef HAL_DEBUG_LEVEL3
+//#define HAL_DEBUG_LEVEL3
 #ifdef HAL_DEBUG_LEVEL3
 #define hal_init(format, args... ) printk(format, ##args)
 #else

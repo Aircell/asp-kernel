@@ -19,14 +19,14 @@ struct twl4030_hsmmc_info {
 	char	*name;		/* or NULL for default */
 	struct device *dev;	/* returned: pointer to mmc adapter */
 	int	ocr_mask;	/* temporary HACK */
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_DM3730_SOM_LV)
 	unsigned no_multi_block:1;		/* no multi-block reads */
 	unsigned funky_f0_writeb_status:1;	/* funcy f0 write byte status */
 #if 0
 	int (*set_power) (struct device *dev, int slot, int power_on, int vdd);
 	int (*card_detect) (int irq);
 #endif
-#endif 
+#endif
 };
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO

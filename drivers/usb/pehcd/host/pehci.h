@@ -67,6 +67,9 @@
 /* NOTE:  urb->transfer_flags expected to not use this bit !!! */
 #define EHCI_STATE_UNLINK       0x8000          /* urb being unlinked */
 
+/* HW Mode bits */
+#define HW_MODE_G_INT           (1 << 0)
+
 /*  Bits definations for qha*/
 /* Bits PID*/
 #define SETUP_PID               (2)

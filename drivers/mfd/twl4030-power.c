@@ -67,6 +67,14 @@ static u8 twl4030_start_script_address = 0x2b;
 #define R_KEY_1			0xC0
 #define R_KEY_2			0x0C
 
+#define R_VDD1_OSC		0x5C
+#define R_VDD2_OSC		0x6A
+#define R_VIO_OSC		0x52
+#define EXT_FS_CLK_EN		BIT(6)
+
+#define R_WDT_CFG		0x03
+#define WDT_WRK_TIMEOUT		0x03
+
 /* resource configuration registers
    <RESOURCE>_DEV_GRP   at address 'n+0'
    <RESOURCE>_TYPE      at address 'n+1'
@@ -124,7 +132,7 @@ static u8 res_config_addrs[] = {
 	[RES_HFCLKOUT]	= 0x8b,
 	[RES_32KCLKOUT]	= 0x8e,
 	[RES_RESET]	= 0x91,
-	[RES_Main_Ref]	= 0x94,
+	[RES_MAIN_REF]	= 0x94,
 };
 
 static int __init twl4030_write_script_byte(u8 address, u8 byte)
@@ -164,7 +172,7 @@ out:
 static int __init twl4030_write_script(u8 address, struct twl4030_ins *script,
 				       int len)
 {
-	int err;
+	int err = 0;
 
 	for (; len; len--, address++, script++) {
 		if (len == 1) {
@@ -331,9 +339,9 @@ static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 {
 	int rconfig_addr;
 	int err;
-	u8 type;
-	u8 grp;
-	u8 remap;
+	u8 type, type_value;
+	u8 grp, grp_value;
+	u8 remap, remap_value;
 
 	if (rconfig->resource > TOTAL_RESOURCES) {
 		pr_err("TWL4030 Resource %d does not exist\n",
@@ -344,76 +352,94 @@ static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 	rconfig_addr = res_config_addrs[rconfig->resource];
 
 	/* Set resource group */
-	err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &grp,
-			      rconfig_addr + DEV_GRP_OFFSET);
-	if (err) {
-		pr_err("TWL4030 Resource %d group could not be read\n",
-			rconfig->resource);
-		return err;
-	}
-
 	if (rconfig->devgroup != TWL4030_RESCONFIG_UNDEF) {
-		grp &= ~DEV_GRP_MASK;
-		grp |= rconfig->devgroup << DEV_GRP_SHIFT;
-		err = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				       grp, rconfig_addr + DEV_GRP_OFFSET);
-		if (err < 0) {
-			pr_err("TWL4030 failed to program devgroup\n");
+		err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &grp,
+			      rconfig_addr + DEV_GRP_OFFSET);
+		if (err) {
+			pr_err("TWL4030 Resource %d group could not be read\n",
+				rconfig->resource);
 			return err;
+		}
+
+		grp_value = (grp & DEV_GRP_MASK) >> DEV_GRP_SHIFT;
+
+		if (rconfig->devgroup != grp_value) {
+			grp &= ~DEV_GRP_MASK;
+			grp |= rconfig->devgroup << DEV_GRP_SHIFT;
+			err = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				       grp, rconfig_addr + DEV_GRP_OFFSET);
+			if (err < 0) {
+				pr_err("TWL4030 failed to program devgroup\n");
+				return err;
+			}
 		}
 	}
 
 	/* Set resource types */
-	err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &type,
+	if ((rconfig->type != TWL4030_RESCONFIG_UNDEF) ||
+		(rconfig->type2 != TWL4030_RESCONFIG_UNDEF)) {
+
+		err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &type,
 				rconfig_addr + TYPE_OFFSET);
-	if (err < 0) {
-		pr_err("TWL4030 Resource %d type could not be read\n",
-			rconfig->resource);
-		return err;
-	}
+		if (err < 0) {
+			pr_err("TWL4030 Resource %d type could not be read\n",
+				rconfig->resource);
+			return err;
+		}
 
-	if (rconfig->type != TWL4030_RESCONFIG_UNDEF) {
-		type &= ~TYPE_MASK;
-		type |= rconfig->type << TYPE_SHIFT;
-	}
+		type_value = type;
 
-	if (rconfig->type2 != TWL4030_RESCONFIG_UNDEF) {
-		type &= ~TYPE2_MASK;
-		type |= rconfig->type2 << TYPE2_SHIFT;
-	}
+		if (rconfig->type != TWL4030_RESCONFIG_UNDEF) {
+			type &= ~TYPE_MASK;
+			type |= rconfig->type << TYPE_SHIFT;
+		}
 
-	err = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+		if (rconfig->type2 != TWL4030_RESCONFIG_UNDEF) {
+			type &= ~TYPE2_MASK;
+			type |= rconfig->type2 << TYPE2_SHIFT;
+		}
+
+		if (type != type_value) {
+			err = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
 				type, rconfig_addr + TYPE_OFFSET);
-	if (err < 0) {
-		pr_err("TWL4030 failed to program resource type\n");
-		return err;
+			if (err < 0) {
+				pr_err("TWL4030 failed to program resource type\n");
+				return err;
+			}
+		}
 	}
 
 	/* Set remap states */
-	err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &remap,
+	if ((rconfig->remap_off != TWL4030_RESCONFIG_UNDEF) ||
+		(rconfig->remap_sleep != TWL4030_RESCONFIG_UNDEF)) {
+		err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &remap,
 			      rconfig_addr + REMAP_OFFSET);
-	if (err < 0) {
-		pr_err("TWL4030 Resource %d remap could not be read\n",
-			rconfig->resource);
-		return err;
-	}
+		if (err < 0) {
+			pr_err("TWL4030 Resource %d remap could not be read\n",
+				rconfig->resource);
+			return err;
+		}
 
-	if (rconfig->remap_off != TWL4030_RESCONFIG_UNDEF) {
-		remap &= ~OFF_STATE_MASK;
-		remap |= rconfig->remap_off << OFF_STATE_SHIFT;
-	}
+		remap_value = remap;
 
-	if (rconfig->remap_sleep != TWL4030_RESCONFIG_UNDEF) {
-		remap &= ~SLEEP_STATE_MASK;
-		remap |= rconfig->remap_off << SLEEP_STATE_SHIFT;
-	}
+		if (rconfig->remap_off != TWL4030_RESCONFIG_UNDEF) {
+			remap &= ~OFF_STATE_MASK;
+			remap |= rconfig->remap_off << OFF_STATE_SHIFT;
+		}
 
-	err = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-			       remap,
-			       rconfig_addr + REMAP_OFFSET);
-	if (err < 0) {
-		pr_err("TWL4030 failed to program remap\n");
-		return err;
+		if (rconfig->remap_sleep != TWL4030_RESCONFIG_UNDEF) {
+			remap &= ~SLEEP_STATE_MASK;
+			remap |= rconfig->remap_sleep << SLEEP_STATE_SHIFT;
+		}
+
+		if (remap != remap_value) {
+			err = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+			       remap, rconfig_addr + REMAP_OFFSET);
+			if (err < 0) {
+				pr_err("TWL4030 failed to program remap\n");
+				return err;
+			}
+		}
 	}
 
 	return 0;
@@ -451,14 +477,101 @@ static int __init load_twl4030_script(struct twl4030_script *tscript,
 		if (err)
 			goto out;
 	}
-	if (tscript->flags & TWL4030_SLEEP_SCRIPT)
-		if (order)
+	if (tscript->flags & TWL4030_SLEEP_SCRIPT) {
+		if (!order)
 			pr_warning("TWL4030: Bad order of scripts (sleep "\
 					"script before wakeup) Leads to boot"\
 					"failure on some boards\n");
 		err = twl4030_config_sleep_sequence(address);
+	}
 out:
 	return err;
+}
+
+/**
+ * twl_dcdc_use_hfclk - API to use HFCLK for TWL DCDCs
+ *
+ * TWL DCDCs switching to HFCLK instead of using internal RC oscillator.
+ */
+static int __init twl_dcdc_use_hfclk(void)
+{
+	u8 val;
+	u8 smps_osc_reg[] = {R_VDD1_OSC, R_VDD2_OSC, R_VIO_OSC};
+	int i;
+	int err;
+
+	for (i = 0; i < sizeof(smps_osc_reg); i++) {
+		err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &val,
+							smps_osc_reg[i]);
+		val |= EXT_FS_CLK_EN;
+		err |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, val,
+							smps_osc_reg[i]);
+	}
+	return err;
+}
+
+/**
+ * twl_erratum27_workaround - Workaround for TWL5030 Silicon Erratum 27
+ * 27 - VDD1, VDD2, may have glitches when their output value is updated.
+ * 28 - VDD1 and / or VDD2 DCDC clock may stop working when internal clock is
+ * switched from internal to external.
+ *
+ * Workaround requires the TWL DCDCs to use HFCLK instead of
+ * internal oscillator. Also enable TWL watchdog before switching the osc
+ * to recover if the VDD1/VDD2 stop working.
+ */
+static void __init twl_erratum27_workaround(void)
+{
+	u8 wdt_counter_val = 0;
+	int err;
+
+	/* Setup the twl wdt to take care of borderline failure case */
+	err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &wdt_counter_val,
+			R_WDT_CFG);
+	err |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, WDT_WRK_TIMEOUT,
+			R_WDT_CFG);
+
+	/* TWL DCDC switching to HFCLK */
+	err |= twl_dcdc_use_hfclk();
+
+	/* restore the original value */
+	err |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, wdt_counter_val,
+			R_WDT_CFG);
+	if (err)
+		pr_warning("TWL4030: workaround setup failed!\n");
+}
+
+static bool is_twl5030_erratum27wa_required(void)
+{
+	if (twl_get_type() == TWL_SIL_5030)
+		return (twl_get_version() < TWL5030_REV_1_2);
+
+	return 0;
+}
+
+static void twl4030_poweroff(void)
+{
+	u8 val;
+        int err;
+
+        err = twl_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &val,
+			      PWR_P1_SW_EVENTS);
+        if (err) {
+                printk(KERN_WARNING "I2C error %d while reading TWL4030"
+		       "PM_MASTER P1_SW_EVENTS\n", err);
+                return ;
+        }
+
+        val |= PWR_DEVOFF;
+
+        err = twl_i2c_write_u8(TWL4030_MODULE_PM_MASTER, val,
+			       PWR_P1_SW_EVENTS);
+
+        if (err) {
+                printk(KERN_WARNING "I2C error %d while writing TWL4030"
+		       "PM_MASTER P1_SW_EVENTS\n", err);
+                return ;
+        }
 }
 
 void __init twl4030_power_init(struct twl4030_power_data *twl4030_scripts)
@@ -478,6 +591,15 @@ void __init twl4030_power_init(struct twl4030_power_data *twl4030_scripts)
 	if (err)
 		goto unlock;
 
+	/* Applying TWL5030 Erratum 27 WA based on Si revision &
+	 * flag updated from board file*/
+	if (is_twl5030_erratum27wa_required()) {
+		pr_info("TWL5030: Enabling workaround for Si Erratum 27\n");
+		twl_erratum27_workaround();
+		if (twl4030_scripts->twl5030_erratum27wa_script)
+			twl4030_scripts->twl5030_erratum27wa_script();
+	}
+
 	for (i = 0; i < twl4030_scripts->num; i++) {
 		err = load_twl4030_script(twl4030_scripts->scripts[i], address);
 		if (err)
@@ -495,6 +617,8 @@ void __init twl4030_power_init(struct twl4030_power_data *twl4030_scripts)
 
 		}
 	}
+
+	pm_power_off = twl4030_poweroff;
 
 	err = twl_i2c_write_u8(TWL4030_MODULE_PM_MASTER, 0, R_PROTECT_KEY);
 	if (err)

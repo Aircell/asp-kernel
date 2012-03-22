@@ -1656,12 +1656,12 @@ void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc,
 		return;
 
 	DPRINTK_ISPCCDC("Module in use =%d\n", isp_ccdc->ccdc_inuse);
-	DPRINTK_ISPCCDC("Accepted CCDC Input Offset (width = %d,Height = %d)\n",
-			isp_ccdc->ccdcin_woffset,
-			isp_ccdc->ccdcin_hoffset);
-	DPRINTK_ISPCCDC("Accepted CCDC Crop (width = %d,Height = %d)\n",
-			isp_ccdc->crop_w,
-			isp_ccdc->crop_h);
+	DPRINTK_ISPCCDC("Accepted CCDC Input (width = %d,Height = %d)\n",
+			isp_ccdc->ccdcin_w,
+			isp_ccdc->ccdcin_h);
+	DPRINTK_ISPCCDC("Accepted CCDC Output (width = %d,Height = %d)\n",
+			isp_ccdc->ccdcout_w,
+			isp_ccdc->ccdcout_h);
 	DPRINTK_ISPCCDC("###CCDC PCR=0x%x\n",
 			isp_reg_readl(isp_ccdc->dev, OMAP3_ISP_IOMEM_CCDC,
 				      ISPCCDC_PCR));

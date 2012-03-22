@@ -45,6 +45,7 @@ obj-$(CONFIG_ARCH_OMAP3)		+= sleep34xx.o
 endif
 obj-$(CONFIG_PM_DEBUG)			+= pm-debug.o
 obj-$(CONFIG_OMAP_SMARTREFLEX)		+= smartreflex.o
+obj-$(CONFIG_TWL4030_POWER)		+= twl4030-script.o
 endif
 
 # PRCM
@@ -96,13 +97,36 @@ obj-$(CONFIG_MACH_OVERO)		+= board-overo.o \
 obj-$(CONFIG_MACH_OMAP3EVM)		+= board-omap3evm.o \
 					   mmc-twl4030.o \
 					   board-omap3evm-camera.o
-obj-$(CONFIG_MACH_OMAP3530_LV_SOM)	+= board-omap3logic.o \
+obj-$(CONFIG_MACH_DM3730_SOM_LV_NOT)	+= board-dm3730logic.o \
+					   board-dm3730logic-display.o \
+					   board-dm3730logic-audio.o \
+					   board-dm3730logic-sdram.o \
+					   board-dm3730logic-flash.o \
+					   board-dm3730logic-productid.o \
+					   board-dm3730logic-hang.o \
+					   mmc-twl4030.o
+obj-$(CONFIG_CLOUDSURFER)   += board-cloudsurfer.o \
+                       board-dm3730logic-productid.o \
+					   board-dm3730logic-flash.o \
+                       board-cloudsurfer-audio.o \
+                       board-cloudsurfer-sdram.o \
+                       board-cloudsurfer-display.o \
+                       mmc-twl4030.o
+obj-$(CONFIG_MACH_DM3730_TORPEDO_NOT)	+= board-dm3730logic.o \
+					   board-dm3730logic-display.o \
+					   board-dm3730logic-audio.o \
+					   board-dm3730logic-sdram.o \
+					   board-dm3730logic-flash.o \
+					   board-dm3730logic-productid.o \
+					   board-dm3730logic-hang.o \
+					   mmc-twl4030.o
+obj-$(CONFIG_MACH_OMAP3530_LV_SOM_NOT)	+= board-omap3logic.o \
 					   board-omap3logic-productid.o \
 					   board-omap3logic-audio.o \
 					   board-omap3logic-sdram.o \
 					   board-omap3logic-display.o \
 					   mmc-twl4030.o
-obj-$(CONFIG_MACH_OMAP3_TORPEDO)	+= board-omap3logic.o \
+obj-$(CONFIG_MACH_OMAP3_TORPEDO_NOT)	+= board-omap3logic.o \
 					   board-omap3logic-productid.o \
 					   board-omap3logic-audio.o \
 					   board-omap3logic-sdram.o \
@@ -141,7 +165,8 @@ obj-$(CONFIG_MACH_OMAP_4430SDP)		+= board-4430sdp.o
 
 obj-$(CONFIG_MACH_OMAP3517EVM)     	+= board-am3517evm.o \
 					   mmc-am3517evm.o
-obj-$(CONFIG_MMC_EMBEDDED_SDIO)         += board-zoom3-wifi.o
+obj-$(CONFIG_MMC_EMBEDDED_SDIO)		+= board-dm3730logic-wifi.o
+
 # Platform specific device init code
 obj-y					+= usb-musb.o
 obj-$(CONFIG_MACH_OMAP2_TUSB6010)	+= usb-tusb6010.o
@@ -155,5 +180,3 @@ obj-y					+= $(nand-m) $(nand-y)
 
 smc91x-$(CONFIG_SMC91X)			:= gpmc-smc91x.o
 obj-y					+= $(smc91x-m) $(smc91x-y)
-
-obj-$(CONFIG_CLOUDSURFER_P2_CAMERA)		+= board-cloudsurfer-camera.o

@@ -42,7 +42,7 @@ static int show_version(char *page, char **start,
 {
 	int len;
 	char cpu_name[16];
-
+	char platform[256];
 	/*
 	 * Identify current silicon
 	 */
@@ -58,9 +58,30 @@ static int show_version(char *page, char **start,
 		strcpy(cpu_name, "");
 	}
 
+	platform[0] = '\0';
+#if defined(CONFIG_MACH_OMAP3EVM)
+	if (strlen(platform))
+		strcat(platform, "/");
+	strcat(platform, "OMAP3EVM");
+#endif
+#if defined(CONFIG_MACH_OMAP3517EVM)
+	if (strlen(platform))
+		strcat(platform, "/");
+	strcat(platform, "AM3517EVM");
+#endif
+#if defined(CONFIG_MACH_DM3730_SOM_LV)
+	if (strlen(platform))
+		strcat(platform, "/");
+	strcat(platform, "DM37x SOM LV");
+#endif
+#if defined(CONFIG_MACH_DM3730_TORPEDO)
+	if (strlen(platform))
+		strcat(platform, "/");
+	strcat(platform, "DM37x Torpedo");
+#endif
 	len = sprintf(page, "%s " \
 			" Linux PSP version " TI_PSP_VERSION \
-			" (" TI_PSP_PLATFORM ")\n", cpu_name);
+		" (%s)\n", cpu_name, platform);
 
 	return len;
 }

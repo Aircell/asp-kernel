@@ -37,6 +37,9 @@
 #include <mach/hardware.h>
 #include <plat/mux.h>
 
+#include <linux/notifier.h>
+#include <linux/usb/otg.h>
+
 #include "musb_core.h"
 #include "omap2430.h"
 
@@ -62,6 +65,15 @@ static void musb_do_idle(unsigned long _musb)
 	devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
 
 	switch (musb->xceiv->state) {
+	case OTG_STATE_A_WAIT_VRISE: {
+		u8      devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
+		if((devctl & MUSB_DEVCTL_SESSION) == 0) {
+			devctl |= MUSB_DEVCTL_SESSION;
+			musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
+			musb_platform_try_idle(musb, jiffies + msecs_to_jiffies(250));
+		}
+		break;
+		}
 	case OTG_STATE_A_WAIT_BCON:
 		devctl &= ~MUSB_DEVCTL_SESSION;
 		musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
@@ -117,8 +129,9 @@ void musb_platform_try_idle(struct musb *musb, unsigned long timeout)
 		timeout = default_timeout;
 
 	/* Never idle if active, or when VBUS timeout is not set as host */
-	if (musb->is_active || ((musb->a_wait_bcon == 0)
-			&& (musb->xceiv->state == OTG_STATE_A_WAIT_BCON))) {
+	if ((musb->is_active || ((musb->a_wait_bcon == 0)
+			&& (musb->xceiv->state == OTG_STATE_A_WAIT_BCON)))
+			&& musb->xceiv->state != OTG_STATE_A_WAIT_VRISE) {
 		DBG(4, "%s active, deleting timer\n", otg_state_string(musb));
 		del_timer(&musb_idle_timer);
 		last_timer = jiffies;
@@ -168,6 +181,12 @@ static void omap_set_vbus(struct musb *musb, int is_on)
 		devctl |= MUSB_DEVCTL_SESSION;
 
 		MUSB_HST_MODE(musb);
+
+		/* Sometimes the SESSION above doesn't stick.
+                 * Retry in a little bit.
+                 */
+		musb_platform_try_idle(musb, jiffies +
+					msecs_to_jiffies(100));
 	} else {
 		musb->is_active = 0;
 
@@ -193,27 +212,52 @@ static int musb_platform_resume(struct musb *musb);
 
 int musb_platform_set_mode(struct musb *musb, u8 musb_mode)
 {
-	u8	devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
-
-	devctl |= MUSB_DEVCTL_SESSION;
-	musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
-
+	switch(musb_mode) {
+	case MUSB_HOST:
+		omap_set_vbus(musb, 1);
+		break;
+	case MUSB_OTG:
+	case MUSB_PERIPHERAL:
+		omap_set_vbus(musb, 0);
+		break;
+	}
 	return 0;
 }
 
-/* Function to kick the interface on twl4030 disconnect */
-static int musb_kick_interface(void *data)
+struct musb_omap2430_data
 {
-	struct musb *musb = data;
-	unsigned long	flags;
-	int status;
+	struct musb *musb;
+	struct notifier_block notifier;
+};
+
+static int musb_platform_notifier_callback(struct notifier_block *nb, unsigned long l, void *v)
+{
+	struct musb_omap2430_data *d = container_of(nb, struct musb_omap2430_data, notifier);
+	struct musb *musb = d->musb;
+	unsigned long flags;
 
 	spin_lock_irqsave(&musb->lock, flags);
-	status = musb_platform_set_mode(musb, MUSB_OTG);
+	switch(l) {
+	case USB_EVENT_ID:
+		musb_platform_set_mode(musb, MUSB_HOST);
+		break;
+	case USB_EVENT_VBUS:
+		musb_platform_set_mode(musb, MUSB_PERIPHERAL);
+		break;
+	case USB_EVENT_NONE:
+		musb_platform_set_mode(musb, MUSB_OTG);
+		break;
+	}
 	spin_unlock_irqrestore(&musb->lock, flags);
-
-	return status;
+	return 0;
 }
+
+static struct musb_omap2430_data musb_omap2430_data_ = {
+	.musb                   = NULL,
+	.notifier.notifier_call = musb_platform_notifier_callback,
+	.notifier.next          = NULL,
+	.notifier.priority      = 0,
+};
 
 int __init musb_platform_init(struct musb *musb)
 {
@@ -233,9 +277,8 @@ int __init musb_platform_init(struct musb *musb)
 		return -ENODEV;
 	}
 
-	/* Setup the callback for twl4030-usb to call on disconnect */
-	if (musb->xceiv->set_kick_interface)
-		musb->xceiv->set_kick_interface(musb_kick_interface, musb);
+	musb_omap2430_data_.musb = musb;
+	otg_register_notifier(musb->xceiv, &musb_omap2430_data_.notifier);
 
 	musb_platform_resume(musb);
 
@@ -350,6 +393,7 @@ static int musb_platform_resume(struct musb *musb)
 
 int musb_platform_exit(struct musb *musb)
 {
+	otg_unregister_notifier(otg_get_transceiver(), &musb_omap2430_data_.notifier);
 
 	omap_vbus_power(musb, 0 /*off*/, 1);
 

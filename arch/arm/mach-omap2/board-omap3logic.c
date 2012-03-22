@@ -2,6 +2,7 @@
  * Aircell - 
  * Updated for the AirCell CloudSurfer
  * Tarr - July 2011
+ * Tarr - March 2012 - Support switch to DM3730
  */
 
 /*
@@ -865,6 +866,7 @@ static void omap3logic_usb_init(void)
 	omap3logic_init_ehci();
 }
 
+#ifdef TARR
 void kick_uf1050a_card_detect(void)
 {
 	/* Only the LV SOM has the uf1050a on it */
@@ -874,66 +876,28 @@ void kick_uf1050a_card_detect(void)
 	omap_zoom3_wifi_set_carddetect(1);
 }
 EXPORT_SYMBOL(kick_uf1050a_card_detect);
+#endif
 
-static void omap3logic_init_uf1050a_mux(void)
+static void wifi_init(void)
 {
-	printk("%s: Config MMC3 pinmux\n", __FUNCTION__);
+    struct clk *sys_clkout1_clk;
 
-	// Setup the mux for mmc3
-	omap_mux_init_signal("mcspi1_cs1.sdmmc3_cmd", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("mcspi1_cs2.sdmmc3_clk", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat4.sdmmc3_dat0", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat5.sdmmc3_dat1", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat6.sdmmc3_dat2", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat7.sdmmc3_dat3", OMAP_PIN_INPUT_PULLUP);
+    printk(KERN_INFO "%s: setup wilink mux signals\n", __FUNCTION__);
 
-	// If we're ES3.1 or later, the MMC multi-block is fixed
-	if (omap_type() == OMAP2_DEVICE_TYPE_GP &&
-	    omap_rev() >= OMAP3430_REV_ES3_1)
-		mmc3.no_multi_block = 0;
-}
+   /* Pull the enables out of reset */
+    msleep(10);
+    gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 1);
+    /* Put them back into reset (so they go into low-power mode) */
+    msleep(10);
+    gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 
-static void omap3logic_init_murata_mux(void)
-{
-	printk(KERN_INFO "%s: setup murata mux signals\n", __FUNCTION__);
-
-	if (gpio_request(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, "wifi_en") != 0)
-		pr_err("GPIO %i request for murata_en failed\n", OMAP3LOGIC_MURATA_WIFI_EN_GPIO);
-	gpio_direction_output(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
-	omap_mux_init_gpio(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, OMAP_PIN_OUTPUT);
-	gpio_export(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
-
-	/* Pull the enables out of reset */
-	msleep(10);
-	gpio_set_value(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 1);
-	msleep(10);
-
-	/* Put them back into reset (so they go into low-power mode) */
-	gpio_set_value(OMAP3LOGIC_MURATA_WIFI_EN_GPIO, 0);
-
-	// Setup the mux for mmc3
-	omap_mux_init_signal("mcspi1_cs1.sdmmc3_cmd", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("mcspi1_cs2.sdmmc3_clk", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat4.sdmmc3_dat0", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat5.sdmmc3_dat1", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat6.sdmmc3_dat2", OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("sdmmc2_dat7.sdmmc3_dat3", OMAP_PIN_INPUT_PULLUP);
-
-	// If we're ES3.1 or later, the MMC multi-block is fixed
-	if (omap_type() == OMAP2_DEVICE_TYPE_GP &&
-	    omap_rev() >= OMAP3430_REV_ES3_1)
-		mmc3.no_multi_block = 0;
-}
-
-static void omap3logic_init_wifi_mux(void)
-{
-	if (omap3logic_has_murata_wifi_module()) {
-		omap3logic_init_murata_mux();
-	} else {
-		/* Only the LV SOM has the uf1050a on it */
-		if (machine_is_omap3530_lv_som())
-			omap3logic_init_uf1050a_mux();
-	}
+   /* Enable sys_clkout1 (uP_CLKOUT1_26Mhz) */
+    sys_clkout1_clk = clk_get(NULL, "sys_clkout1");
+    if (IS_ERR(sys_clkout1_clk)) {
+        printk("%s: Can't get sys_clkout1\n", __FUNCTION__);
+    } else {
+        clk_enable(sys_clkout1_clk);
+    }
 }
 
 static void omap3logic_musb_init(void)
@@ -1089,7 +1053,7 @@ static struct android_usb_product usb_products[] = {
 
 static struct android_usb_platform_data andusb_plat = {
 	.manufacturer_name     = "LogicPD",
-	.product_name          = "OMAP3530 SOM LV",
+	.product_name          = "OMAP3730 SOM LV",
 	.serial_number         = device_serial,
 	.functions             = usb_functions_all,
 	.products              = usb_products,
@@ -1121,19 +1085,8 @@ static void omap3logic_android_gadget_init(void)
 static void aircell_gpio_init(void)
 {
 
-#ifdef CONFIG_CLOUDSURFER_P1
-	gpio_request(AIRCELL_5V_ENABLE,"AIRCELL_5V_ENABLE");
-	gpio_request(AIRCELL_33V_ENABLE,"AIRCELL_33V_ENABLE");
-	gpio_request(AIRCELL_23V_ENABLE,"AIRCELL_23V_ENABLE");
-	gpio_direction_output(AIRCELL_5V_ENABLE,1);
-	gpio_direction_output(AIRCELL_33V_ENABLE,1);
-	gpio_direction_output(AIRCELL_23V_ENABLE,1);
-	gpio_export(AIRCELL_5V_ENABLE,0);
-	gpio_export(AIRCELL_33V_ENABLE,0);
-	gpio_export(AIRCELL_23V_ENABLE,0);
-#endif
-
-#ifdef CONFIG_CLOUDSURFER_P2
+	gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "WIFI_ENABLE");
+	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
 	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");
 	gpio_request(AIRCELL_CAMERA_PWDN,"AIRCELL_CAMERA_PWDN");
@@ -1143,8 +1096,6 @@ static void aircell_gpio_init(void)
 	gpio_export(AIRCELL_5VA_ENABLE,0);
 	gpio_export(AIRCELL_5VD_ENABLE,0);
 	gpio_export(AIRCELL_CAMERA_PWDN,0);
-#endif
-
 	gpio_request(AIRCELL_18V_ENABLE,"AIRCELL_18V_ENABLE");
 	gpio_request(AIRCELL_SOFTWARE_RESET,"AIRCELL_SOFTWARE_RESET");
 	gpio_request(AIRCELL_WIFI_ENABLE_DETECT,"AIRCELL_WIFI_ENABLE_DETECT");
@@ -1169,6 +1120,7 @@ static void aircell_gpio_init(void)
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
 	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
+    gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
     gpio_direction_input(AIRCELL_WIFI_ENABLE_DETECT);
     gpio_direction_output(AIRCELL_18V_ENABLE,1);
     gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -1188,6 +1140,7 @@ static void aircell_gpio_init(void)
     gpio_direction_input(AIRCELL_PROX_INTERRUPT);
     gpio_direction_output(AIRCELL_MUTE,0);
 
+    gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_WIFI_ENABLE_DETECT,0);
@@ -1252,7 +1205,7 @@ static void __init omap3logic_init(void)
 
 	omap3logic_usb_init();
 
-	omap3logic_init_wifi_mux();
+	wifi_init();
 
 	omap3logic_init_audio_mux();
 

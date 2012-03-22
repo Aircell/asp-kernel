@@ -407,6 +407,14 @@ int omap2_dflt_clk_enable(struct clk *clk)
 		return 0; /* REVISIT: -EINVAL */
 	}
 
+#if 0
+	if (clk->enable_reg == OMAP34XX_CM_REGADDR(OMAP3430_PER_MOD, CM_FCLKEN)) {
+		printk("%s:%d regval %08x bit %d\n", __FUNCTION__, __LINE__, __raw_readl(clk->enable_reg), clk->enable_bit);
+		if (clk->enable_bit == OMAP3430_EN_MCBSP2_SHIFT)
+			dump_stack();
+	}
+#endif
+
 	v = __raw_readl(clk->enable_reg);
 	if (clk->flags & INVERT_ENABLE)
 		v &= ~(1 << clk->enable_bit);
@@ -435,6 +443,14 @@ void omap2_dflt_clk_disable(struct clk *clk)
 		return;
 	}
 
+#if 0
+	if (clk->enable_reg == OMAP34XX_CM_REGADDR(OMAP3430_PER_MOD, CM_FCLKEN)) {
+		printk("%s:%d regval %08x bit %d\n", __FUNCTION__, __LINE__, __raw_readl(clk->enable_reg), clk->enable_bit);
+		if (clk->enable_bit == OMAP3430_EN_MCBSP2_SHIFT)
+			dump_stack();
+	}
+#endif
+
 	v = __raw_readl(clk->enable_reg);
 	if (clk->flags & INVERT_ENABLE)
 		v |= (1 << clk->enable_bit);
@@ -442,6 +458,7 @@ void omap2_dflt_clk_disable(struct clk *clk)
 		v &= ~(1 << clk->enable_bit);
 	__raw_writel(v, clk->enable_reg);
 	/* No OCP barrier needed here since it is a disable operation */
+
 }
 
 const struct clkops clkops_omap2_dflt_wait = {

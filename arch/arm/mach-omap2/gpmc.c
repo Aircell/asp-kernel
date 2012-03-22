@@ -607,8 +607,9 @@ void omap3_gpmc_restore_context()
 		}
 	}
 }
-#if defined(CONFIG_DEBUG_FS)
+#endif /* CONFIG_ARCH_OMAP3 */
 
+#ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
@@ -656,5 +657,3 @@ static int __init omap_gpmc_debuginit(void)
 }
 late_initcall(omap_gpmc_debuginit);
 #endif
-
-#endif /* CONFIG_ARCH_OMAP3 */

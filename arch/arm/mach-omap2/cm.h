@@ -60,6 +60,7 @@
 #define CM_IDLEST					0x0020
 #define CM_IDLEST1					CM_IDLEST
 #define CM_IDLEST2					0x0024
+#define CM_IDLEST3					0x0028
 #define CM_AUTOIDLE					0x0030
 #define CM_AUTOIDLE1					CM_AUTOIDLE
 #define CM_AUTOIDLE2					0x0034

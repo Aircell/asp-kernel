@@ -108,7 +108,21 @@ config BATTERY_BQ27x00
 	tristate "BQ27200 battery driver"
 	depends on I2C
 	help
-	  Say Y here to enable support for batteries with BQ27200(I2C) chip.
+	  Say Y here to enable support for batteries with BQ27200(I2C) or BQ27000(HDQ) chips.
+
+config BATTERY_BQ27000
+       bool "BQ27000 battery driver"
+       depends on BATTERY_BQ27x00
+       select W1
+       select W1_SLAVE_BQ27000
+       help
+	 Say Y here to enable support for batteries with the BQ27000(HDQ) chip.
+
+config BATTERY_BQ27200
+       bool "BQ27200 battery driver"
+       depends on BATTERY_BQ27x00
+       help
+         Say Y here to enable support for batteries with BQ27200(I2C) chip.
 
 config BATTERY_DA9030
 	tristate "DA9030 battery driver"

@@ -197,7 +197,7 @@ config BT_MRVL_SDIO
 
 config BT_HCIBRF6300_SPI
 	tristate "HCI TI BRF6300 (SPI) driver"
-	depends on BT && MACH_OMAP3530_LV_SOM && SPI
+	depends on BT && (MACH_OMAP3530_LV_SOM || MACH_DM3730_SOM_LV) && SPI
 	help
 	  Bluetooth HCI driver for TI BRF63000 with SPI interface.
 	  This driver provides support for BRF63000 Bluetooth chip 

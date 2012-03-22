@@ -662,9 +662,9 @@ void sdio_f0_writeb(struct sdio_func *func, unsigned char b, unsigned int addr,
 /*allow SDIO FN0 writes outside of VS CCCR*/
 #define MMC_QUIRK_LENIENT_FUNC0 (1<<1)
        if ((addr < 0xF0 || addr > 0xFF)
-		&& (!func->card->quirks & MMC_QUIRK_LENIENT_FUNC0)
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
-	       && !(func->card->host->caps & MMC_CAP_FUNKY_F0_WRITEB_STATUS)
+		&& (!(func->card->quirks & MMC_QUIRK_LENIENT_FUNC0))
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_DM3730_SOM_LV)
+	       && (!(func->card->host->caps & MMC_CAP_FUNKY_F0_WRITEB_STATUS))
 #endif
 	       ) {
 		if (err_ret)

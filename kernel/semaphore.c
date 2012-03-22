@@ -179,6 +179,9 @@ void up(struct semaphore *sem)
 {
 	unsigned long flags;
 
+	if (sem == NULL)
+		return;
+
 	spin_lock_irqsave(&sem->lock, flags);
 	if (likely(list_empty(&sem->wait_list)))
 		sem->count++;

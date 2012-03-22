@@ -30,10 +30,12 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/io.h>
+#include <linux/uaccess.h>
 #include <linux/device.h>
 
 #include <plat/display.h>
 #include <plat/clock.h>
+#include <linux/wakelock.h>
 
 #include "dss.h"
 
@@ -401,6 +403,83 @@ void dss_clk_disable_parent(enum dss_clock clks)
 	}
 }
 
+static unsigned int dss_wake_lock_duration = 0;
+
+#if defined(CONFIG_DEBUG_FS)
+static int dss_wake_lock_debug_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "%d\n", dss_wake_lock_duration);
+	return 0;
+}
+
+static ssize_t dss_wake_lock_debug_write(struct file *file,
+					const char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	char buf[10];
+	unsigned long val;
+	int buf_size, ret;
+
+	if (count > 10)
+		return -EINVAL;
+
+	memset(buf, 0, sizeof(buf));
+	buf_size = min(count, sizeof(buf) - 1);
+
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+
+	/* Constrain timeout */
+	if (val > 1000)
+		return -EINVAL;
+
+	dss_wake_lock_duration = val;
+
+	*ppos += count;
+	return count;
+}
+
+static int dss_wake_lock_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dss_wake_lock_debug_show, inode->i_private);
+}
+
+static const struct file_operations dss_wake_lock_debug_fops = {
+	.open           = dss_wake_lock_debug_open,
+	.read           = seq_read,
+	.write		= dss_wake_lock_debug_write,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static struct dentry *dss_wake_lock_dir;
+
+static int dss_init_wake_lock_debugfs(void)
+{
+	dss_wake_lock_dir = debugfs_create_dir("resume_wake_lock", NULL);
+	if (IS_ERR(dss_wake_lock_dir)) {
+		int err = PTR_ERR(dss_wake_lock_dir);
+		dss_wake_lock_dir = NULL;
+		return err;
+	}
+
+	debugfs_create_file("duration", S_IWUGO, dss_wake_lock_dir,
+			NULL, &dss_wake_lock_debug_fops);
+
+	return 0;
+}
+
+static void dss_deinit_wake_lock_debugfs(void)
+{
+	if (dss_wake_lock_dir)
+		debugfs_remove_recursive(dss_wake_lock_dir);
+}
+#endif
+
 /* DEBUGFS */
 #if defined(CONFIG_DEBUG_FS) && defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
 static void dss_debug_dump_clocks(struct seq_file *s)
@@ -442,6 +521,9 @@ static int dss_initialize_debugfs(void)
 		dss_debugfs_dir = NULL;
 		return err;
 	}
+
+	debugfs_create_file("wake_lock_duration", S_IWUGO, dss_debugfs_dir,
+			NULL, &dss_wake_lock_debug_fops);
 
 	debugfs_create_file("clk", S_IRUGO, dss_debugfs_dir,
 			&dss_debug_dump_clocks, &dss_debug_fops);
@@ -549,10 +631,14 @@ static int omap_dss_probe(struct platform_device *pdev)
 #endif
 	}
 
-#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
+#if defined(CONFIG_DEBUG_FS)
+	dss_init_wake_lock_debugfs();
+
+#if defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
 	r = dss_initialize_debugfs();
 	if (r)
 		goto fail0;
+#endif
 #endif
 
 	for (i = 0; i < pdata->num_devices; ++i) {
@@ -581,8 +667,11 @@ static int omap_dss_remove(struct platform_device *pdev)
 	int i;
 	int c;
 
-#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
+#if defined(CONFIG_DEBUG_FS)
+	dss_deinit_wake_lock_debugfs();
+#if defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
 	dss_uninitialize_debugfs();
+#endif
 #endif
 
 #ifdef CONFIG_OMAP2_DSS_VENC
@@ -667,9 +756,17 @@ static int omap_dss_suspend(struct platform_device *pdev, pm_message_t state)
 	return dss_suspend_all_devices();
 }
 
+static struct wake_lock dss_wake_lock;
+
 static int omap_dss_resume(struct platform_device *pdev)
 {
 	DSSDBG("resume\n");
+
+	if (dss_wake_lock_duration) {
+		printk(KERN_INFO "DSS: Pulling wake_lock for %d seconds\n", dss_wake_lock_duration);
+		wake_lock_timeout(&dss_wake_lock, HZ * dss_wake_lock_duration);
+		printk("DSS: After pulline wake lock\n");
+	}
 
 	return dss_resume_all_devices();
 }
@@ -927,6 +1024,8 @@ static int __init omap_dss_init(void)
 {
 	int r;
 
+	wake_lock_init(&dss_wake_lock, WAKE_LOCK_SUSPEND, "dss_wake_lock");
+
 	r = omap_dss_bus_register();
 	if (r)
 		return r;
@@ -952,6 +1051,7 @@ module_exit(omap_dss_exit);
 #else
 static int __init omap_dss_init(void)
 {
+	wake_lock_init(&dss_wake_lock, WAKE_LOCK_SUSPEND, "dss_wake_lock");
 	return omap_dss_bus_register();
 }
 

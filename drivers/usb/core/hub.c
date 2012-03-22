@@ -360,8 +360,10 @@ static int hub_port_status(struct usb_hub *hub, int port1,
 	mutex_lock(&hub->status_mutex);
 	ret = get_port_status(hub->hdev, port1, &hub->status->port);
 	if (ret < 4) {
+#if 0 // TODO: Disable for now, determine cause!
 		dev_err(hub->intfdev,
 			"%s failed (err = %d)\n", __func__, ret);
+#endif
 		if (ret >= 0)
 			ret = -EIO;
 	} else {
@@ -3403,9 +3405,11 @@ static void hub_events(void)
 			}
 			
 			if (portchange & USB_PORT_STAT_C_OVERCURRENT) {
+#if 0
 				dev_err (hub_dev,
 					"over-current change on port %d\n",
 					i);
+#endif
 				clear_port_feature(hdev, i,
 					USB_PORT_FEAT_C_OVER_CURRENT);
 				hub_power_on(hub, true);

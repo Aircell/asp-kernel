@@ -436,6 +436,7 @@ pehci_hcd_schedule_pending_ptds(phci_hcd *hcd,u32 donemap,u8 bufftype,u16 only)
 		break;
         default:
 		err("Never Error: Bogus type of bufer\n");
+		spin_unlock(&hcd_data_lock);
 		return;
 	}
 
@@ -862,6 +863,7 @@ pehci_hcd_urb_complete(phci_hcd *hcd,struct ehci_qh *qh, struct urb *urb,
 {
 	static u32 remove  = 0;
 	urb_priv_t *urb_priv = (urb_priv_t *)urb->hcpriv;
+	int status = 0;
 
 	pehci_entry("++ %s: Entered\n",__FUNCTION__);
 	pehci_check("complete the td , length: %d\n", td_ptd_map->qtd->length);
@@ -887,6 +889,9 @@ pehci_hcd_urb_complete(phci_hcd *hcd,struct ehci_qh *qh, struct urb *urb,
 	if(urb->status == -EINPROGRESS)
 		urb->status = 0;
 //   printk("compl: urb->status %d\n",urb->status);
+	status = usb_hcd_check_unlink_urb(&hcd->usb_hcd, urb, status);
+	if (!status)
+		usb_hcd_unlink_urb_from_ep(&hcd->usb_hcd, urb);
 	spin_unlock(&hcd->lock);
 	usb_hcd_giveback_urb (&hcd->usb_hcd, urb, urb->status);
 	spin_lock(&hcd->lock);
@@ -1785,7 +1790,7 @@ pehci_hcd_intl_worker(phci_hcd *hcd)
 				td_ptd_map->ptd_bitmap,skipmap);
 			donemap &= ~td_ptd_map->ptd_bitmap;
 			/*in case pending*/
-			ptd_map_buff->pending_ptd_bitmap &= ~td_ptd_map->ptd_bitmap; ;
+			ptd_map_buff->pending_ptd_bitmap &= ~td_ptd_map->ptd_bitmap;
 			location++;
 			continue;
 		}
@@ -1845,6 +1850,19 @@ pehci_hcd_intl_worker(phci_hcd *hcd)
 		isp1761_mem_read(hcd->dev, td_ptd_map->ptd_header_addr,0,(u32 *)(qhint),PHCI_QHA_LENGTH,0);
 #endif
 
+		// Ensure that the entire PTD has been executed before continuing
+		// (The hardware resets this bit once the PTD is exceuted)
+		if (qhint->td_info1 & QHA_VALID)
+		{
+/*			printk("Bug: We shouldn't have QHA_VALID here - index #%i\n",
+			index); */
+			ormask |= td_ptd_map->ptd_bitmap;
+			isp1761_reg_write32 (hcd->dev, hcd->regs.int_irq_mask_or, ormask);
+
+			ptd_map_buff->active_ptds++;
+			continue;
+		}
+
 #if 0 /*Debug */
 		printk("INTL PTD header after completion\n");
 		printk("DW0: 0x%x\n", qhint->td_info1);
@@ -1888,8 +1906,7 @@ pehci_hcd_intl_worker(phci_hcd *hcd)
 				port = (qhint->td_info2>> 18) & 0x7F;
 				/* debug */
 				if(port > 3) {
-					printk("PORT NUMBER MORE THAN 3\n");					
-					
+					printk("PORT NUMBER MORE THAN 3\n");
 				}
 				/* debug */
 				
@@ -1920,7 +1937,6 @@ pehci_hcd_intl_worker(phci_hcd *hcd)
 				else 
 					retval = portstatus;
 				if(retval) {
-							
 					/* Clear the HALTED bit */
 					qhint->td_info4 &= ~PTD_STATUS_HALTED;
 		
@@ -2028,6 +2044,11 @@ pehci_hcd_intl_worker(phci_hcd *hcd)
 
 	schedule:    
 		{
+			if(IS_ERR_OR_NULL(qtd))
+			{
+				printk(KERN_INFO "Bad qtd pointer.  :/\n");
+				continue;
+			}
 			/*current td comes from qh->hw_current*/    
 			ptd_map_buff->pending_ptd_bitmap &= ~td_ptd_map->ptd_bitmap;
 			ormask |= td_ptd_map->ptd_bitmap;
@@ -2288,17 +2309,15 @@ pehci_hcd_atl_worker(phci_hcd *hcd)
 				port = (qha->td_info2>> 18) & 0x7F;
 				/* debug */
 				if(port > 3) {
-					printk("PORT NUMBER MORE THAN 3\n");					
-					
+					printk("PORT NUMBER MORE THAN 3\n");
 				}
 				/* debug */
 				
 				if(guForceEnPortCnt[port - 1]) {
 					guForceEnPortCnt[port - 1] = 0;
 					guForceEnPortHaltCnt[port - 1] = 0; 
-				}				
+				}
 			}
-			
 		}
 		if(qha->td_info4 & PTD_STATUS_HALTED){
 
@@ -2325,7 +2344,7 @@ pehci_hcd_atl_worker(phci_hcd *hcd)
 				if(retval) {
 					/* Clear the HALTED bit */
 					qha->td_info4 &= ~PTD_STATUS_HALTED;
-					/* Check if the request is completed */				
+					/* Check if the request is completed */
 					ReqLen = ((qha->td_info1 & 0x3fff1) >> 3);
 					TxLen = (int)qha->td_info4&PTD_DATA_LEN_MASK;
 							
@@ -2912,16 +2931,25 @@ pehci_hcd_irq(struct usb_hcd *usb_hcd)
 	u32 intr = 0;
 	__u32   irq_mask = 0;
 	
+ 	/*our host*/        
+	pehci_hcd = usb_hcd_to_pehci_hcd(usb_hcd);
+
+	dev = pehci_hcd->dev;
+
+	if (usb_hcd->state & USB_STATE_SUSPENDED) {
+		/* Ack the interrupt */
+		intr = isp1761_reg_read32(dev, HC_INTERRUPT_REG, intr);
+		isp1761_reg_write32(dev, HC_INTENABLE_REG, 0);
+		isp1761_reg_write32(dev, HC_INTERRUPT_REG, intr);
+		usb_hcd->state = HC_STATE_RESUMING;
+		return IRQ_HANDLED;
+	}
+
 	if(!(usb_hcd->state & USB_STATE_READY)){
 		pr_info("interrupt handler state not ready yet\n");
 		return IRQ_NONE;
 	}
 	
-	/*our host*/        
-	pehci_hcd = usb_hcd_to_pehci_hcd(usb_hcd);
-
-	dev = pehci_hcd->dev;
-
 	/* Get the source of interrupts for Host Controller*/
 	dev->int_reg = isp1761_reg_read32(dev, HC_INTERRUPT_REG,dev->int_reg);
 	isp1761_reg_write32(dev,HC_INTERRUPT_REG,dev->int_reg);
@@ -3010,7 +3038,6 @@ pehci_hcd_start(struct usb_hcd  *usb_hcd)
 	pehci_entry("++ %s: Entered\n",__FUNCTION__);
 	pehci_hcd = usb_hcd_to_pehci_hcd(usb_hcd);
 	
-	spin_lock_init(&pehci_hcd->lock);
 	atomic_set(&pehci_hcd->nuofsofs,0);
 	atomic_set(&pehci_hcd->missedsofs,0);
 	
@@ -3169,15 +3196,21 @@ pehci_hcd_stop(struct usb_hcd *usb_hcd)
 static int
 pehci_hcd_urb_enqueue(struct usb_hcd *usb_hcd,struct urb *urb,gfp_t mem_flags)
 {
+	unsigned long irqsave = 0;
 	struct list_head    qtd_list;
 	struct ehci_qh              *qh = 0;
 	phci_hcd                    *pehci_hcd = usb_hcd_to_pehci_hcd(usb_hcd);
+	int ret = 0;
 	int status  = 0;
 	int temp = 0, max = 0,num_tds = 0,mult = 0;
 	urb_priv_t   *urb_priv = NULL;
+
+	int i;
 	
 	pehci_entry("++ %s: Entered\n",__FUNCTION__);
-	
+
+	urb->hcpriv = NULL;
+
 	INIT_LIST_HEAD(&qtd_list);
 	urb->transfer_flags &= ~EHCI_STATE_UNLINK;
 	
@@ -3201,8 +3234,8 @@ pehci_hcd_urb_enqueue(struct usb_hcd *usb_hcd,struct urb *urb,gfp_t mem_flags)
 		max *= mult;
 		
 		if (urb->transfer_buffer_length > max){
-			err("interrupt urb length is greater then %d\n", max);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto done;
 		}
 #ifdef OTG
 		if(otgdev && urb->dev->devnum == 0x2)
@@ -3227,9 +3260,8 @@ pehci_hcd_urb_enqueue(struct usb_hcd *usb_hcd,struct urb *urb,gfp_t mem_flags)
 		break;
 #endif
 	default:
-		return -EINVAL; /*not supported isoc transfers*/
-		
-		
+		ret = -EINVAL;
+		goto done;
 	}
 	
 #ifdef CONFIG_ISO_SUPPORT
@@ -3237,27 +3269,22 @@ pehci_hcd_urb_enqueue(struct usb_hcd *usb_hcd,struct urb *urb,gfp_t mem_flags)
 	{
 #endif
 		/*make number of tds required*/
-		urb_priv = kmalloc(sizeof (urb_priv_t) +
+		urb_priv = kzalloc(sizeof (urb_priv_t) +
 				num_tds * sizeof(struct ehci_qtd),mem_flags);
-		if(!urb_priv)
+		if(IS_ERR(urb_priv))
 		{
-			err("memory   allocation error\n");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto done;
 		}
 		
-		memset(urb_priv, 0, sizeof (urb_priv_t) +
-			num_tds * sizeof(struct ehci_qtd));
-		urb_priv->qtd[0] = NULL;
 		urb_priv->length = num_tds;
-		{
-			int i  = 0;
-			/*allocate number of tds here. better to do this in qtd_make routine*/
-			for(i = 0; i < num_tds;i++){
-				urb_priv->qtd[i] = phci_hcd_qtd_allocate(mem_flags);
-				if(!urb_priv->qtd[i]){
-					phci_hcd_urb_free_priv(pehci_hcd, urb_priv,NULL);
-					return -ENOMEM;
-				}
+
+		/*allocate number of tds here. better to do this in qtd_make routine*/
+		for(i = 0; i < num_tds;i++){
+			urb_priv->qtd[i] = phci_hcd_qtd_allocate(mem_flags);
+			if(IS_ERR(urb_priv->qtd[i])) {
+				ret = -ENOMEM;
+				goto done;
 			}
 		}
 		/*keep a copy of this*/
@@ -3265,25 +3292,33 @@ pehci_hcd_urb_enqueue(struct usb_hcd *usb_hcd,struct urb *urb,gfp_t mem_flags)
 #ifdef CONFIG_ISO_SUPPORT               
 	}
 #endif       
+
+	spin_lock_irqsave(&pehci_hcd->lock, irqsave);
 	
 	switch(temp){
 	case PIPE_INTERRUPT:
 		phci_hcd_make_qtd(pehci_hcd, &qtd_list,urb, &status);
 		if(status < 0)
 			return status;
-		qh = phci_hcd_submit_interrupt(pehci_hcd,&qtd_list, urb, &status);
-		if(status < 0)
-			return status;
+		qh = phci_hcd_submit_interrupt(pehci_hcd, &qtd_list, urb, &status);
+		if(status < 0) {
+			ret = status;
+			goto done;
+		}
 		break;
 
 	case PIPE_CONTROL:
 	case PIPE_BULK:
 		phci_hcd_make_qtd(pehci_hcd, &qtd_list,urb, &status);
-		if(status < 0)
-			return status;
+		if(status < 0) {
+			ret = status;
+			goto done;
+		}
 		qh = phci_hcd_submit_async(pehci_hcd, &qtd_list, urb, &status);
-		if(status < 0)
-			return status;
+		if(status < 0) {
+			ret = status;
+			goto done;
+		}
 		break;
 #ifdef CONFIG_ISO_SUPPORT        
 	case PIPE_ISOCHRONOUS:
@@ -3292,22 +3327,47 @@ pehci_hcd_urb_enqueue(struct usb_hcd *usb_hcd,struct urb *urb,gfp_t mem_flags)
 		iso_dbg(ISO_DBG_DATA,"[pehci_hcd_urb_enqueue]: URB Buffer Length: %d\n", 
 			(long) urb->transfer_buffer_length);
 		phcd_submit_iso(pehci_hcd, urb, (unsigned long *) &status);
-		return status;
+		ret = status;
+		goto done;
 		break;
 #endif          
 	default:
-		return -ENODEV;
+		ret = -ENODEV;
+		goto done;
 	}/*end of switch*/
+
+	ret = usb_hcd_link_urb_to_ep(usb_hcd, urb);
+	if(ret)
+	{
+		printk("unable to link\n");
+		phci_hcd_urb_free_priv(pehci_hcd, urb_priv, NULL);
+		goto done_not_linked;
+	}
 
 #ifdef MSEC_INT_BASED
 	pehci_entry("-- %s: Exit\n",__FUNCTION__);
+	goto done;
 	return 0;
 #else
 	/*submit tds but iso*/
 	pehci_hcd_td_ptd_submit_urb(pehci_hcd,qh,qh->type);
 #endif
+done:
+	if(ret)
+	{
+		urb->hcpriv = NULL;
+		if(urb_priv)
+		{
+			phci_hcd_urb_free_priv(pehci_hcd, urb_priv, NULL);
+		}
+		usb_hcd_unlink_urb_from_ep(usb_hcd, urb);
+	}
+
+done_not_linked:
+	spin_unlock_irqrestore(&pehci_hcd->lock, irqsave);
+
 	pehci_entry("-- %s: Exit\n",__FUNCTION__);
-	return 0;
+	return ret;
 }
 
 /*---------------------------------------------*
@@ -3333,9 +3393,14 @@ pehci_hcd_urb_dequeue(struct usb_hcd  *usb_hcd,struct urb *urb, int _status)
 	phci_hcd *hcd = usb_hcd_to_pehci_hcd(usb_hcd);
 	pehci_entry("++ %s: Entered\n",__FUNCTION__);
 
-	pehci_info("device %d\n",urb->dev->devnum);
+	spin_lock_irqsave(&hcd->lock, flags);
 
-	spin_lock_irqsave(&hcd->lock, flags);       
+	status = usb_hcd_check_unlink_urb(usb_hcd, urb, status);
+	if (status || !urb->hcpriv)
+		goto done;
+
+	pehci_info("device %d\n",urb->dev->devnum);
+      
 	switch (usb_pipetype (urb->pipe)) {
 	case PIPE_CONTROL:
 	case PIPE_BULK:
@@ -3443,7 +3508,7 @@ pehci_hcd_urb_dequeue(struct usb_hcd  *usb_hcd,struct urb *urb, int _status)
 		pehci_hcd_urb_complete(hcd,qh,urb,td_ptd_map);
 		if(!list_empty(qtd_list))
 		{   
-			err("Never Error: List must not be emplyt\n"); /*only one td in my endpoint*/
+			err("Never Error: List must not be empty\n"); /*only one td in my endpoint*/
 		}
 		break;
 	case PIPE_ISOCHRONOUS:
@@ -3451,6 +3516,7 @@ pehci_hcd_urb_dequeue(struct usb_hcd  *usb_hcd,struct urb *urb, int _status)
 		break;
 	}
 
+done:
 	spin_unlock_irqrestore(&hcd->lock, flags);
 	pehci_info("status %d\n",status);
 	pehci_entry("-- %s: Exit\n",__FUNCTION__);
@@ -3816,17 +3882,17 @@ static int pehci_bus_resume(struct usb_hcd *hcd)
 unsigned long ConvertBitmapToDec(unsigned long uBitmap) {
 	unsigned long temp=0, mask=0x1;
 
-	sdf_entry("++ %s: Entered\n",__FUNCTION__);
+	pehci_entry("++ %s: Entered\n",__FUNCTION__);
 	while(mask != 0) {
 		if((mask & uBitmap) != 0) {
-			sdf_entry("-- %s: Exit\n",__FUNCTION__);
+			pehci_entry("-- %s: Exit\n",__FUNCTION__);
 			return temp;
 		}
 		temp++;
 		mask <<= 1;
 	}
 /* Grant, Oct 28: should never come here, but just in case */
-	sdf_entry("-- %s: Exit\n",__FUNCTION__);
+	pehci_entry("-- %s: Exit\n",__FUNCTION__);
 	return temp;
 }
 
@@ -3843,7 +3909,7 @@ pehci_force_port_enable (struct usb_hcd *usb_hcd,u16 portstatus, int port)
 
 	phci_hcd *hcd = usb_hcd_to_pehci_hcd(usb_hcd);
 
-	sdf_entry("++ %s: Entered\n",__FUNCTION__);
+	pehci_entry("++ %s: Entered\n",__FUNCTION__);
 	/* Get the speed of the device on the port */
 	temp =portstatus;
 	temp = portstatus & 0x200; 
@@ -4066,7 +4132,7 @@ pehci_force_port_enable (struct usb_hcd *usb_hcd,u16 portstatus, int port)
 		}else return 1;
 	} 
 /* We only reset the port if a device is still connected to it */
-	sdf_entry("-- %s: Exit\n",__FUNCTION__);
+	pehci_entry("-- %s: Exit\n",__FUNCTION__);
 	return 0;
 }
 #endif
@@ -4159,7 +4225,7 @@ pehci_hcd_probe(struct isp1761_dev *tmp_1761_dev , isp1761_id *ids )
 	pehci_hcd->plxiobase = (u8*)tmp_1761_dev->dmabase;
 	pehci_hcd->plxiolength = tmp_1761_dev->length;
 
-
+	spin_lock_init(&pehci_hcd->lock);
 	/*lets keep our host here*/
 	tmp_1761_dev->driver_data = usb_hcd;
 

@@ -42,12 +42,22 @@
 #define SWCALC_OPP6_DELTA_NNT	379
 #define SWCALC_OPP6_DELTA_PNT	227
 
+#define ABB_MAX_SETTLING_TIME	30
+
+#define ABB_FAST_OPP			1
+#define ABB_NOMINAL_OPP			2
+#define ABB_SLOW_OPP			3
+
+/* Voltage Margin in mV */
+#define OMAP36XX_HIGH_OPP_VMARGIN	63
+#define OMAP36XX_LOW_OPP_VMARGIN	50
 
 /*
  * VDD1 and VDD2 OPPs derived from the bootarg 'mpurate'
  */
 extern unsigned int vdd1_opp;
 extern unsigned int vdd2_opp;
+extern bool vdd_scale_down;
 
 extern int __init omap2_clk_set_freq(void);
 
@@ -98,18 +108,26 @@ static int sr_clk_enable(struct omap_sr *sr)
 		return -1;
 	}
 
-	/* set fclk- active , iclk- idle */
-	sr_modify_reg(sr, ERRCONFIG, SR_CLKACTIVITY_MASK,
-		      SR_CLKACTIVITY_IOFF_FON);
+	if (cpu_is_omap3630())
+		sr_modify_reg(sr, ERRCONFIG_36XX, SR_IDLEMODE_MASK,
+				SR_SMART_IDLE);
+	else
+		/* set fclk- active , iclk- idle */
+		sr_modify_reg(sr, ERRCONFIG, SR_CLKACTIVITY_MASK,
+			SR_CLKACTIVITY_IOFF_FON);
 
 	return 0;
 }
 
 static void sr_clk_disable(struct omap_sr *sr)
 {
-	/* set fclk, iclk- idle */
-	sr_modify_reg(sr, ERRCONFIG, SR_CLKACTIVITY_MASK,
-		      SR_CLKACTIVITY_IOFF_FOFF);
+	if (cpu_is_omap3630())
+		sr_modify_reg(sr, ERRCONFIG_36XX, SR_IDLEMODE_MASK,
+				SR_FORCE_IDLE);
+	else
+		/* set fclk, iclk- idle */
+		sr_modify_reg(sr, ERRCONFIG, SR_CLKACTIVITY_MASK,
+				SR_CLKACTIVITY_IOFF_FOFF);
 
 	clk_disable(sr->clk);
 	sr->is_sr_reset = 1;
@@ -281,42 +299,106 @@ static u32 swcalc_opp6_nvalue(void)
 	return opp6_nvalue;
 }
 
+
+static unsigned int sr_adjust_efuse_nvalue(unsigned int opp_no,
+						unsigned int orig_opp_nvalue,
+						unsigned int mv_delta)
+{
+	unsigned int new_opp_nvalue;
+	unsigned int senp_gain, senn_gain, rnsenp, rnsenn, pnt_delta, nnt_delta;
+	unsigned int new_senn, new_senp, senn, senp;
+
+	/* calculate SenN and SenP from the efuse value */
+	senp_gain = ((orig_opp_nvalue >> 20) & 0xf);
+	senn_gain = ((orig_opp_nvalue >> 16) & 0xf);
+	rnsenp = ((orig_opp_nvalue >> 8) & 0xff);
+	rnsenn = (orig_opp_nvalue & 0xff);
+
+	senp = ((1<<(senp_gain+8))/(rnsenp));
+	senn = ((1<<(senn_gain+8))/(rnsenn));
+
+	/* calculate the voltage delta */
+	pnt_delta = (26 * mv_delta)/10;
+	nnt_delta = (3 * mv_delta);
+
+	/* now lets add the voltage delta to the sensor values */
+	new_senn = senn + nnt_delta;
+	new_senp = senp + pnt_delta;
+
+	new_opp_nvalue = cal_test_nvalue(new_senn, new_senp);
+
+	printk("Compensating OPP%d for %dmV Orig nvalue:0x%x New nvalue:0x%x \n",
+			opp_no, mv_delta, orig_opp_nvalue, new_opp_nvalue);
+
+	return new_opp_nvalue;
+}
+
 static void sr_set_efuse_nvalues(struct omap_sr *sr)
 {
+	unsigned int opp_nvalue;
+
 	if (sr->srid == SR1) {
-		sr->senn_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR1_SENNENABLE_MASK) >>
-					OMAP343X_SR1_SENNENABLE_SHIFT;
-		sr->senp_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR1_SENPENABLE_MASK) >>
-					OMAP343X_SR1_SENPENABLE_SHIFT;
+		if (cpu_is_omap3630()) {
+			sr->senn_mod = sr->senp_mod = 0x1;
 
-		sr->opp6_nvalue = swcalc_opp6_nvalue();
-		sr->opp5_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP5_VDD1);
-		sr->opp4_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP4_VDD1);
-		sr->opp3_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP3_VDD1);
-		sr->opp2_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP2_VDD1);
-		sr->opp1_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP1_VDD1);
+			opp_nvalue = omap_ctrl_readl(OMAP36XX_CONTROL_FUSE_OPP4_VDD1);
+			sr->opp4_nvalue = sr_adjust_efuse_nvalue(4, opp_nvalue,
+											OMAP36XX_HIGH_OPP_VMARGIN);
+
+			opp_nvalue = omap_ctrl_readl(OMAP36XX_CONTROL_FUSE_OPP3_VDD1);
+			sr->opp3_nvalue = sr_adjust_efuse_nvalue(3, opp_nvalue,
+											OMAP36XX_HIGH_OPP_VMARGIN);
+
+			opp_nvalue = omap_ctrl_readl(OMAP36XX_CONTROL_FUSE_OPP2_VDD1);
+			sr->opp2_nvalue = sr_adjust_efuse_nvalue(2, opp_nvalue,
+											OMAP36XX_LOW_OPP_VMARGIN);
+
+			opp_nvalue = omap_ctrl_readl(OMAP36XX_CONTROL_FUSE_OPP1_VDD1);
+			sr->opp1_nvalue = sr_adjust_efuse_nvalue(1, opp_nvalue,
+											OMAP36XX_LOW_OPP_VMARGIN);
+
+		} else {
+			sr->senn_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+						OMAP343X_SR1_SENNENABLE_MASK) >>
+						OMAP343X_SR1_SENNENABLE_SHIFT;
+			sr->senp_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+						OMAP343X_SR1_SENPENABLE_MASK) >>
+						OMAP343X_SR1_SENPENABLE_SHIFT;
+
+			sr->opp6_nvalue = swcalc_opp6_nvalue();
+			sr->opp5_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP5_VDD1);
+			sr->opp4_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP4_VDD1);
+			sr->opp3_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP3_VDD1);
+			sr->opp2_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP2_VDD1);
+			sr->opp1_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP1_VDD1);
+		}
 	} else if (sr->srid == SR2) {
-		sr->senn_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR2_SENNENABLE_MASK) >>
-					OMAP343X_SR2_SENNENABLE_SHIFT;
+		if (cpu_is_omap3630()) {
+			sr->senn_mod = sr->senp_mod = 0x1;
 
-		sr->senp_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR2_SENPENABLE_MASK) >>
-					OMAP343X_SR2_SENPENABLE_SHIFT;
+			sr->opp1_nvalue = omap_ctrl_readl(OMAP36XX_CONTROL_FUSE_OPP1_VDD2);
+			sr->opp2_nvalue = omap_ctrl_readl(OMAP36XX_CONTROL_FUSE_OPP2_VDD2);
+		} else {
+			sr->senn_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+						OMAP343X_SR2_SENNENABLE_MASK) >>
+						OMAP343X_SR2_SENNENABLE_SHIFT;
 
-		sr->opp3_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP3_VDD2);
-		sr->opp2_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP2_VDD2);
-		sr->opp1_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP1_VDD2);
+			sr->senp_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+						OMAP343X_SR2_SENPENABLE_MASK) >>
+						OMAP343X_SR2_SENPENABLE_SHIFT;
+
+			sr->opp3_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP3_VDD2);
+			sr->opp2_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP2_VDD2);
+			sr->opp1_nvalue = omap_ctrl_readl(
+						OMAP343X_CONTROL_FUSE_OPP1_VDD2);
+		}
 	}
 }
 
@@ -324,22 +406,42 @@ static void sr_set_efuse_nvalues(struct omap_sr *sr)
 static void sr_set_testing_nvalues(struct omap_sr *sr)
 {
 	if (sr->srid == SR1) {
-		sr->senp_mod = 0x03;	/* SenN-M5 enabled */
-		sr->senn_mod = 0x03;
+		if (cpu_is_omap3630()) {
+			sr->senp_mod = 0x1;
+			sr->senn_mod = 0x1;
 
-		/* calculate nvalues for each opp */
-		sr->opp5_nvalue = cal_test_nvalue(0xacd + 0x330, 0x848 + 0x330);
-		sr->opp4_nvalue = cal_test_nvalue(0x964 + 0x2a0, 0x727 + 0x2a0);
-		sr->opp3_nvalue = cal_test_nvalue(0x85b + 0x200, 0x655 + 0x200);
-		sr->opp2_nvalue = cal_test_nvalue(0x506 + 0x1a0, 0x3be + 0x1a0);
-		sr->opp1_nvalue = cal_test_nvalue(0x373 + 0x100, 0x28c + 0x100);
+			/* calculate nvalues for each opp */
+			sr->opp1_nvalue = cal_test_nvalue(581, 489);
+			sr->opp2_nvalue = cal_test_nvalue(1072, 910);
+			sr->opp3_nvalue = cal_test_nvalue(1405, 1200);
+			sr->opp4_nvalue = cal_test_nvalue(1842, 1580);
+			sr->opp5_nvalue = cal_test_nvalue(1842, 1580);
+        } else {
+			sr->senp_mod = 0x03;	/* SenN-M5 enabled */
+			sr->senn_mod = 0x03;
+
+			/* calculate nvalues for each opp */
+			sr->opp5_nvalue = cal_test_nvalue(0xacd + 0x330, 0x848 + 0x330);
+			sr->opp4_nvalue = cal_test_nvalue(0x964 + 0x2a0, 0x727 + 0x2a0);
+			sr->opp3_nvalue = cal_test_nvalue(0x85b + 0x200, 0x655 + 0x200);
+			sr->opp2_nvalue = cal_test_nvalue(0x506 + 0x1a0, 0x3be + 0x1a0);
+			sr->opp1_nvalue = cal_test_nvalue(0x373 + 0x100, 0x28c + 0x100);
+		}
 	} else if (sr->srid == SR2) {
-		sr->senp_mod = 0x03;
-		sr->senn_mod = 0x03;
+		if (cpu_is_omap3630()) {
+			sr->senp_mod = 0x1;
+			sr->senn_mod = 0x1;
 
-		sr->opp3_nvalue = cal_test_nvalue(0x76f + 0x200, 0x579 + 0x200);
-		sr->opp2_nvalue = cal_test_nvalue(0x4f5 + 0x1c0, 0x390 + 0x1c0);
-		sr->opp1_nvalue = cal_test_nvalue(0x359, 0x25d);
+			sr->opp1_nvalue = cal_test_nvalue(556, 468);
+			sr->opp2_nvalue = cal_test_nvalue(1099, 933);
+		} else {
+			sr->senp_mod = 0x03;
+			sr->senn_mod = 0x03;
+
+			sr->opp3_nvalue = cal_test_nvalue(0x76f + 0x200, 0x579 + 0x200);
+			sr->opp2_nvalue = cal_test_nvalue(0x4f5 + 0x1c0, 0x390 + 0x1c0);
+			sr->opp1_nvalue = cal_test_nvalue(0x359, 0x25d);
+		}
 	}
 
 }
@@ -351,6 +453,126 @@ static void sr_set_nvalues(struct omap_sr *sr)
 	else
 		sr_set_efuse_nvalues(sr);
 }
+
+/**
+ * sr_voltagescale_adaptive_body_bias - controls ABB ldo during voltage scaling
+ * @target_volt: target voltage determines if ABB ldo is active or bypassed
+ *
+ * Adaptive Body-Bias is a technique in all OMAP silicon that uses the 45nm
+ * process.  ABB can boost voltage in high OPPs for silicon with weak
+ * characteristics (forward Body-Bias) as well as lower voltage in low OPPs
+ * for silicon with strong characteristics (Reverse Body-Bias).
+ *
+ * Only Foward Body-Bias for operating at high OPPs is implemented below, per
+ * recommendations from silicon team.
+ * Reverse Body-Bias for saving power in active cases and sleep cases is not
+ * yet implemented.
+ */
+static int sr_voltagescale_adaptive_body_bias(u32 target_opp_no)
+{
+	u32 sr2en_enabled;
+	int timeout;
+	int sr2_wtcnt_value;
+	struct clk *sys_ck;
+
+	sys_ck = clk_get(NULL, "sys_ck");
+	if (IS_ERR(sys_ck)) {
+		pr_warning("%s: Could not get the sys clk to calculate"
+            "SR2_WTCNT_VALUE \n", __func__);
+        return -ENOENT;
+    }
+
+	/* calculate SR2_WTCNT_VALUE settling time */
+	sr2_wtcnt_value = (ABB_MAX_SETTLING_TIME *
+		(clk_get_rate(sys_ck) / 1000000) / 8);
+
+	clk_put(sys_ck);
+
+	/* has SR2EN been enabled previously? */
+	sr2en_enabled = (prm_read_mod_reg(OMAP3430_GR_MOD,
+			OMAP3_PRM_LDO_ABB_CTRL_OFFSET) &
+			OMAP3630_SR2EN);
+
+	/* select fast, nominal or slow OPP for ABB ldo */
+	if (target_opp_no >= VDD1_OPP4) {
+		/* program for fast opp - enable FBB */
+		prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL_MASK,
+				(ABB_FAST_OPP << OMAP3630_OPP_SEL_SHIFT),
+				OMAP3430_GR_MOD,
+				OMAP3_PRM_LDO_ABB_SETUP_OFFSET);
+
+		/* enable the ABB ldo if not done already */
+		if (!sr2en_enabled)
+			prm_set_mod_reg_bits(OMAP3630_SR2EN,
+					OMAP3430_GR_MOD,
+					OMAP3_PRM_LDO_ABB_CTRL_OFFSET);
+	} else if (sr2en_enabled) {
+		/* program for nominal opp - bypass ABB ldo */
+		prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL_MASK,
+				(ABB_NOMINAL_OPP << OMAP3630_OPP_SEL_SHIFT),
+				OMAP3430_GR_MOD,
+				OMAP3_PRM_LDO_ABB_SETUP_OFFSET);
+	} else {
+		/* nothing to do here yet... might enable RBB here someday */
+		return 0;
+	}
+
+	/* set ACTIVE_FBB_SEL for all 45nm silicon */
+	prm_set_mod_reg_bits(OMAP3630_ACTIVE_FBB_SEL,
+			OMAP3430_GR_MOD,
+			OMAP3_PRM_LDO_ABB_CTRL_OFFSET);
+
+	/* program settling time of 30us for ABB ldo transition */
+	prm_rmw_mod_reg_bits(OMAP3630_SR2_WTCNT_VALUE_MASK,
+			(sr2_wtcnt_value << OMAP3630_SR2_WTCNT_VALUE_SHIFT),
+			OMAP3430_GR_MOD,
+			OMAP3_PRM_LDO_ABB_CTRL_OFFSET);
+
+	/* clear ABB ldo interrupt status */
+	prm_write_mod_reg(OMAP3630_ABB_LDO_TRANXDONE_ST,
+			OCP_MOD,
+			OMAP2_PRCM_IRQSTATUS_MPU_OFFSET);
+
+	/* enable ABB LDO OPP change */
+	prm_set_mod_reg_bits(OMAP3630_OPP_CHANGE,
+			OMAP3430_GR_MOD,
+			OMAP3_PRM_LDO_ABB_SETUP_OFFSET);
+
+	timeout = 0;
+
+	/* wait until OPP change completes */
+	while ((timeout < ABB_MAX_SETTLING_TIME ) &&
+			(!(prm_read_mod_reg(OCP_MOD,
+						OMAP2_PRCM_IRQSTATUS_MPU_OFFSET) &
+					OMAP3630_ABB_LDO_TRANXDONE_ST))) {
+		udelay(1);
+		timeout++;
+	}
+
+	if (timeout == ABB_MAX_SETTLING_TIME)
+		pr_debug("ABB: TRANXDONE timed out waiting for OPP change\n");
+
+	timeout = 0;
+
+	/* Clear all pending TRANXDONE interrupts/status */
+	while (timeout < ABB_MAX_SETTLING_TIME) {
+		prm_write_mod_reg(OMAP3630_ABB_LDO_TRANXDONE_ST,
+				OCP_MOD,
+				OMAP2_PRCM_IRQSTATUS_MPU_OFFSET);
+		if (!(prm_read_mod_reg(OCP_MOD,
+						OMAP2_PRCM_IRQSTATUS_MPU_OFFSET)
+					& OMAP3630_ABB_LDO_TRANXDONE_ST))
+			break;
+
+		udelay(1);
+		timeout++;
+	}
+	if (timeout == ABB_MAX_SETTLING_TIME)
+		pr_debug("ABB: TRANXDONE timed out trying to clear status\n");
+
+	return 0;
+}
+
 
 static void sr_configure_vp(int srid)
 {
@@ -417,6 +639,8 @@ static void sr_configure_vp(int srid)
 		prm_clear_mod_reg_bits(OMAP3430_FORCEUPDATE, OMAP3430_GR_MOD,
 				       OMAP3_PRM_VP1_CONFIG_OFFSET);
 
+		if(cpu_is_omap3630())
+			sr_voltagescale_adaptive_body_bias(target_opp_no);
 	} else if (srid == SR2) {
 		if (vdd2_opp == 0)
 			target_opp_no = get_vdd2_opp();
@@ -486,6 +710,17 @@ static void sr_configure(struct omap_sr *sr)
 {
 	u32 sr_config;
 	u32 senp_en , senn_en;
+	u32 senp_en_shift, senn_en_shift, err_config;
+
+	if (cpu_is_omap3630()) {
+		senp_en_shift = SRCONFIG_SENPENABLE_SHIFT_36XX;
+		senn_en_shift = SRCONFIG_SENNENABLE_SHIFT_36XX;
+		err_config = ERRCONFIG_36XX;
+	} else {
+		senp_en_shift = SRCONFIG_SENPENABLE_SHIFT;
+		senn_en_shift = SRCONFIG_SENNENABLE_SHIFT;
+		err_config = ERRCONFIG;
+	}
 
 	if (sr->clk_length == 0)
 		sr_set_clk_length(sr);
@@ -497,15 +732,15 @@ static void sr_configure(struct omap_sr *sr)
 			(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
 			SRCONFIG_SENENABLE | SRCONFIG_ERRGEN_EN |
 			SRCONFIG_MINMAXAVG_EN |
-			(senn_en << SRCONFIG_SENNENABLE_SHIFT) |
-			(senp_en << SRCONFIG_SENPENABLE_SHIFT) |
+			(senn_en << senn_en_shift) |
+			(senp_en << senp_en_shift) |
 			SRCONFIG_DELAYCTRL;
 
 		sr_write_reg(sr, SRCONFIG, sr_config);
 		sr_write_reg(sr, AVGWEIGHT, SR1_AVGWEIGHT_SENPAVGWEIGHT |
 					SR1_AVGWEIGHT_SENNAVGWEIGHT);
 
-		sr_modify_reg(sr, ERRCONFIG, (SR_ERRWEIGHT_MASK |
+		sr_modify_reg(sr, err_config, (SR_ERRWEIGHT_MASK |
 			SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
 			(SR1_ERRWEIGHT | SR1_ERRMAXLIMIT | SR1_ERRMINLIMIT));
 
@@ -514,14 +749,14 @@ static void sr_configure(struct omap_sr *sr)
 			(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
 			SRCONFIG_SENENABLE | SRCONFIG_ERRGEN_EN |
 			SRCONFIG_MINMAXAVG_EN |
-			(senn_en << SRCONFIG_SENNENABLE_SHIFT) |
-			(senp_en << SRCONFIG_SENPENABLE_SHIFT) |
+			(senn_en << senn_en_shift) |
+			(senp_en << senp_en_shift) |
 			SRCONFIG_DELAYCTRL;
 
 		sr_write_reg(sr, SRCONFIG, sr_config);
 		sr_write_reg(sr, AVGWEIGHT, SR2_AVGWEIGHT_SENPAVGWEIGHT |
 					SR2_AVGWEIGHT_SENNAVGWEIGHT);
-		sr_modify_reg(sr, ERRCONFIG, (SR_ERRWEIGHT_MASK |
+		sr_modify_reg(sr, err_config, (SR_ERRWEIGHT_MASK |
 			SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
 			(SR2_ERRWEIGHT | SR2_ERRMAXLIMIT | SR2_ERRMINLIMIT));
 
@@ -603,6 +838,7 @@ static int sr_reset_voltage(int srid)
 static int sr_enable(struct omap_sr *sr, u32 target_opp_no)
 {
 	u32 nvalue_reciprocal, v;
+	u32 inten, intst, err_config;
 
 	if (!(mpu_opps && l3_opps)) {
 		pr_notice("VSEL values not found\n");
@@ -661,9 +897,19 @@ static int sr_enable(struct omap_sr *sr, u32 target_opp_no)
 	sr_write_reg(sr, NVALUERECIPROCAL, nvalue_reciprocal);
 
 	/* Enable the interrupt */
-	sr_modify_reg(sr, ERRCONFIG,
-			(ERRCONFIG_VPBOUNDINTEN | ERRCONFIG_VPBOUNDINTST),
-			(ERRCONFIG_VPBOUNDINTEN | ERRCONFIG_VPBOUNDINTST));
+	if (cpu_is_omap3630()) {
+		inten = ERRCONFIG_VPBOUNDINTEN_36XX;
+		intst = ERRCONFIG_VPBOUNDINTST_36XX;
+		err_config = ERRCONFIG_36XX;
+	} else {
+		inten = ERRCONFIG_VPBOUNDINTEN;
+		intst = ERRCONFIG_VPBOUNDINTST;
+		err_config = ERRCONFIG;
+	}
+
+	sr_modify_reg(sr, err_config,
+			(inten | intst),
+			(inten | intst));
 
 	if (sr->srid == SR1) {
 		/* set/latch init voltage */
@@ -964,6 +1210,9 @@ int sr_voltagescale_vcbypass(u32 target_opp, u32 current_opp,
 	t2_smps_delay = ((t2_smps_steps * 125) / 40) + 2;
 	udelay(t2_smps_delay);
 
+	if (cpu_is_omap3630() && (vdd == VDD1_OPP))
+		sr_voltagescale_adaptive_body_bias(target_opp_no);
+
 	if (sr_status) {
 		if (vdd == VDD1_OPP)
 			sr_start_vddautocomap(SR1, target_opp_no);
@@ -1082,6 +1331,10 @@ static int __init omap3_sr_init(void)
 	sr_set_clk_length(&sr1);
 	sr_set_clk_length(&sr2);
 
+	/* For OPP scale down, scale down frequency before voltage */
+	if (cpu_is_omap34xx() && vdd_scale_down)
+        omap2_clk_set_freq();
+
 	/* Call the VPConfig, VCConfig, set N Values. */
 	sr_set_nvalues(&sr1);
 	sr_configure_vp(SR1);
@@ -1089,10 +1342,8 @@ static int __init omap3_sr_init(void)
 	sr_set_nvalues(&sr2);
 	sr_configure_vp(SR2);
 
-	/*
-	 * With voltages matching target OPP, set corresponding frequency.
-	 */
-	if (cpu_is_omap34xx())
+	/* For OPP scale up, scale up the frequency after voltage */
+	if (cpu_is_omap34xx() && !vdd_scale_down)
 		omap2_clk_set_freq();
 
 	ret = sysfs_create_file(power_kobj, &sr_vdd1_autocomp.attr);

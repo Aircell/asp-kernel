@@ -79,6 +79,7 @@ static enum power_supply_property pda_power_props[] = {
 static char *pda_power_supplied_to[] = {
 	"main-battery",
 	"backup-battery",
+//	"bq27000",
 };
 
 static struct power_supply pda_psy_ac = {
@@ -217,6 +218,12 @@ static void polling_timer_func(unsigned long unused)
 
 	mod_timer(&polling_timer,
 		  jiffies + msecs_to_jiffies(pdata->polling_interval));
+
+	/* Notify supplicants of resume so that they can check
+	 * the state of the battery */
+	
+	power_supply_changed(&pda_psy_ac);
+	power_supply_changed(&pda_psy_usb);
 }
 
 #ifdef CONFIG_USB_OTG_UTILS

@@ -32,12 +32,6 @@
 
 #include "dss.h"
 
-/* Chris Read's spectrum spreading */
-#include <plat/control.h>
-#define DSI_DPLL_SPREADING_CONFIG	(0x00c10013)
-#define DSI_DPLL_ENABLE_BIT			(1 << 4)
-#define DSI_DPLL_STATUS				(1 << 7)
-
 static struct {
 	int update_enabled;
 } dpi;
@@ -116,11 +110,6 @@ static int dpi_set_mode(struct omap_dss_device *dssdev)
 	is_tft = (dssdev->panel.config & OMAP_DSS_LCD_TFT) != 0;
 
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
-	/* Chris Read's spectrum spreading */
-	omap_ctrl_writel(DSI_DPLL_SPREADING_CONFIG, 
-			OMAP343X_CONTROL_DSS_DPLL_SPREADING_FREQ);
-	omap_ctrl_writel(DSI_DPLL_ENABLE_BIT,OMAP343X_CONTROL_DSS_DPLL_SPREADING);
-
 	r = dpi_set_dsi_clk(is_tft, t->pixel_clock * 1000,
 			&fck, &lck_div, &pck_div);
 #else
@@ -195,30 +184,26 @@ static int dpi_display_enable(struct omap_dss_device *dssdev)
 
 	mdelay(2);
 
+	/* Some panels (LQ043T1DG01) require that the power is brought
+	 * up before the clocks are enabled */
 	if (dssdev->driver->pre_enable) {
 		r = dssdev->driver->pre_enable(dssdev);
 		if (r)
 			goto err5;
 	}
-	
+
 	dispc_enable_lcd_out(1);
 
 	r = dssdev->driver->enable(dssdev);
 	if (r)
-		goto err6;
+		goto err5;
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
-	printk(KERN_ALERT "========= OMAP343X_CONTROL_DSS_DPLL_SPREADING = %04x\n",
-		omap_ctrl_readl(OMAP343X_CONTROL_DSS_DPLL_SPREADING));
-	printk(KERN_ALERT "========= Spread Spectrum is %s\n",
-		((omap_ctrl_readl(OMAP343X_CONTROL_DSS_DPLL_SPREADING) & DSI_DPLL_STATUS)) ? "Working!!!" : "not functioning");
-
 	return 0;
 
-err6:
-	dispc_enable_lcd_out(0);
 err5:
+	dispc_enable_lcd_out(0);
 err4:
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
 	dsi_pll_uninit();
@@ -294,9 +279,6 @@ static int dpi_display_resume(struct omap_dss_device *dssdev)
 
 	DSSDBG("dpi_display_resume\n");
 
-	if (dssdev->driver->pre_resume)
-		dssdev->driver->pre_resume(dssdev);
-
 	dss_clk_enable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
@@ -313,6 +295,9 @@ static int dpi_display_resume(struct omap_dss_device *dssdev)
 	}
 	mdelay(2);
 #endif
+
+	if (dssdev->driver->pre_resume)
+		dssdev->driver->pre_resume(dssdev);
 
 	dispc_enable_lcd_out(1);
 

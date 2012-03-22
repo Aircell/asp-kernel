@@ -10,7 +10,7 @@ comment "Enable Host or Gadget support to see Inventra options"
 config USB_MUSB_HDRC
 	depends on (USB || USB_GADGET)
 	depends on (ARM || (BF54x && !BF544) || (BF52x && !BF522 && !BF523))
-	select NOP_USB_XCEIV if (ARCH_DAVINCI || MACH_OMAP3EVM || BLACKFIN || MACH_OMAP3517EVM)
+	select NOP_USB_XCEIV if (ARCH_DAVINCI || MACH_OMAP3EVM || BLACKFIN || MACH_OMAP3517EVM || MACH_DM3730_SOM_LV || MACH_DM3730_TORPEDO)
 	select TWL4030_USB if MACH_OMAP_3430SDP
 	select USB_OTG_UTILS
 	tristate 'Inventra Highspeed Dual Role Controller (TI, ADI, ...)'

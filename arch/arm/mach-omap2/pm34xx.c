@@ -37,6 +37,7 @@
 #include <plat/serial.h>
 #include <plat/sdrc.h>
 #include <plat/prcm.h>
+#include <plat/prcm-debug.h>
 #include <plat/gpmc.h>
 #include <plat/dma.h>
 #include <plat/dmtimer.h>
@@ -171,7 +172,7 @@ struct omap_opp omap37x_mpu_rate_table[] = {
 	/*OPP3 (OPP120)*/
 	{S800M, VDD1_OPP3, 0x35},
 	/*OPP4 (OPPTM)*/
-	{S1000M, VDD1_OPP4, 0x3C},
+	{S1000M, VDD1_OPP4, 0x3e},
 };
 
 struct omap_opp omap37x_dsp_rate_table[] = {
@@ -795,8 +796,8 @@ restore:
 		state = pwrdm_read_prev_pwrst(pwrst->pwrdm);
 		if (state > pwrst->next_state) {
 			printk(KERN_INFO "Powerdomain (%s) didn't enter "
-			       "target state %d\n",
-			       pwrst->pwrdm->name, pwrst->next_state);
+			       "target state %d (last power state %d)\n",
+				pwrst->pwrdm->name, pwrst->next_state, state);
 			ret = -1;
 		}
 		set_pwrdm_state(pwrst->pwrdm, pwrst->saved_state);
@@ -856,6 +857,47 @@ static struct platform_suspend_ops omap_pm_ops = {
 };
 #endif /* CONFIG_SUSPEND */
 
+#ifdef CONFIG_PM_DEBUG
+static void __init omap3_dump_iva2_regs(void)
+{
+	printk("%s:%d\n", __FUNCTION__, __LINE__);
+
+	printk("%-20s %08x\n", "CM_FCLKEN_IVA2",
+		cm_read_mod_reg(OMAP3430_IVA2_MOD, CM_FCLKEN));
+	printk("%-20s %08x\n", "CM_CLKEN_PLL_IVA2",
+		cm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_CM_CLKEN_PLL));
+	printk("%-20s %08x\n", "CM_IDLEST_IVA2",
+		cm_read_mod_reg(OMAP3430_IVA2_MOD, CM_IDLEST));
+	printk("%-20s %08x\n", "CM_IDLEST_PLL_IVA2",
+		cm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_CM_IDLEST_PLL));
+	printk("%-20s %08x\n", "CM_AUTOIDLE_IVA2",
+		cm_read_mod_reg(OMAP3430_IVA2_MOD, CM_AUTOIDLE2));
+	printk("%-20s %08x\n", "CM_CLKSTCTRL_IVA2",
+		cm_read_mod_reg(OMAP3430_IVA2_MOD, CM_CLKSTCTRL));
+	printk("%-20s %08x\n", "RM_RSTCTRL_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3_PRM_RSTCTRL_OFFSET));
+	printk("%-20s %08x\n", "RM_RSTST_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3_PRM_RSTST_OFFSET));
+	printk("%-20s %08x\n", "PM_WKDEP_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, PM_WKDEP));
+	printk("%-20s %08x\n", "PM_PWSTCTRL_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, PM_PWSTCTRL));
+	printk("%-20s %08x\n", "PM_PWSTST_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, PM_PWSTST));
+	printk("%-20s %08x\n", "PM_PREPWSTST_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_PM_PREPWSTST));
+	printk("%-20s %08x\n", "PRM_IRQSTATUS_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_PRM_IRQSTATUS_IVA2));
+	printk("%-20s %08x\n", "PRM_IRQENABLE_IVA2",
+		prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_PRM_IRQENABLE_IVA2));
+
+}
+#else
+static void __init omap3_dump_iva2_regs(void)
+{
+}
+#endif
+
 
 /**
  * omap3_iva_idle(): ensure IVA is in idle so it can be put into
@@ -869,13 +911,25 @@ static struct platform_suspend_ops omap_pm_ops = {
  **/
 void __init omap3_iva_idle(void)
 {
+	u32 reg;
+
+	omap3_dump_iva2_regs();
+
 	/* ensure IVA2 clock is disabled */
 	cm_write_mod_reg(0, OMAP3430_IVA2_MOD, CM_FCLKEN);
 
+	/* Clear any pending PRCM interrupts */
+	reg = prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_PRM_IRQSTATUS_IVA2);
+	printk("%s:%d reg %08x\n", __FUNCTION__, __LINE__, reg);
+	prm_write_mod_reg(7, OMAP3430_IVA2_MOD, OMAP3430_PRM_IRQSTATUS_IVA2);
+	reg = prm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_PRM_IRQSTATUS_IVA2);
+	printk("%s:%d reg %08x\n", __FUNCTION__, __LINE__, reg);
+
 	/* if no clock activity, nothing else to do */
 	if (!(cm_read_mod_reg(OMAP3430_IVA2_MOD, OMAP3430_CM_CLKSTST) &
-	      OMAP3430_CLKACTIVITY_IVA2_MASK))
-		return;
+			OMAP3430_CLKACTIVITY_IVA2_MASK)) {
+		goto out;
+	}
 
 	/* Reset IVA2 */
 	prm_write_mod_reg(OMAP3430_RST1_IVA2 |
@@ -902,6 +956,9 @@ void __init omap3_iva_idle(void)
 			  OMAP3430_RST2_IVA2 |
 			  OMAP3430_RST3_IVA2,
 			  OMAP3430_IVA2_MOD, RM_RSTCTRL);
+
+out:
+	omap3_dump_iva2_regs();
 }
 
 static void __init omap3_d2d_idle(void)
@@ -1243,11 +1300,19 @@ static int __init clkdms_setup(struct clockdomain *clkdm, void *unused)
 
 void omap_push_sram_idle(void)
 {
-	_omap_sram_idle = omap_sram_push(omap34xx_cpu_suspend,
+	void *ptr;
+	_omap_sram_idle = ptr = omap_sram_push(omap34xx_cpu_suspend,
 					omap34xx_cpu_suspend_sz);
 	if (omap_type() != OMAP2_DEVICE_TYPE_GP)
 		_omap_save_secure_sram = omap_sram_push(save_secure_ram_context,
 				save_secure_ram_context_sz);
+
+#ifdef CONFIG_DEBUG_SUSPEND_ENTRY
+	/* push the debug suspend_entry structure into SRAM, and update
+	 * the omap34xx_sram_dbg_suspend_struct_ptr in SRAM (its address is
+	 * the arg to pm_debug_suspend_entry_init() */
+	pm_debug_suspend_entry_init(ptr + omap34xx_sram_dbg_suspend_struct_offset);
+#endif
 }
 
 static int __init omap3_pm_init(void)

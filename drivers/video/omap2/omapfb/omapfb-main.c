@@ -61,26 +61,12 @@ static void draw_pixel(struct fb_info *fbi, int x, int y, unsigned color)
 	struct fb_var_screeninfo *var = &fbi->var;
 	struct fb_fix_screeninfo *fix = &fbi->fix;
 	void __iomem *addr = fbi->screen_base;
-	unsigned bytespp;
+	const unsigned bytespp = var->bits_per_pixel >> 3;
 	const unsigned line_len = fix->line_length / bytespp;
 
 	int r = (color >> 16) & 0xff;
 	int g = (color >> 8) & 0xff;
 	int b = (color >> 0) & 0xff;
-
-	/* TARR HERE */
-    switch(var->bits_per_pixel) {
-        case 16:
-            bytespp = 2;
-            break;
-        case 24:
-        case 32:
-            bytespp = 4;
-            break;
-        default:
-            bytespp = 2;
-            break;
-    }
 
 	if (var->bits_per_pixel == 16) {
 		u16 __iomem *p = (u16 __iomem *)addr;
@@ -323,7 +309,6 @@ static bool cmp_var_to_colormode(struct fb_var_screeninfo *var,
 static void assign_colormode_to_var(struct fb_var_screeninfo *var,
 		struct omapfb_colormode *color)
 {
-
 	var->bits_per_pixel = color->bits_per_pixel;
 	var->nonstd = color->nonstd;
 	var->red = color->red;
@@ -337,7 +322,6 @@ static int fb_mode_to_dss_mode(struct fb_var_screeninfo *var,
 {
 	enum omap_color_mode dssmode;
 	int i;
-
 
 	/* first match with nonstd field */
 	if (var->nonstd) {
@@ -481,22 +465,8 @@ static int check_fb_size(const struct omapfb_info *ofbi,
 		struct fb_var_screeninfo *var)
 {
 	unsigned long max_frame_size = ofbi->region.size;
-	int bytespp;
+	int bytespp = var->bits_per_pixel >> 3;
 	unsigned long line_size = var->xres_virtual * bytespp;
-
-	/* TARR HERE */
-	switch(var->bits_per_pixel) {
-        case 16:
-            bytespp = 2;
-            break;
-        case 24:
-        case 32:
-            bytespp = 4;
-            break;
-        default:
-            bytespp = 2;
-            break;
-    }
 
 	if (ofbi->rotation_type == OMAP_DSS_ROT_VRFB) {
 		/* One needs to check for both VRFB and OMAPFB limitations. */
@@ -554,31 +524,18 @@ static int setup_vrfb_rotation(struct fb_info *fbi)
 	if (!rg->size || ofbi->rotation_type != OMAP_DSS_ROT_VRFB)
 		return 0;
 
+	DBG("setup_vrfb_rotation\n");
+
 	if (rotation == FB_ROTATE_CW)
 		rotation = FB_ROTATE_CCW;
 	else if (rotation == FB_ROTATE_CCW)
 		rotation = FB_ROTATE_CW;
 
 	r = fb_mode_to_dss_mode(var, &mode);
-	if (r) {
-		printk(KERN_ERR "Failed fb_to_dss_mode\n");
+	if (r)
 		return r;
-	}
 
-	/* TARR HERE */
-	//bytespp = var->bits_per_pixel >> 3;
-	switch(var->bits_per_pixel) {
-		case 16:
-			bytespp = 2;
-			break;
-		case 24:
-		case 32:
-			bytespp = 4;
-			break;
-		default:
-			bytespp = 2;
-			break;
-	}
+	bytespp = var->bits_per_pixel >> 3;
 
 	yuv_mode = mode == OMAP_DSS_COLOR_YUV2 || mode == OMAP_DSS_COLOR_UYVY;
 
@@ -606,9 +563,8 @@ static int setup_vrfb_rotation(struct fb_info *fbi)
 		DBG("setup_vrfb_rotation: reset fb\n");
 	}
 
-	if (vrfb->vaddr[rotation]) {
+	if (vrfb->vaddr[rotation])
 		return 0;
-	}
 
 	if (rotation == FB_ROTATE_CW || rotation == FB_ROTATE_CCW)
 		omap_vrfb_setup(&rg->vrfb, rg->paddr,
@@ -736,6 +692,8 @@ int check_fb_var(struct fb_info *fbi, struct fb_var_screeninfo *var)
 	int i;
 	int r;
 
+	DBG("check_fb_var %d\n", ofbi->id);
+
 	if (ofbi->region.size == 0)
 		return 0;
 
@@ -765,6 +723,10 @@ int check_fb_var(struct fb_info *fbi, struct fb_var_screeninfo *var)
 		var->xoffset = var->xres_virtual - var->xres;
 	if (var->yres + var->yoffset > var->yres_virtual)
 		var->yoffset = var->yres_virtual - var->yres;
+
+	DBG("xres = %d, yres = %d, vxres = %d, vyres = %d\n",
+			var->xres, var->yres,
+			var->xres_virtual, var->yres_virtual);
 
 	var->height             = -1;
 	var->width              = -1;
@@ -913,6 +875,9 @@ static int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 		rotation = (rotation + ofbi->rotation[i]) % 4;
 		break;
 	}
+
+	DBG("setup_overlay %d, posx %d, posy %d, outw %d, outh %d\n", ofbi->id,
+			posx, posy, outw, outh);
 
 	if (rotation == FB_ROTATE_CW || rotation == FB_ROTATE_CCW) {
 		xres = var->yres;
@@ -1069,6 +1034,8 @@ err:
 static int omapfb_check_var(struct fb_var_screeninfo *var, struct fb_info *fbi)
 {
 	int r;
+
+	DBG("check_var(%d)\n", FB2OFB(fbi)->id);
 
 	r = check_fb_var(fbi, var);
 
@@ -1479,7 +1446,6 @@ static int omapfb_alloc_fbmem_display(struct fb_info *fbi, unsigned long size,
 		bytespp = 2;
 		break;
 	case 24:
-	case 32:
 		bytespp = 4;
 		break;
 	default:
@@ -1807,7 +1773,7 @@ static int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 	if (display) {
 		u16 w, h;
 		int rotation = (var->rotate + ofbi->rotation[0]) % 4;
-		
+
 		display->get_resolution(display, &w, &h);
 
 		if (rotation == FB_ROTATE_CW ||
@@ -1820,9 +1786,7 @@ static int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 		}
 
 		var->xres_virtual = var->xres;
-		/* TARR HERE */
-		//var->yres_virtual = var->yres * 2;
-		var->yres_virtual = var->yres;
+		var->yres_virtual = var->yres * 2;
 
 		if (!var->bits_per_pixel) {
 			switch (display->get_recommended_bpp(display)) {
@@ -1830,7 +1794,6 @@ static int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 				var->bits_per_pixel = 16;
 				break;
 			case 24:
-			case 32:
 				var->bits_per_pixel = 32;
 				break;
 			default:

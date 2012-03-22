@@ -110,7 +110,7 @@ phci_hcd_urb_free_priv(
     int i = 0;
     struct ehci_qtd *qtd;
     for(i = 0;i<urb_priv_to_remove->length;i++){
-        if(urb_priv_to_remove->qtd[i]){
+        if(!IS_ERR_OR_NULL(urb_priv_to_remove->qtd[i])){
             qtd = urb_priv_to_remove->qtd[i];
             list_del(&qtd->qtd_list);
 
@@ -123,7 +123,9 @@ phci_hcd_urb_free_priv(
             qha_free(qha_cache,qtd);
             urb_priv_to_remove->qtd[i] = 0;
             qtd=0;
-        }
+        } else {
+		printk(KERN_INFO "qtdptd: IS_ERR_OR_NULL returned true (%p)\n", urb_priv_to_remove->qtd[i]);
+	}
 
     }
     return;
@@ -135,12 +137,11 @@ phci_hcd_urb_free_priv(
     struct ehci_qtd * 
 phci_hcd_qtd_allocate(int mem_flags)
 {
-
     struct ehci_qtd *qtd = 0;
-    qtd = (struct ehci_qtd *)kmalloc(sizeof *qtd,mem_flags);
-    if(!qtd)
-        return 0;
-    memset (qtd, 0, sizeof *qtd);
+    qtd = (struct ehci_qtd *)kzalloc(sizeof(*qtd),mem_flags);
+    if(IS_ERR(qtd))
+        return qtd;
+
     qtd->qtd_dma = (dma_addr_t) (qtd);
     qtd->hw_next = EHCI_LIST_END;
     qtd->hw_alt_next = EHCI_LIST_END;
@@ -887,7 +888,6 @@ phci_hcd_submit_async(
 	struct hcd_dev             *dev;
 #endif
     int                 epnum;
-    unsigned long               flags;
     struct ehci_qh              *qh = 0;
 
     urb_priv_t  *urb_priv = urb->hcpriv;
@@ -919,7 +919,6 @@ phci_hcd_submit_async(
      * when updating hw_* fields in shared qh/qtd/... structures.
      */
 
-    spin_lock_irqsave (&hcd->lock, flags);
     spin_lock(&hcd_data_lock);
 #ifdef LINUX_269    
     qh = phci_hcd_qh_append_tds (hcd, urb, qtd_list, epnum, &dev->ep[epnum],status);
@@ -940,7 +939,6 @@ phci_hcd_submit_async(
         pehci_info("%s: free the urb,qh->state %x\n",__FUNCTION__, qh->qh_state);
         phci_hcd_qtd_list_free (hcd, urb, &qh->qtd_list);
         spin_unlock(&hcd_data_lock);
-        spin_unlock_irqrestore (&hcd->lock, flags);
         *status = -ENODEV;
         return 0;
     }
@@ -954,8 +952,6 @@ phci_hcd_submit_async(
 cleanup:
     pehci_entry("-- %s: Exit\n",__FUNCTION__);        
     spin_unlock(&hcd_data_lock);
-    /* free it from lock systme can sleep now */
-    spin_unlock_irqrestore (&hcd->lock, flags);
     /* could not get the QH terminate and clean. */
     if (unlikely (qh == 0) || *status < 0) {
         phci_hcd_qtd_list_free (hcd, urb, qtd_list);
@@ -1072,7 +1068,6 @@ phci_hcd_submit_interrupt(
     struct ehci_qtd             *qtd;
     struct _hcd_dev             *dev;
     int                 epnum;
-    unsigned long               flags;
     struct ehci_qh              *qh = 0;
     urb_priv_t  *urb_priv = (urb_priv_t *)urb->hcpriv;
 
@@ -1105,7 +1100,6 @@ phci_hcd_submit_interrupt(
     qh = (struct ehci_qh*)urb->ep->hcpriv;
 #endif
 
-    spin_lock_irqsave (&hcd->lock, flags);
     if(unlikely(qh != 0)){
         if(!list_empty(&qh->qtd_list)){
             *status = -EBUSY;
@@ -1160,8 +1154,6 @@ phci_hcd_submit_interrupt(
 
 
 done:
-    /* free it from lock systme can sleep now */
-    spin_unlock_irqrestore (&hcd->lock, flags);
     /* could not get the QH terminate and clean. */
     if (unlikely (qh == 0) || *status < 0) {
         phci_hcd_qtd_list_free (hcd, urb, qtd_list);
@@ -1205,6 +1197,10 @@ phci_hcd_qha_from_qtd(
     struct _isp1761_qha *qha = (isp1761_qha*)ptd;
     pehci_entry("++ %s: Entered\n",__FUNCTION__);
 
+    if(IS_ERR_OR_NULL(qtd))
+    {
+	return NULL;
+    }
 
     maxpacket = usb_maxpacket(urb->dev,
             urb->pipe,

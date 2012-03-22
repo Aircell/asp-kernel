@@ -857,7 +857,9 @@ int isp1761_request_irq(void (*handler)(struct isp1761_dev *, void *),
 #endif
 {
     int result = 0;
+#ifndef NON_PCI
     u32 intcsr = 0;
+#endif
     hal_entry("%s: Entered\n",__FUNCTION__);
     hal_init("isp1761_request_irq: dev->index %x\n",dev->index);
     if(dev->index == ISP1761_DC){

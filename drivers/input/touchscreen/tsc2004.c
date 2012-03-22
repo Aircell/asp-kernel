@@ -425,6 +425,9 @@ static int __devinit tsc2004_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
+	if (pdata->pre_init_platform_hw)
+		pdata->pre_init_platform_hw(pdata);
+
 	if (!i2c_check_functionality(client->adapter,
 				     I2C_FUNC_SMBUS_READ_WORD_DATA))
 		return -EIO;
@@ -492,6 +495,8 @@ static int __devinit tsc2004_probe(struct i2c_client *client,
 	tsc2004_free_irq(ts);
 	if (pdata->exit_platform_hw)
 		pdata->exit_platform_hw();
+	if (pdata->post_exit_platform_hw)
+		pdata->post_exit_platform_hw(pdata);
  err_free_mem:
 	input_free_device(input_dev);
 	kfree(ts);
@@ -507,6 +512,8 @@ static int __devexit tsc2004_remove(struct i2c_client *client)
 
 	if (pdata->exit_platform_hw)
 		pdata->exit_platform_hw();
+	if (pdata->post_exit_platform_hw)
+		pdata->post_exit_platform_hw(pdata);
 
 	input_unregister_device(ts->input);
 	kfree(ts);

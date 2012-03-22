@@ -38,7 +38,6 @@ static bool update_ctx_ctrl3[8];
 static bool update_timing;
 static bool update_ctrl;
 static bool uses_videoport;
-unsigned long padconf_base;
 
 /* Structure for saving/restoring CSI2 module registers*/
 static struct isp_reg ispcsi2_reg_list[] = {
@@ -320,75 +319,6 @@ int isp_csi2_complexio_power_autoswitch(bool enable)
 		       ISPCSI2_COMPLEXIO_CFG1);
 	return 0;
 }
-/**
- * isp_csi2_complexio_power - Sets the desired power command for CSI2 ComplexIO.
- * @power_cmd: Power command to be set.
- *
- * Returns 0 if successful, or -EBUSY if the retry count is exceeded.
- **/
-int isp_csi2_check_reset(void)
-{
-	u32 reg;
-	u8 retry_count;
-
-	retry_count = 0;
-	do {
-		udelay(50);
-		reg = isp_reg_readl(current_csi2_cfg.dev, OMAP3_ISP_IOMEM_CSI2A,
-			    ISPCSI2_COMPLEXIO_CFG1);
-
-		if ( reg & ISPCSI2_COMPLEXIO_CFG1_RESET_DONE_DONE) {
-			printk(KERN_DEBUG "ComplexIO reset done.\n");
-			break;
-		}
-		if((retry_count %10)==1) {
-			printk(KERN_DEBUG "Waiting for ComplexIO to reset %8.8x...\n", reg);
-		}
-	} while (++retry_count < 100);
-
-	printk(KERN_DEBUG " Retry count %d\n", retry_count);
-	if (retry_count == 100)
-	{
-		printk(KERN_DEBUG " Retry count exceeded!\n");
-		return -EBUSY;
-	}
-
-	return 0;
-}
-
-int isp_csi2_check_stopstate(void)
-{
-	u32 reg;
-	u8 retry_count;
-
-	retry_count = 0;
-	do {
-		udelay(50);
-		reg = isp_reg_readl(current_csi2_cfg.dev, OMAP3_ISP_IOMEM_CSI2A,
-				    ISPCSI2_TIMING);
-		
-		if ( reg & ISPCSI2_TIMING_FORCE_RX_MODE_IO_ENABLE(1)) {
-			if((retry_count %10)==1) {
-				printk(KERN_DEBUG "Waiting for ComplexIO stopstate  %8.8x...\n",
-					reg);
-			}
-		} 
-		else 
-		{
-			printk(KERN_DEBUG "ComplexIO stop state done.\n");
-			break;
-		}
-	} while (++retry_count < 100);
-
-	if (retry_count == 100)
-	{
-		printk(KERN_DEBUG " Retry count exceeded!\n");
-		return -EBUSY;
-	}
-
-	return 0;
-}
-
 
 /**
  * isp_csi2_complexio_power - Sets the desired power command for CSI2 ComplexIO.
@@ -428,12 +358,10 @@ int isp_csi2_complexio_power(enum isp_csi2_power_cmds power_cmd)
 		current_state = isp_csi2_complexio_power_status();
 
 		if (current_state != power_cmd) {
+			printk(KERN_DEBUG "CSI2: Complex IO power command not"
+			       " yet taken.");
 			if (++retry_count < 100) {
-				if((retry_count %10)==1) {
-					printk(KERN_DEBUG "CSI2: Complex IO power command (%d) not"
-					       " yet taken. Current state is %d", power_cmd, current_state);
-					printk(KERN_DEBUG " Retrying...\n");
-				}
+				printk(KERN_DEBUG " Retrying...\n");
 				udelay(50);
 			} else {
 				printk(KERN_DEBUG " Retry count exceeded!\n");
@@ -1636,7 +1564,7 @@ int isp_csi2_timings_config_forcerxmode(u8 io, bool force_rx_mode)
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
 	if (io < 1 || io > 2) {
-		printk(KERN_ERR "CSI2 forcerxmode - Timings config: Invalid IO number\n");
+		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
 
@@ -1662,7 +1590,7 @@ int isp_csi2_timings_config_stopstate_16x(u8 io, bool stop_state_16x)
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
 	if (io < 1 || io > 2) {
-		printk(KERN_ERR "CSI2 - stopstate_16x Timings config: Invalid IO number\n");
+		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
 
@@ -1688,7 +1616,7 @@ int isp_csi2_timings_config_stopstate_4x(u8 io, bool stop_state_4x)
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
 	if (io < 1 || io > 2) {
-		printk(KERN_ERR "CSI2 - stopstate_4x Timings config: Invalid IO number\n");
+		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
 
@@ -1714,7 +1642,7 @@ int isp_csi2_timings_config_stopstate_cnt(u8 io, u16 stop_state_counter)
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
 	if (io < 1 || io > 2) {
-		printk(KERN_ERR "CSI2 - stopstate_cnt Timings config: Invalid IO number\n");
+		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
 
@@ -1746,7 +1674,7 @@ int isp_csi2_timings_update(u8 io, bool force_update)
 	u32 reg;
 
 	if (io < 1 || io > 2) {
-		printk(KERN_ERR "CSI2 -update- Timings config: Invalid IO number %d\n", io);
+		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
 
@@ -1814,7 +1742,7 @@ int isp_csi2_timings_get(u8 io)
 	u32 reg;
 
 	if (io < 1 || io > 2) {
-		printk(KERN_ERR "CSI2 - get -Timings config: Invalid IO number\n");
+		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
 
@@ -1901,9 +1829,6 @@ int isp_csi2_isr(void)
 	isp_reg_writel(current_csi2_cfg.dev, csi2_irqstatus,
 		       OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_IRQSTATUS);
 
-	dev_dbg(current_csi2_cfg.dev, "isp_csi2_isr ISPCSI2_IRQSTATUS %8.8x\n",
-			csi2_irqstatus);
-
 	/* Failure Cases */
 	if (csi2_irqstatus & ISPCSI2_IRQSTATUS_COMPLEXIO1_ERR_IRQ) {
 		cpxio1_irqstatus = isp_reg_readl(current_csi2_cfg.dev,
@@ -1950,8 +1875,6 @@ int isp_csi2_isr(void)
 		isp_reg_writel(current_csi2_cfg.dev, ctxirqstatus,
 			       OMAP3_ISP_IOMEM_CSI2A,
 			       ISPCSI2_CTX_IRQSTATUS(0));
-		dev_dbg(current_csi2_cfg.dev, "isp_csi2_isr IRQSTATUS_CONTEXT(0) %8.8x\n",
-			ctxirqstatus);
 	}
 
 	if (csi2_irqstatus & ISPCSI2_IRQSTATUS_ECC_CORRECTION_IRQ)
@@ -2089,7 +2012,6 @@ EXPORT_SYMBOL(isp_csi2_irq_all_set);
  **/
 int isp_csi2_reset(void)
 {
-	int ret = 0;
 	u32 reg;
 	u8 soft_reset_retries = 0;
 	int i;
@@ -2142,11 +2064,7 @@ int isp_csi2_reset(void)
 	reg = isp_reg_readl(current_csi2_cfg.dev, OMAP3_ISP_IOMEM_CSI2A,
 			    ISPCSI2_SYSCONFIG);
 	reg &= ~ISPCSI2_SYSCONFIG_MSTANDBY_MODE_MASK;
-#ifdef CONFIG_VIDEO_OMAP3_ISP_DEBUG
-	reg |= ISPCSI2_SYSCONFIG_MSTANDBY_MODE_NO;
-#else
 	reg |= ISPCSI2_SYSCONFIG_MSTANDBY_MODE_SMART;
-#endif
 	reg &= ~ISPCSI2_SYSCONFIG_AUTO_IDLE_MASK;
 	reg |= ISPCSI2_SYSCONFIG_AUTO_IDLE_AUTO;
 	isp_reg_writel(current_csi2_cfg.dev, reg, OMAP3_ISP_IOMEM_CSI2A,
@@ -2170,115 +2088,15 @@ int isp_csi2_reset(void)
 	isp_csi2_phy_get();
 	isp_csi2_timings_get_all();
 
-	printk( KERN_DEBUG "JFK reset value of forcerxmode is %d\n",
-		current_csi2_cfg.timings[0].force_rx_mode);
-	isp_csi2_timings_config_forcerxmode(1, false);
-	isp_csi2_timings_update_all(false);
-	//ret = isp_csi2_check_reset();
-
-
-	return ret; 
-}
-
-enum isp_csi2_pad_direction { pull_down, pull_up } ;
-
-#define OMAP3_CONTROL_PADCONF_MUX_PBASE                         0x48002030LU
-
-#define OMAP3_CONTROL_PADCONF_MUX_SIZE                          0x120
-#define OMAP3_CONTROL_PADCONF_CAM_FLD_OFFSET                    0x0e4
-#define OMAP3_CONTROL_PADCONF_CAM_D0_OFFSET                     0x0e6
-#define OMAP3_CONTROL_PADCONF_CAM_D1_OFFSET                     0x0e8
-#define OMAP3_CONTROL_PADCONF_CSI2_DX0_OFFSET                   0x104
-#define OMAP3_CONTROL_PADCONF_CSI2_DY0_OFFSET                   0x106
-#define OMAP3_CONTROL_PADCONF_CSI2_DX1_OFFSET                   0x108
-#define OMAP3_CONTROL_PADCONF_CSI2_DY1_OFFSET                   0x10a
-#define PADCONF_PULLUDENABLE   (1<<3)
-#define PADCONF_PULLTYPESELECT (1<<4)
-#define PADCONF_INPUTENABLE    (1<<7)
-
-static void isp_csi2_complexio_debug(void) 
-{
-	u32 reg;
-	u16 regw;
-	reg = __raw_readl(padconf_base+OMAP3_CONTROL_PADCONF_CSI2_DX0_OFFSET);
-	printk(KERN_DEBUG "JFK Clock pads: %8.8x\n", reg);
-	reg = __raw_readl(padconf_base+OMAP3_CONTROL_PADCONF_CSI2_DX1_OFFSET);
-	printk(KERN_DEBUG "JFK Data pads: %8.8x\n", reg);
-	reg = __raw_readl(padconf_base+OMAP3_CONTROL_PADCONF_CAM_FLD_OFFSET);
-	printk(KERN_DEBUG "JFK FLD pads: %8.8x\n", reg);
-	reg = __raw_readl(padconf_base+OMAP3_CONTROL_PADCONF_CAM_D1_OFFSET);
-	printk(KERN_DEBUG "JFK D1 pads: %8.8x\n", reg);
-	regw = __raw_readw(padconf_base+OMAP3_CONTROL_PADCONF_CAM_D0_OFFSET);
-	printk(KERN_DEBUG "JFK D0 Pad: %4.4x\n", regw);
-}
-
-static void isp_csi2_complexio_reg_pull(u16 regoff, enum isp_csi2_pad_direction direction) 
-{
-	u16 regw;
-
-	regw = __raw_readw(padconf_base+regoff);
-	
-	regw |= (PADCONF_PULLUDENABLE|PADCONF_INPUTENABLE);
-	
-	if(direction==pull_down)
-		regw &= ~PADCONF_PULLTYPESELECT;
-	else 
-		regw |= PADCONF_PULLTYPESELECT;
-
-	__raw_writew(regw, padconf_base+regoff);
-}
-
-static void isp_csi2_complexio_pull( enum isp_csi2_pad_direction direction) 
-{
-	isp_csi2_complexio_reg_pull(OMAP3_CONTROL_PADCONF_CAM_D0_OFFSET, direction);
-	isp_csi2_complexio_reg_pull(OMAP3_CONTROL_PADCONF_CSI2_DX0_OFFSET, direction);
-	isp_csi2_complexio_reg_pull(OMAP3_CONTROL_PADCONF_CSI2_DY1_OFFSET, direction);
-	isp_csi2_complexio_reg_pull(OMAP3_CONTROL_PADCONF_CSI2_DX1_OFFSET, direction);
-	isp_csi2_complexio_reg_pull(OMAP3_CONTROL_PADCONF_CSI2_DY0_OFFSET, direction);
-	isp_csi2_complexio_reg_pull(OMAP3_CONTROL_PADCONF_CAM_D1_OFFSET, direction);
-}
-
-int isp_csi2_complexio_init(void)
-{
-	int ret = 0;
+	isp_csi2_complexio_power(ISP_CSI2_POWER_ON);
+	isp_csi2_complexio_power_autoswitch(true);
 
 	isp_csi2_timings_config_forcerxmode(1, true);
 	isp_csi2_timings_config_stopstate_cnt(1, 0x1FF);
-	isp_csi2_timings_update_all(false);
+	isp_csi2_timings_update_all(true);
 
-
-	/* Map the pad configuration registers */
-	padconf_base = (unsigned long) 	
-		ioremap_nocache(OMAP3_CONTROL_PADCONF_MUX_PBASE,
-			OMAP3_CONTROL_PADCONF_MUX_SIZE);
-	if (!padconf_base) {
-		dev_err(current_csi2_cfg.dev, "cannot map pad configuration region\n");
-		ret = -ENODEV;
-		goto err_out;
-	}
-	/* Pull down  pads */
-	isp_csi2_complexio_pull(pull_down);
-
-	if((ret = isp_csi2_complexio_power(ISP_CSI2_POWER_ON))!=0)
-		goto err_padconf;
-	isp_csi2_complexio_power_autoswitch(true);
-
-	ret=isp_csi2_check_stopstate();
-
-	/* Pull up pads */
-	isp_csi2_complexio_pull(pull_up);
-
-err_padconf:
-	/* Unmap the pad configuration registers */
-	if(padconf_base)  {
-		iounmap((void *)padconf_base);
-		padconf_base = 0UL;
-	}	
-	
-err_out:
-	return ret;	
+	return 0;
 }
-EXPORT_SYMBOL(isp_csi2_complexio_init);
 
 /**
  * isp_csi2_enable - Enables the CSI2 module.
@@ -2287,9 +2105,6 @@ EXPORT_SYMBOL(isp_csi2_complexio_init);
 void isp_csi2_enable(int enable)
 {
 	if (enable) {
-#ifdef CONFIG_VIDEO_OMAP3_ISP_DEBUG
-		isp_csi2_irq_all_set(true);
-#endif
 		isp_csi2_ctx_config_enabled(0, true);
 		isp_csi2_ctx_config_eof_enabled(0, true);
 		isp_csi2_ctx_config_checksum_enabled(0, true);
@@ -2299,9 +2114,6 @@ void isp_csi2_enable(int enable)
 		isp_csi2_ctrl_config_if_enable(true);
 		isp_csi2_ctrl_update(false);
 	} else {
-#ifdef CONFIG_VIDEO_OMAP3_ISP_DEBUG
-		isp_csi2_irq_all_set(false);
-#endif
 		isp_csi2_ctx_config_enabled(0, false);
 		isp_csi2_ctx_config_eof_enabled(0, false);
 		isp_csi2_ctx_config_checksum_enabled(0, false);
@@ -2311,10 +2123,6 @@ void isp_csi2_enable(int enable)
 		isp_csi2_ctrl_config_if_enable(false);
 		isp_csi2_ctrl_update(false);
 	}
-#ifdef CONFIG_VIDEO_OMAP3_ISP_DEBUG
-	printk(KERN_DEBUG "isp_csi2_enable\n");
-	isp_csi2_regdump();
-#endif
 }
 EXPORT_SYMBOL(isp_csi2_enable);
 

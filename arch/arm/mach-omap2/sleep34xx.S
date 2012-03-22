@@ -207,6 +207,12 @@ loop:
 	cmp	r1, #0x0
 	/* If context save is required, do that and execute wfi */
 	bne	save_context_wfi
+
+#if defined(CONFIG_DEBUG_SUSPEND_ENTRY)
+	/* Save PM debug registers before WFI */
+	bl	save_debug_suspend_regs
+#endif
+
 	/* Data memory barrier and Data sync barrier */
 	mov	r1, #0
 	mcr	p15, 0, r1, c7, c10, 4
@@ -587,6 +593,12 @@ finished:
 	mcr     p15, 2, r10, c0, c0, 0
 	isb
 skip_l2_inval:
+
+#if defined(CONFIG_DEBUG_SUSPEND_ENTRY)
+	/* Save PM debug registers before WFI */
+	bl	save_debug_suspend_regs
+#endif
+
 	/* Data memory barrier and Data sync barrier */
 	mov     r1, #0
 	mcr     p15, 0, r1, c7, c10, 4
@@ -668,5 +680,39 @@ cache_pred_disable_mask:
 	.word	0xFFFFE7FB
 control_stat:
 	.word	CONTROL_STAT
+
+#ifdef CONFIG_DEBUG_SUSPEND_ENTRY
+	/* Save PM registers on entry.
+	 * Code expects omap34xx_sram_dbg_suspend_struct_ptr to point
+	 * into SRAM to a structure of omap_pm_debug_sram_registers which
+	 * contains an array of omap_pm_debug_register, with a zero v_ptr
+	 * terminating the array. */
+	
+save_debug_suspend_regs:
+	ldr	r0, omap34xx_sram_dbg_suspend_struct_ptr /* p = struct ptr */
+	cmp	r0, #0
+	bxeq	lr		/* Return if p == NULL */
+	ldr	r2, [r0, #4]
+	mov	r3, #1
+	cmp	r2, #0
+	str	r3, [r0], #4	/* p->valid = 1; */
+	bxeq	lr
+.L3:
+	ldr	r3, [r2, #0]
+	str	r3, [r0, #4]	/* p->value = *p->v_ptr */
+	ldr	r2, [r0, #8]!	/* (p++)->v_addr != NULL? */
+	cmp	r2, #0
+	bne	.L3
+	bx	lr
+	
+/* ptr to struct in SRAM to hold PM debug registers saved before wfi */
+omap34xx_sram_dbg_suspend_struct_ptr:
+	.word	0
+
+/* Offset from omap34xx_cpu_suspend to omap34xx_sram_dbg_suspend_struct_ptr */
+ENTRY(omap34xx_sram_dbg_suspend_struct_offset)
+	.word	omap34xx_sram_dbg_suspend_struct_ptr - omap34xx_cpu_suspend
+#endif
+	
 ENTRY(omap34xx_cpu_suspend_sz)
 	.word	. - omap34xx_cpu_suspend

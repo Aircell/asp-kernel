@@ -37,6 +37,8 @@
 
 /* Active pin states */
 #define OMAP_PIN_OUTPUT			0
+#define OMAP_PIN_OUTPUT_PULLUP		(OMAP_PULL_ENA | OMAP_PULL_UP)
+#define OMAP_PIN_OUTPUT_PULLDOWN	(OMAP_PULL_ENA)
 #define OMAP_PIN_INPUT			OMAP_INPUT_EN
 #define OMAP_PIN_INPUT_PULLUP		(OMAP_PULL_ENA | OMAP_INPUT_EN \
 						| OMAP_PULL_UP)
@@ -118,6 +120,19 @@ int omap_mux_init_gpio(int gpio, int val);
  */
 int omap_mux_init_signal(char *muxname, int val);
 
+/**
+ * omap_mux_read - read padconf register
+ * @offset:		Mux register offset
+ */
+u16 omap_mux_read(u16 offset);
+
+/**
+ * omap_mux_write - write padconf register
+ * @offset:		Mux register offset
+ * @val:		Options for the mux register value
+ */
+void omap_mux_write(u16 offset, u16 val);
+
 #else
 
 static inline int omap_mux_init_gpio(int gpio, int val)
@@ -127,6 +142,13 @@ static inline int omap_mux_init_gpio(int gpio, int val)
 static inline int omap_mux_init_signal(char *muxname, int val)
 {
 	return 0;
+}
+static inline int omap_mux_read(u16 reg)
+{
+	return 0;
+}
+static inline void omap_mux_write(u16 reg, u16 val)
+{
 }
 
 #endif

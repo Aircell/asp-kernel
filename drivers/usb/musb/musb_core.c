@@ -851,7 +851,7 @@ static irqreturn_t musb_stage2_irq(struct musb *musb, u8 int_usb,
 		case OTG_STATE_B_PERIPHERAL:
 			musb_g_suspend(musb);
 			musb->is_active = is_otg_enabled(musb)
-					&& (!musb->xceiv->gadget || musb->xceiv->gadget->b_hnp_enable);
+					&& musb->xceiv->gadget->b_hnp_enable;
 			if (musb->is_active) {
 #ifdef	CONFIG_USB_MUSB_OTG
 				musb->xceiv->state = OTG_STATE_B_WAIT_ACON;
@@ -2103,9 +2103,9 @@ bad_config:
 	 */
 	if (is_host_enabled(musb)) {
 		if (!is_otg_enabled(musb)) {
-		MUSB_HST_MODE(musb);
-		musb->xceiv->default_a = 1;
-		musb->xceiv->state = OTG_STATE_A_IDLE;
+			MUSB_HST_MODE(musb);
+			musb->xceiv->default_a = 1;
+			musb->xceiv->state = OTG_STATE_A_IDLE;
 		}
 
 		status = usb_add_hcd(musb_to_hcd(musb), -1, 0);

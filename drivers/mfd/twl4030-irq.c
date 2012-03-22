@@ -699,9 +699,11 @@ static void handle_twl4030_sih(unsigned irq, struct irq_desc *desc)
 
 		if (irq < sih->bits)
 			generic_handle_irq(agent->irq_base + irq);
+#if 0 // TODO: FIXME! Mask out IRQs on GPIOs beyond 18 showing up
 		else
 			pr_err("twl4030: %s SIH, invalid ISR bit %d\n",
 				sih->name, irq);
+#endif
 	}
 }
 

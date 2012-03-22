@@ -234,6 +234,9 @@
 /* is driver active, bound to a chip? */
 static bool inuse;
 
+/* TWL IDCODE Register value */
+static u32 twl_idcode;
+
 static unsigned int twl_id;
 unsigned int twl_rev(void)
 {
@@ -489,6 +492,58 @@ int twl_i2c_read_u8(u8 mod_no, u8 *value, u8 reg)
 EXPORT_SYMBOL(twl_i2c_read_u8);
 
 /*----------------------------------------------------------------------*/
+
+/**
+ * twl_read_idcode_register - API to read the IDCODE register.
+ *
+ * Unlocks the IDCODE register and read the 32 bit value.
+ */
+static int twl_read_idcode_register(void)
+{
+	int err;
+
+	err = twl_i2c_write_u8(TWL4030_MODULE_INTBR, TWL_EEPROM_R_UNLOCK,
+						REG_UNLOCK_TEST_REG);
+	if (err) {
+		pr_err("TWL4030 Unable to unlock IDCODE registers -%d\n", err);
+		goto fail;
+	}
+
+	err = twl_i2c_read(TWL4030_MODULE_INTBR, (u8 *)(&twl_idcode),
+						REG_IDCODE_7_0, 4);
+	if (err) {
+		pr_err("TWL4030: unable to read IDCODE -%d\n", err);
+		goto fail;
+	}
+
+	err = twl_i2c_write_u8(TWL4030_MODULE_INTBR, 0x0, REG_UNLOCK_TEST_REG);
+	if (err)
+		pr_err("TWL4030 Unable to relock IDCODE registers -%d\n", err);
+fail:
+	return err;
+}
+
+/**
+ * twl_get_type - API to get TWL Si type.
+ *
+ * Api to get the TWL Si type from IDCODE value.
+ */
+int twl_get_type(void)
+{
+	return TWL_SIL_TYPE(twl_idcode);
+}
+EXPORT_SYMBOL_GPL(twl_get_type);
+
+/**
+ * twl_get_version - API to get TWL Si version.
+ *
+ * Api to get the TWL Si version from IDCODE value.
+ */
+int twl_get_version(void)
+{
+	return TWL_SIL_REV(twl_idcode);
+}
+EXPORT_SYMBOL_GPL(twl_get_version);
 
 static struct device *
 add_numbered_child(unsigned chip, const char *name, int num,
@@ -996,6 +1051,26 @@ static void usb_gpio_settings(void)
 	twl_i2c_write_u8(TWL4030_MODULE_GPIO, val, REG_GPIODATAOUT1);
 }
 
+static void __init
+twl_disable_internal_i2c_pullups(struct twl4030_platform_data *pdata)
+{
+	u8				temp;
+
+	/* Disable TWL4030/TWL5030 I2C Pull-up on I2C1 and I2C4(SR) interface.
+	 * Program I2C_SCL_CTRL_PU(bit 0)=0, I2C_SDA_CTRL_PU (bit 2)=0,
+	 * SR_I2C_SCL_CTRL_PU(bit 4)=0 and SR_I2C_SDA_CTRL_PU(bit 6)=0.
+	 */
+
+	if (twl_class_is_4030()) {
+		printk(KERN_INFO "%s: disabling twl internal I2C pullups\n", __FUNCTION__);
+		twl_i2c_read_u8(TWL4030_MODULE_INTBR, &temp, REG_GPPUPDCTR1);
+		temp &= ~(SR_I2C_SDA_CTRL_PU | SR_I2C_SCL_CTRL_PU |	\
+			I2C_SDA_CTRL_PU | I2C_SCL_CTRL_PU);
+		twl_i2c_write_u8(TWL4030_MODULE_INTBR, temp, REG_GPPUPDCTR1);
+	}
+}
+
+
 /* NOTE:  this driver only handles a single twl4030/tps659x0 chip */
 static int __init
 twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -1003,6 +1078,7 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	int				status;
 	unsigned			i;
 	struct twl4030_platform_data	*pdata = client->dev.platform_data;
+	int ret = 0;
 
 	if (!pdata) {
 		dev_dbg(&client->dev, "no platform data?\n");
@@ -1049,6 +1125,12 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	/* setup clock framework */
 	clocks_init(&client->dev, pdata->clock);
 
+	/* read TWL IDCODE Register */
+	if (twl_id == TWL4030_CLASS_ID) {
+		ret = twl_read_idcode_register();
+		WARN(ret < 0, "Error: reading twl_idcode register value\n");
+	}
+
 	/* load power event scripts */
 	if (twl_has_power() && pdata->power)
 		twl4030_power_init(pdata->power);
@@ -1068,6 +1150,10 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 		if (status < 0)
 			goto fail;
+
+		if (pdata->disable_pmic_pullups)
+			twl_disable_internal_i2c_pullups(pdata);
+
 	}
 
 	status = add_children(pdata, id->driver_data);

@@ -202,7 +202,7 @@ void __init omap_detect_sram(void)
 	omap_sram_ceil = omap_sram_base + omap_sram_size;
 }
 
-static struct map_desc omap_sram_io_desc[] __initdata = {
+static struct map_desc omap_sram_io_desc[] = {
 	{	/* .length gets filled in at runtime */
 		.virtual	= OMAP1_SRAM_VA,
 		.pfn		= __phys_to_pfn(OMAP1_SRAM_PA),
@@ -292,6 +292,21 @@ void * omap_sram_push(void * start, unsigned long size)
 	omap_sram_ceil -= size;
 	omap_sram_ceil = ROUND_DOWN(omap_sram_ceil, sizeof(void *));
 	memcpy((void *)omap_sram_ceil, start, size);
+	flush_icache_range((unsigned long)omap_sram_ceil,
+		(unsigned long)(omap_sram_ceil + size));
+
+	return (void *)omap_sram_ceil;
+}
+
+void * omap_sram_alloc(unsigned long size)
+{
+	if (size > (omap_sram_ceil - (omap_sram_base + SRAM_BOOTLOADER_SZ))) {
+		printk(KERN_ERR "Not enough space in SRAM\n");
+		return NULL;
+	}
+
+	omap_sram_ceil -= size;
+	omap_sram_ceil = ROUND_DOWN(omap_sram_ceil, sizeof(void *));
 	flush_icache_range((unsigned long)omap_sram_ceil,
 		(unsigned long)(omap_sram_ceil + size));
 

@@ -67,6 +67,15 @@ config SND_OMAP_SOC_OMAP3EVM
 	help
 	  Say Y if you want to add support for SoC audio on the omap3evm board.
 
+config SND_OMAP_SOC_DM3730LOGIC
+	tristate "SoC Audio support for Logic DM3730 reference boards"
+	depends on TWL4030_CORE && SND_OMAP_SOC && (MACH_DM3730_SOM_LV || MACH_DM3730_TORPEDO)
+	select SND_OMAP_SOC_MCBSP
+	select SND_SOC_TWL4030
+	help
+	  Say Y if you want to add support for SoC audio on
+          Logic DM3730 reference boards.
+
 config SND_OMAP_SOC_AM3517EVM
 	tristate "SoC Audio support for OMAP3517 / AM3517 EVM"
 	depends on SND_OMAP_SOC && MACH_OMAP3517EVM && I2C
@@ -107,13 +116,7 @@ config SND_OMAP_SOC_OMAP3LOGIC
 	select SND_OMAP_SOC_MCBSP
 	select SND_SOC_TWL4030
 	help
-	  Say Y if you want to add support for SoC voice channel on the Beagleboard.
-
-config SND_OMAP_SOC_ZOOM2_AUDIO
-	tristate "Include Audio Channel for OMAP3 Logic"
-	depends on SND_OMAP_SOC_OMAP3LOGIC
-	help
-	  Say Y if you want to add support for SoC audio
+	  Say Y if you want to add support for SoC audio on the Beagleboard.
 
 config SND_OMAP_SOC_ZOOM2
 	tristate "SoC Audio support for Zoom2"

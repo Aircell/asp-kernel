@@ -83,6 +83,9 @@
 
 #define         HC_DMACONFIG_REG                        0x330   /* DMA Config Register */
 
+#define			HC_POWER_DOWN_CTRL_REG					0x354	/* Power Down Control Register */
+#define			HC_PORT1_CTRL_REG						0x370	/* Port 1 Control Register */
+
 /*interrupt count and buffer status register*/
 
 #define         HC_BUFFER_STATUS_REG                    0x334

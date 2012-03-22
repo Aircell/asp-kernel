@@ -51,7 +51,7 @@ struct omap_mux_entry {
 static unsigned long mux_phys;
 static void __iomem *mux_base;
 
-static inline u16 omap_mux_read(u16 reg)
+u16 omap_mux_read(u16 reg)
 {
 	if (cpu_is_omap24xx())
 		return __raw_readb(mux_base + reg);
@@ -59,13 +59,17 @@ static inline u16 omap_mux_read(u16 reg)
 		return __raw_readw(mux_base + reg);
 }
 
-static inline void omap_mux_write(u16 val, u16 reg)
+EXPORT_SYMBOL(omap_mux_read);
+
+void omap_mux_write(u16 val, u16 reg)
 {
 	if (cpu_is_omap24xx())
 		__raw_writeb(val, mux_base + reg);
 	else
 		__raw_writew(val, mux_base + reg);
 }
+
+EXPORT_SYMBOL(omap_mux_write);
 
 #if defined(CONFIG_ARCH_OMAP24XX) && defined(CONFIG_OMAP_MUX)
 
@@ -387,8 +391,8 @@ int __init omap_mux_init_gpio(int gpio, int val)
 			mux_mode = val & ~(OMAP_MUX_NR_MODES - 1);
 			mux_mode |= OMAP_MUX_MODE4;
 			printk(KERN_DEBUG "mux: Setting signal "
-				"%s.gpio%i 0x%04x -> 0x%04x\n",
-				m->muxnames[0], gpio, old_mode, mux_mode);
+				"%s.gpio%i@%p 0x%04x -> 0x%04x\n",
+				m->muxnames[0], gpio, mux_base+m->reg_offset, old_mode, mux_mode);
 			omap_mux_write(mux_mode, m->reg_offset);
 			found++;
 		}
@@ -427,6 +431,11 @@ int __init omap_mux_init_signal(char *muxname, int val)
 		char *m0_entry = m->muxnames[0];
 		int i;
 
+		if (!m0_entry) {
+			printk("%s: m->reg_offset %04x has no m0_entry!\n", __FUNCTION__, m->reg_offset);
+			continue;
+		}
+
 		if (m0_name && strcmp(m0_name, m0_entry))
 			continue;
 
@@ -443,8 +452,8 @@ int __init omap_mux_init_signal(char *muxname, int val)
 				old_mode = omap_mux_read(m->reg_offset);
 				mux_mode = val | i;
 				printk(KERN_DEBUG "mux: Setting signal "
-					"%s.%s 0x%04x -> 0x%04x\n",
-					m0_entry, muxname, old_mode, mux_mode);
+					"%s.%s@%p 0x%04x -> 0x%04x\n",
+					m0_entry, muxname, mux_base+m->reg_offset, old_mode, mux_mode);
 				omap_mux_write(mux_mode, m->reg_offset);
 				found++;
 			}
@@ -673,8 +682,9 @@ static void __init omap_mux_dbg_init(void)
 	list_for_each_entry(e, &muxmodes, node) {
 		struct omap_mux *m = &e->mux;
 
-		(void)debugfs_create_file(m->muxnames[0], S_IWUGO, mux_dbg_dir,
-					m, &omap_mux_dbg_signal_fops);
+		if (m->muxnames[0])
+			(void)debugfs_create_file(m->muxnames[0], S_IWUGO, mux_dbg_dir,
+						m, &omap_mux_dbg_signal_fops);
 	}
 }
 
@@ -745,6 +755,32 @@ static void __init omap_mux_package_fixup(struct omap_mux *p,
 			printk(KERN_ERR "mux: Unknown entry offset 0x%x\n",
 					p->reg_offset);
 		p++;
+	}
+}
+
+/* Since DM3730 moves gpio_126 - gpio_129 at a new offset
+ * they exist in the global muxmodes twice, one for the 36XX_GPIO_126_OFFSET
+ * as well as SIM_IO_OFFSET.  Need to prune the superset based on the
+ * packaging; if there's no ball for a signal, mark reg_offset as zero */
+static void __init omap_mux_prune_balls(struct omap_ball *balls,
+					struct omap_mux *superset)
+{
+	while (superset->reg_offset != OMAP_MUX_TERMINATOR) {
+		struct omap_ball *b = balls;
+		int found = 0;
+
+		while (b->reg_offset != OMAP_MUX_TERMINATOR) {
+			if (b->reg_offset == superset->reg_offset) {
+				found = 1;
+				break;
+			}
+			b++;
+		}
+		if (!found) {
+			printk("mux: Prune entry offset 0x%x (%s)\n", superset->reg_offset, superset->muxnames[0]);
+			superset->reg_offset = 0;
+		}
+		superset++;
 	}
 }
 
@@ -960,6 +996,12 @@ static void __init omap_mux_init_list(struct omap_mux *superset)
 	while (superset->reg_offset !=  OMAP_MUX_TERMINATOR) {
 		struct omap_mux *entry;
 
+		/* Skip entries pruned out by omap_mux_prune_balls */
+		if (!superset->reg_offset) {
+			superset++;
+			continue;
+		}
+
 #ifndef CONFIG_OMAP_MUX
 		/* Skip pins that are not muxed as GPIO by bootloader */
 		if (!OMAP_MODE_GPIO(omap_mux_read(superset->reg_offset))) {
@@ -995,6 +1037,7 @@ int __init omap_mux_init(u32 mux_pbase, u32 mux_size,
 
 #ifdef CONFIG_OMAP_MUX
 	omap_mux_package_fixup(package_subset, superset);
+	omap_mux_prune_balls(package_balls, superset);
 	omap_mux_package_init_balls(package_balls, superset);
 	omap_mux_set_cmdline_signals();
 	omap_mux_set_board_signals(board_mux);
@@ -1004,14 +1047,6 @@ int __init omap_mux_init(u32 mux_pbase, u32 mux_size,
 
 	return 0;
 }
-
-#ifdef CONFIG_LOGIC_OMAP3530_USB3320_HACK
-
-EXPORT_SYMBOL_GPL(omap_mux_init_gpio);
-EXPORT_SYMBOL_GPL(omap_mux_get_gpio);
-EXPORT_SYMBOL_GPL(omap_mux_set_gpio);
-
-#endif
 
 #endif	/* CONFIG_ARCH_OMAP34XX */
 

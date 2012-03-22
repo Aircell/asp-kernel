@@ -102,6 +102,10 @@
 #define SRD			(1 << 26)
 #define SOFTRESET		(1 << 1)
 #define RESETDONE		(1 << 0)
+#define CIRQ		(1 << 8)
+#define CIRQ_ENABLE	(1 << 8)
+#define CTPL		(1 << 11)
+#define CLKEXTFREE	(1 << 16)
 
 /*
  * FIXME: Most likely all the data using these _DEVID defines should come
@@ -173,6 +177,7 @@ struct omap_hsmmc_host {
 	int			vdd;
 	int			protect_card;
 	int			reqs_blocked;
+	int			sdio_int;
 	int			carddetect;
 
 	struct	omap_mmc_platform_data	*pdata;
@@ -439,6 +444,13 @@ omap_hsmmc_start_command(struct omap_hsmmc_host *host, struct mmc_command *cmd,
 	else
 		OMAP_HSMMC_WRITE(host->base, IE, INT_EN_MASK);
 
+	if (host->sdio_int) {
+		OMAP_HSMMC_WRITE(host->base, ISE,
+			(OMAP_HSMMC_READ(host->base, ISE) | CIRQ_ENABLE));
+		OMAP_HSMMC_WRITE(host->base, IE,
+			(OMAP_HSMMC_READ(host->base, IE) | CIRQ_ENABLE));
+	}
+
 	host->response_busy = 0;
 	if (cmd->flags & MMC_RSP_PRESENT) {
 		if (cmd->flags & MMC_RSP_136)
@@ -643,6 +655,17 @@ static irqreturn_t omap_hsmmc_irq(int irq, void *dev_id)
 
 	spin_lock(&host->irq_lock);
 
+	data = host->data;
+	status = OMAP_HSMMC_READ(host->base, STAT);
+	dev_dbg(mmc_dev(host->mmc), "IRQ Status is %x\n", status);
+
+	if (host->mmc->caps & MMC_CAP_SDIO_IRQ) {
+		if (status & CIRQ) {
+			dev_dbg(mmc_dev(host->mmc), "SDIO Card Interrupt\n");
+			mmc_signal_sdio_irq(host->mmc);
+		}
+	}
+
 	if (host->mrq == NULL) {
 		OMAP_HSMMC_WRITE(host->base, STAT,
 			OMAP_HSMMC_READ(host->base, STAT));
@@ -651,10 +674,6 @@ static irqreturn_t omap_hsmmc_irq(int irq, void *dev_id)
 		spin_unlock(&host->irq_lock);
 		return IRQ_HANDLED;
 	}
-
-	data = host->data;
-	status = OMAP_HSMMC_READ(host->base, STAT);
-	dev_dbg(mmc_dev(host->mmc), "IRQ Status is %x\n", status);
 
 	if (status & ERR) {
 #ifdef CONFIG_MMC_DEBUG
@@ -1144,13 +1163,13 @@ static void omap_hsmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		switch (ios->power_mode) {
 		case MMC_POWER_OFF:
 			if (mmc_slot(host).set_power)
-				mmc_slot(host).set_power(host->dev,
-					 host->slot_id, 0, 0);
+				mmc_slot(host).set_power(host->dev, 
+					host->slot_id, 0, 0);
 			break;
 		case MMC_POWER_UP:
 			if (mmc_slot(host).set_power)
-				mmc_slot(host).set_power(host->dev,
-					 host->slot_id, 1, ios->vdd);
+				mmc_slot(host).set_power(host->dev, 
+					host->slot_id, 1, ios->vdd);
 			break;
 		case MMC_POWER_ON:
 			do_send_init_stream = 1;
@@ -1271,8 +1290,8 @@ static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 		cd = mmc_slot(host).card_detect(mmc_slot(host).card_detect_irq);
 		return cd;
 	} else {
-		if (host->id == OMAP_MMC1_DEVID || host->id == OMAP_MMC2_DEVID
-			|| host->id == OMAP_MMC3_DEVID)
+	if (host->id == OMAP_MMC1_DEVID || host->id == OMAP_MMC2_DEVID
+		|| host->id == OMAP_MMC3_DEVID)
 			return 1;
 	}
 		return -ENOSYS;
@@ -1797,7 +1816,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	if (mmc_slot(host).nonremovable)
 		mmc->caps |= MMC_CAP_NONREMOVABLE;
 
-#ifdef CONFIG_MACH_OMAP3530_LV_SOM
+#if defined(CONFIG_MACH_OMAP3530_LV_SOM) || defined(CONFIG_MACH_DM3730_SOM_LV)
 	// set the "no multi block" flag if need be
 	if (pdata->slots[host->slot_id].no_multi_block)
 		mmc->caps |= MMC_CAP_NO_MULTI_BLOCK;

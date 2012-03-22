@@ -280,7 +280,13 @@ static void __exit physmap_exit(void)
 	platform_driver_unregister(&physmap_flash_driver);
 }
 
+#if defined(CONIFG_MACH_DM3730_SOM_LV) || defined(CONFIG_MACH_DM3730_TORPEDO)
+/* For omap3logic platforms, we want the NOR physmap to come up
+ * after the NAND to make sure the optional NOR is last in /proc/mtd */
+late_initcall(physmap_init);
+#else
 module_init(physmap_init);
+#endif
 module_exit(physmap_exit);
 
 MODULE_LICENSE("GPL");

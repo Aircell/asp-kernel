@@ -116,21 +116,6 @@ menu "Encoders/decoders and other helper chips"
 
 comment "Audio decoders"
 
-config VIDEO_OV7692
-	tristate "Omnivision 7692 Sensor"
-	depends on I2C && VIDEO_V4L2
-	---help---
-	  This is a Video4Linux2 sensor-level driver for the Ominvision
-	  sensor that is used by the Aircell Cloudsurfer P2 camera controller.
-
-config VIDEO_OV7670
-	tristate "OmniVision OV7670 sensor support"
-	depends on I2C && VIDEO_V4L2
-	---help---
-	  This is a Video4Linux2 sensor-level driver for the OmniVision
-	  OV7670 VGA camera.  It currently only works with the M88ALP01
-	  controller.
-
 config VIDEO_TVAUDIO
 	tristate "Simple audio decoder chips"
 	depends on VIDEO_V4L2 && I2C
@@ -328,6 +313,13 @@ config VIDEO_KS0127
 	  To compile this driver as a module, choose M here: the
 	  module will be called ks0127.
 
+config VIDEO_OV7670
+	tristate "OmniVision OV7670 sensor support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV7670 VGA camera.  It currently only works with the M88ALP01
+	  controller.
 
 config VIDEO_MT9V011
 	tristate "Micron mt9v011 sensor support"
@@ -388,7 +380,6 @@ config VIDEO_IMX046
 	  This is a Video4Linux2 sensor-level driver for the Sony
 	  IMX046 camera.  It is currently working with the TI OMAP3
           camera controller.
-
 
 config VIDEO_LV8093
 	tristate "Piezo Actuator Lens driver for LV8093"

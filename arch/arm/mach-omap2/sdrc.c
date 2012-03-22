@@ -176,3 +176,19 @@ void omap2_sms_write_rot_physical_ba(u32 val, unsigned ctx)
 	sms_write_reg(val, SMS_ROT_PHYSICAL_BA(ctx));
 }
 
+/* Return the size of memory on a CS */
+unsigned int omap2_sdrc_cs_size(int cs)
+{
+	unsigned int mcfg;
+
+	if (cs)
+		mcfg = sdrc_read_reg(SDRC_MCFG_1);
+	else
+		mcfg = sdrc_read_reg(SDRC_MCFG_0);
+
+	printk("%s: cs %d = %x\n", __FUNCTION__, cs, mcfg);
+		
+	mcfg >>= 8;
+	mcfg &= 0x2ff;
+	return (mcfg << 21); /* MCFG RAMSIZE field is in 2MB chunks */
+}

@@ -136,6 +136,12 @@
 #define TWL6030_CHARGER_CTRL_INT_MASK 	0x10
 #define TWL6030_CHARGER_FAULT_INT_MASK 	0x60
 
+#define TWL_SIL_TYPE(rev)		((rev) & 0x00FFFFFF)
+#define TWL_SIL_REV(rev)		((rev) >> 24)
+#define TWL_SIL_5030			0x09002F
+#define TWL5030_REV_1_0			0x00
+#define TWL5030_REV_1_1			0x10
+#define TWL5030_REV_1_2			0x30
 
 #define TWL4030_CLASS_ID 		0x4030
 #define TWL6030_CLASS_ID 		0x6030
@@ -165,23 +171,12 @@ int twl_i2c_read_u8(u8 mod_no, u8 *val, u8 reg);
 int twl_i2c_write(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 
+int twl_get_type(void);
+int twl_get_version(void);
+
 int twl6030_interrupt_unmask(u8 bit_mask, u8 offset);
 int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 
-/*----------------------------------------------------------------------*/
-
-/* Iterface Bit Register (INTBR) offsets
- * (use TWL4030_MODULE_INTBR)
- */
-
-#define REG_GPPUPDCTR1			0x0F
-
-/* I2C1 and I2C4(SR) SDA/SCL pull-up control bits */
-
-#define I2C_SCL_CTRL_PU			(1 << 0)
-#define I2C_SDA_CTRL_PU			(1 << 2)
-#define SR_I2C_SCL_CTRL_PU		(1 << 4)
-#define SR_I2C_SDA_CTRL_PU		(1 << 6)
 /*----------------------------------------------------------------------*/
 
 /*
@@ -253,6 +248,26 @@ int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 
 /*----------------------------------------------------------------------*/
 
+/*Interface Bit Register (INTBR) offsets
+ *(Use TWL_4030_MODULE_INTBR)
+ */
+
+#define REG_IDCODE_7_0			0x00
+#define REG_IDCODE_15_8			0x01
+#define REG_IDCODE_16_23		0x02
+#define REG_IDCODE_31_24		0x03
+#define REG_GPPUPDCTR1                 0x0F
+#define REG_UNLOCK_TEST_REG		0x12
+
+/*I2C1 and I2C4(SR) SDA/SCL pull-up control bits */
+
+#define I2C_SCL_CTRL_PU                        BIT(0)
+#define I2C_SDA_CTRL_PU                        BIT(2)
+#define SR_I2C_SCL_CTRL_PU             BIT(4)
+#define SR_I2C_SDA_CTRL_PU             BIT(6)
+
+/*----------------------------------------------------------------------*/
+
 /*
  * Keypad register offsets (use TWL4030_MODULE_KEYPAD)
  * ... SIH/interrupt only
@@ -280,6 +295,8 @@ int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 #define TWL4030_MADC_SIR		0x65	/* test register */
 #define TWL4030_MADC_EDR		0x66
 #define TWL4030_MADC_SIH_CTRL		0x67
+
+#define TWL_EEPROM_R_UNLOCK		0x49
 
 /*----------------------------------------------------------------------*/
 
@@ -353,9 +370,23 @@ int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 
 /* Power bus message definitions */
 
-/* The TWL4030/5030 splits its power-management resources (the various
- * regulators, clock and reset lines) into 3 processor groups - P1, P2 and
- * P3. These groups can then be configured to transition between sleep, wait-on
+/*
+ * The TWL4030/5030 splits its power-management resources (the various
+ * regulators, clock and reset lines) into 3 processor groups - P1, P2 and P3.
+ *
+ * Resources attached to device group P1 is managed depending on the state of
+ * NSLEEP1 pin of TWL4030, which is connected to sys_off signal from OMAP
+ *
+ * Resources attached to device group P2 is managed depending on the state of
+ * NSLEEP2 pin of TWL4030, which is can be connected to a modem or
+ * connectivity chip
+ *
+ * Resources attached to device group P3 is managed depending on the state of
+ * CLKREQ pin of TWL4030, which is connected to clk request signal from OMAP
+ *
+ * If required these resources can be attached to combination of P1/P2/P3.
+ *
+ * These groups can then be configured to transition between sleep, wait-on
  * and active states by sending messages to the power bus.  See Section 5.4.2
  * Power Resources of TWL4030 TRM
  */
@@ -367,6 +398,15 @@ int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 #define DEV_GRP_P3		0x4	/* P3: all peripheral devices */
 #define DEV_GRP_ALL		0x7	/* P1/P2/P3: all devices */
 
+/*
+ * The 27 power resources in TWL4030 is again divided into
+ * analog resources:
+ *	Power Providers - LDO regulators, dc-to-dc regulators
+ *	Power Reference - analog reference
+ *
+ * and digital resources:
+ *	Reset & Clock - reset and clock signals.
+ */
 /* Resource groups */
 #define RES_GRP_RES		0x0	/* Reserved */
 #define RES_GRP_PP		0x1	/* Power providers */
@@ -422,7 +462,7 @@ int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 #define RES_32KCLKOUT           26
 #define RES_RESET               27
 /* Power Reference */
-#define RES_Main_Ref            28
+#define RES_MAIN_REF            28
 
 #define TOTAL_RESOURCES		28
 /*
@@ -578,6 +618,7 @@ struct twl4030_power_data {
 	struct twl4030_script **scripts;
 	unsigned num;
 	struct twl4030_resconfig *resource_config;
+	void (*twl5030_erratum27wa_script)(void);
 #define TWL4030_RESCONFIG_UNDEF	((u8)-1)
 };
 
@@ -641,6 +682,9 @@ struct twl4030_platform_data {
 	struct regulator_init_data              *vana;
 	struct regulator_init_data              *vcxio;
 	struct regulator_init_data              *vusb;
+
+	/* Non-zero if twl_probe should disable the internal pullups */
+	int disable_pmic_pullups;
 };
 
 /*----------------------------------------------------------------------*/

@@ -44,10 +44,6 @@
 #include "ispresizer.h"
 #include "ispcsi2.h"
 
-#ifdef CONFIG_VIDEO_OMAP3_ISP_PROC
-extern int init_isp_debug(struct isp_device *isp);
-#endif
-
 static struct platform_device *omap3isp_pdev;
 
 static void isp_save_ctx(struct device *dev);
@@ -2728,9 +2724,6 @@ static int isp_probe(struct platform_device *pdev)
 	isp_power_settings(&pdev->dev, 1);
 	isp_put();
 
-#ifdef CONFIG_VIDEO_OMAP3_ISP_PROC
-	init_isp_debug(isp);
-#endif
 	return 0;
 
 out_iommu_get:

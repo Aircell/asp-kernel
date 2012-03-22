@@ -673,7 +673,7 @@ unsigned long phcd_submit_iso( phci_hcd *hcd,
 #endif
     
     unsigned long bus_time, high_speed, start_frame;
-    unsigned long flags, packets;
+    unsigned long packets;
 
     iso_dbg(ISO_DBG_ENTRY, "phcd_submit_iso Entry\n");
 
@@ -838,7 +838,6 @@ unsigned long phcd_submit_iso( phci_hcd *hcd,
         qhead->next_uframe %= PTD_PERIODIC_SIZE;
     }
 
-    spin_lock_irqsave(&hcd->lock, flags);
     iso_dbg(ISO_DBG_DATA,"[phcd_submit_iso]: Number of packets: %d\n", urb->number_of_packets);
     iso_dbg(ISO_DBG_DATA,"[phcd_submit_iso]: Packet Length: %d\n",
             urb->iso_frame_desc[0].length);
@@ -965,8 +964,6 @@ unsigned long phcd_submit_iso( phci_hcd *hcd,
         if(urb->hcpriv == 0)
             urb->hcpriv = itd;
     }/* for(packets = 0; packets... */
-
-    spin_unlock_irqrestore(&hcd->lock, flags);   
 
     /* Last td of current transaction*/
     itd->hw_next = EHCI_LIST_END;

@@ -35,6 +35,9 @@
 #ifdef CONFIG_MACH_OMAP3530_LV_SOM
 #include <plat/omap3logic-productid.h>
 #endif
+#ifdef CONFIG_MACH_DM3730_SOM_LV
+#include <plat/dm3730logic-productid.h>
+#endif
 
 
 #if defined(CONFIG_REGULATOR) && \
@@ -531,6 +534,12 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			mmc->slots[0].funky_f0_writeb_status = c->funky_f0_writeb_status;
 		}
 #endif
+#ifdef CONFIG_MACH_DM3730_SOM_LV
+		//if (dm3730logic_has_wilink_wifi_module()) {
+			mmc->slots[0].no_multi_block = c->no_multi_block;
+			mmc->slots[0].funky_f0_writeb_status = c->funky_f0_writeb_status;
+		//}
+#endif
 		mmc->dma_mask = 0xffffffff;
 		mmc->init = twl_mmc_late_init;
 
@@ -596,15 +605,8 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			/* FALLTHROUGH */
 		case 3:
 			/* off-chip level shifting, or none */
-#if 0 && defined(CONFIG_MACH_OMAP3530_LV_SOM)
-			if (c->set_power)
-				mmc->slots[0].set_power = c->set_power;
-			else
-				mmc->slots[0].set_power = twl_mmc23_set_power;
-			break;
-#else
 			mmc->slots[0].set_power = twl_mmc23_set_power;
-#endif
+			mmc->slots[0].set_sleep = twl_mmc23_set_sleep;
 			mmc->slots[0].ocr_mask = MMC_VDD_165_195;
 			break;
 		default:
