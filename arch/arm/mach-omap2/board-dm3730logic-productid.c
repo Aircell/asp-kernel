@@ -932,7 +932,7 @@ static struct {
 	},
 	{
 		__ATTR(wifi_config_data, S_IRUGO, product_id_show_wifi_config_data, NULL),
-		&valid_product_id_has_wifi_config_data,
+		NULL, //&valid_product_id_has_wifi_config_data,
 	},
 };
 
@@ -1060,12 +1060,8 @@ int dm3730logic_has_wilink_wifi_module(void)
 		wilink_probed = 1;
 		/* Figure out if a WiLink is on the board.  Use
 		   the pullup on WIFI_EN to determine such */
-		omap_mux_init_gpio(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, OMAP_PIN_INPUT);
-		if (gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "wifi probe") < 0)
-			printk("%s:%d\n", __FUNCTION__, __LINE__);
 		if (gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 1) < 0)
 			printk("%s:%d\n", __FUNCTION__, __LINE__);
-
 		/* Give it a chance to pull the pin the pin down */
 		/* Let it soak for a while */
 		for (i=0; i<0x100; ++i)

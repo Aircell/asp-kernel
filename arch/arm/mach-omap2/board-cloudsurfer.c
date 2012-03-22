@@ -1186,7 +1186,7 @@ static void __init omap3logic_map_io(void)
 	omap2_map_common_io();
 }
 
-MACHINE_START(OMAP3530_LV_SOM, "Aircell CloudSurfer OAMP3730")
+MACHINE_START(DM3730_SOM_LV, "Aircell CloudSurfer DM3730")
 	.phys_io		= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,

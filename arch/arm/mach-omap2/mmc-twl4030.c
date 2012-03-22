@@ -535,10 +535,10 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 		}
 #endif
 #ifdef CONFIG_MACH_DM3730_SOM_LV
-		//if (dm3730logic_has_wilink_wifi_module()) {
+		if (dm3730logic_has_wilink_wifi_module()) {
 			mmc->slots[0].no_multi_block = c->no_multi_block;
 			mmc->slots[0].funky_f0_writeb_status = c->funky_f0_writeb_status;
-		//}
+		}
 #endif
 		mmc->dma_mask = 0xffffffff;
 		mmc->init = twl_mmc_late_init;
