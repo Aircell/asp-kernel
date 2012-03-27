@@ -81,6 +81,54 @@ static struct snd_soc_ops zoom2_ops = {
 	.hw_params = zoom2_hw_params,
 };
 
+static struct snd_soc_dai_ops gpak_dai_ops = {
+	.startup	= NULL,
+	.shutdown	= NULL,
+	.trigger	= NULL,
+	.hw_params	= NULL,
+	.set_fmt	= NULL,
+	.set_clkdiv	= NULL,
+	.set_sysclk	= NULL,
+};
+unsigned int gpak_mcbsp_channel =  1; /* MCBSP2 */
+static struct snd_soc_dai gpak_dai = {
+	.ops = &gpak_dai_ops,
+	.private_data = &gpak_mcbsp_channel
+};
+
+static int zoom2_gpak_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
+	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
+	int ret;
+
+	/* Set codec DAI configuration */
+	ret = snd_soc_dai_set_fmt(codec_dai,
+				  SND_SOC_DAIFMT_I2S |
+				  SND_SOC_DAIFMT_NB_NF |
+				  SND_SOC_DAIFMT_CBM_CFM);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec DAI configuration\n");
+		return ret;
+	}
+
+	/* Set the codec system clock for DAC and ADC */
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 26000000,
+					SND_SOC_CLOCK_IN);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec system clock\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static struct snd_soc_ops zoom2_gpak_ops = {
+	.hw_params = zoom2_gpak_params,
+};
+
 static int zoom2_hw_voice_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
@@ -219,12 +267,12 @@ static struct snd_soc_dai_link zoom2_dai[] = {
 	},
 #ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
 	{
-		.name = "TWL4030 I2S",
-		.stream_name = "TWL4030 Audio",
-		.cpu_dai = &omap_mcbsp_dai[0],
+		.name = "TWL4030 GPAK I2S",
+		.stream_name = "TWL4030 GPAK Audio",
+		.cpu_dai = &gpak_dai,
 		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
 		.init = zoom2_twl4030_init,
-		.ops = &zoom2_ops,
+		.ops = &zoom2_gpak_ops,
 	},
 #endif
 };
