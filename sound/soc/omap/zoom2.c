@@ -92,6 +92,20 @@ static struct snd_soc_dai_ops gpak_dai_ops = {
 };
 unsigned int gpak_mcbsp_channel =  1; /* MCBSP2 */
 static struct snd_soc_dai gpak_dai = {
+	.id = 1,						\
+	.playback = {						\
+		.channels_min = 1,				\
+		.channels_max = 16,				\
+		.rates = SNDRV_PCM_RATE_8000_96000,		\
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,		\
+	},							\
+	.capture = {						\
+		.channels_min = 1,				\
+		.channels_max = 16,				\
+		.rates = SNDRV_PCM_RATE_8000_96000,		\
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,		\
+	},							\
+	.name = "gpak-dai",
 	.ops = &gpak_dai_ops,
 	.private_data = &gpak_mcbsp_channel
 };
@@ -254,6 +268,10 @@ static int zoom2_twl4030_voice_init(struct snd_soc_codec *codec)
 
 	return 0;
 }
+static int zoom2_gpak_init(struct snd_soc_codec *codec) 
+{
+	return 0;
+}
 
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link zoom2_dai[] = {
@@ -262,17 +280,30 @@ static struct snd_soc_dai_link zoom2_dai[] = {
 		.stream_name = "TWL4030 Voice",
 		.cpu_dai = &omap_mcbsp_dai[1],
 		.codec_dai = &twl4030_dai[TWL4030_DAI_VOICE],
-		.init = zoom2_twl4030_voice_init,
 		.ops = &zoom2_voice_ops,
+		.init = zoom2_twl4030_voice_init,
 	},
-#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
 	{
 		.name = "TWL4030 GPAK I2S",
 		.stream_name = "TWL4030 GPAK Audio",
 		.cpu_dai = &gpak_dai,
 		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
-		.init = zoom2_twl4030_init,
 		.ops = &zoom2_gpak_ops,
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
+		.init = zoom2_gpak_init,
+#else
+		.init = zoom2_twl4030_init,
+#endif
+	},
+
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
+	{
+		.name = "TWL4030 ALSA I2S",
+		.stream_name = "TWL4030 Alsa Audio",
+		.cpu_dai = &omap_mcbsp_dai[0],
+		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
+		.ops = &zoom2_ops,
+		.init = zoom2_twl4030_init,
 	},
 #endif
 };
@@ -320,6 +351,8 @@ static int __init zoom2_soc_init(void)
 	}
 	printk(KERN_INFO "Zoom2 SoC init\n");
 
+	snd_soc_register_dai(&gpak_dai);
+
 	zoom2_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!zoom2_snd_device) {
 		printk(KERN_ERR "Platform device allocation failed\n");
@@ -330,7 +363,8 @@ static int __init zoom2_soc_init(void)
 	zoom2_snd_devdata.dev = &zoom2_snd_device->dev;
 	*(unsigned int *)zoom2_dai[0].cpu_dai->private_data = 2; /* McBSP3 */
 #ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
-	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 1; /* McBSP2 */
+	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 0; /* GPAK */
+	*(unsigned int *)zoom2_dai[2].cpu_dai->private_data = 1; /* McBSP2 */
 #endif
 	ret = platform_device_add(zoom2_snd_device);
 	if (ret)
