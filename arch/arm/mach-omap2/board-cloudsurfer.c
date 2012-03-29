@@ -159,6 +159,43 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 }
 
+/* TARR - FIXME: These values need to be updated based on more profiling
+ * Originals came from the 3430sdp
+ */
+static struct cpuidle_params cloudsurfer_cpuidle_params_table[] = {
+    /* C1 */
+    {1, 2, 2, 5},
+    /* C2 */
+    {1, 10, 10, 30},
+    /* C3 */
+    {1, 50, 50, 300},
+    /* C4 */
+    {1, 1500, 1800, 4000},
+    /* C5 */
+    {1, 2500, 7500, 12000},
+    /* C6 */
+    {1, 3000, 8500, 15000},
+    /* C7 */
+    {1, 10000, 30000, 300000},
+};
+
+static struct prm_setup_vc cloudsurfer_setuptime_table = {
+    .clksetup = 0xff,
+    .voltsetup_time1 = 0xfff,
+    .voltsetup_time2 = 0xfff,
+    .voltoffset = 0xff,
+    .voltsetup2 = 0xff,
+    .vdd0_on = 0x30,
+    .vdd0_onlp = 0x20,
+    .vdd0_ret = 0x1e,
+    .vdd0_off = 0x00,
+    .vdd1_on = 0x2c,
+    .vdd1_onlp = 0x20,
+    .vdd1_ret = 0x1e,
+    .vdd1_off = 0x00,
+};
+
+
 
 /* VDDA_DAC needed for dss */
 static struct regulator_consumer_supply omap3logic_vdda_dac_supply = {
@@ -236,7 +273,6 @@ static struct regulator_init_data omap3logic_vaux3 = {
     .consumer_supplies  = &omap3logic_vaux3_supply,
 };
 
-
 static struct twl4030_hsmmc_info mmc[] = {
 	{
 		.mmc		= 1,
@@ -244,15 +280,13 @@ static struct twl4030_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 	},
-	{},	/* Terminator (or MMC3 info for LV SOM) */
+	{
+		.mmc		= 3,
+		.wires		= 4,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp	= -EINVAL,
+	},
 	{}	/* Terminator */
-};
-
-static struct twl4030_hsmmc_info mmc3 = {
-	.mmc		= 3,
-	.wires		= 4,
-	.gpio_cd	= -EINVAL,
-	.gpio_wp	= -EINVAL,
 };
 
 /* GPIO.0 of TWL4030 */
@@ -323,9 +357,7 @@ int omap3logic_twl_gpio_setup(struct device *dev,
     //omap_mux_init_signal("cam_strobe.gpio_126", OMAP_PIN_INPUT_PULLUP);
     //mmc[0].gpio_wp = 126;
 
-	/* For the LV SOM, add in the uf1050a MMC info to
-	 * the MMC list (the 3rd slot is the terminator). */
-	mmc[1] = mmc3;
+
 	/* link regulators to MMC adapters */
 	twl4030_vmmc1_supply.dev = mmc[0].dev;
 	twl4030_vsim_supply.dev = mmc[0].dev;
@@ -389,7 +421,7 @@ static struct twl4030_platform_data omap3logic_twldata = {
 	.vdac		= &omap3logic_vdda_dac,
 };
 
-static struct i2c_board_info __initdata omap3logic_i2c_boardinfo[] = {
+static struct i2c_board_info __initdata omap3logic_i2c1_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("twl4030", 0x48),
 		.flags = I2C_CLIENT_WAKE,
@@ -572,6 +604,7 @@ static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 
 static void omap3logic_qt602240_init(void)
 {
+	printk("QT602240 Init");
     if (platform_device_register(&omap3logic_touch_device) < 0){
             printk(KERN_ERR "Unable to register touch device\n");
         return;
@@ -591,17 +624,9 @@ static void omap3logic_qt602240_init(void)
 
 int __init omap3logic_i2c_init(void)
 {
-
-
-	/*
-	 * TARR - REVISIT: These entries can be set in omap3logic_twl_data
-	 * after a merge with MFD tree
-	 */
-	//omap3logic_twldata.vmmc1 = &vmmc1_data;
-	//omap3logic_twldata.vsim = &vsim_data;
-
-	omap_register_i2c_bus(1, 2600, omap3logic_i2c_boardinfo,
-			ARRAY_SIZE(omap3logic_i2c_boardinfo));
+	printk("Cloudsurfer I2C Init");
+	omap_register_i2c_bus(1, 2600, omap3logic_i2c1_boardinfo,
+			ARRAY_SIZE(omap3logic_i2c1_boardinfo));
     omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
             ARRAY_SIZE(omap3logic_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, omap3logic_i2c3_boardinfo,
@@ -617,6 +642,9 @@ void __init omap3logic_init_irq(void)
 {
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
+    /* TARR HERE - Setup pwoer management tables */
+    omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+    omap3_pm_init_vc(&cloudsurfer_setuptime_table);
 
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
 			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
@@ -638,190 +666,6 @@ void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 	*p_gpio_enable = 0;
 	*p_gpio_backlight = 0;
 }
-
-#ifdef TARR
-#define NAND_BLOCK_SIZE		SZ_128K
-#define GPMC_CS0_BASE  0x60
-#define GPMC_CS_SIZE   0x30
-
-#ifdef CONFIG_MTD_OMAP_NOR
-#define OMAP3LOGIC_NORFLASH_CS 2
-
-static struct mtd_partition omap3logic_nor_partitions[] = {
-	{
-		.name		= CONFIG_OMAP3LOGIC_NOR_PARTITION_ONE_NAME,
-		.offset		= 0,
-		.size		= MTDPART_SIZ_FULL,
-	},
-};
-
-static struct physmap_flash_data omap3logic_nor_data = {
-	.width		= 2,
-	.parts		= omap3logic_nor_partitions,
-	.nr_parts	= ARRAY_SIZE(omap3logic_nor_partitions),
-};
-
-static struct resource omap3logic_nor_resource = {
-	.flags		= IORESOURCE_MEM,
-};
-
-static struct platform_device omap3logic_nor_device = {
-	.name		= "physmap-flash",
-	.id		= 0,
-	.dev		= {
-		.platform_data = &omap3logic_nor_data,
-	},
-	.num_resources	= 1,
-	.resource	= &omap3logic_nor_resource,
-};
-
-#endif
-
-static struct mtd_partition omap3logic_nand_partitions[] = {
-	/* All the partition sizes are listed in terms of NAND block size */
-	{
-		.name		= "X-Loader",
-		.offset		= 0,
-		.size		= 4 * NAND_BLOCK_SIZE,	
-	},
-	{
-		.name		= "U-Boot",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x80000 */
-		.size		= 15 * NAND_BLOCK_SIZE,
-	},
-	{
-		.name		= "Empty",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x260000 */
-		.size		= 1 * NAND_BLOCK_SIZE,
-		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
-	},
-	{
-		.name		= "Kernel",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x280000 */
-		.size		= 32 * NAND_BLOCK_SIZE,
-	},
-	{
-		.name		= "System",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x680000 */
-		.size		= 1280 * NAND_BLOCK_SIZE,
-	},
-	{
-		.name		= "Userdata",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0xA680000 */
-		.size		= 512 * NAND_BLOCK_SIZE,
-	},
-	{
-		.name		= "Cache",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0xE680000 */
-		.size		= 202 * NAND_BLOCK_SIZE,
-	},
-	{
-		.name		= "U-Boot Env-NAND",
-		.offset		= 2046 << 17,	/* Offset = 0xffc0000 */
-		.size		= 2*(64 * 2048),
-	},
-
-};
-
-static struct omap_nand_platform_data omap3logic_nand_data = {
-	.parts = omap3logic_nand_partitions,
-	.nr_parts = ARRAY_SIZE(omap3logic_nand_partitions),
-	.ecc_opt	= 0x2,	/* HW ECC in romcode layout */
-	.devsize	= 1,	/* 16-bit device */
-	.dev_ready	= (void *)1, /* poll WAIT0 status */
-};
-
-static struct resource omap3logic_nand_resource = {
-	.flags		= IORESOURCE_MEM,
-};
-
-static struct platform_device omap3logic_nand_device = {
-	.name		= "omap2-nand",
-	.id		= -1,
-	.dev		= {
-		.platform_data	= &omap3logic_nand_data,
-	},
-	.num_resources	= 1,
-	.resource	= &omap3logic_nand_resource,
-};
-
-void __init omap3logic_flash_init(void)
-{
-	u8 cs = 0;
-	u8 nandcs = GPMC_CS_NUM + 1;
-	u32 gpmc_base_add = OMAP34XX_GPMC_VIRT;
-	int nor_cs;
-	unsigned long cs_mem_base;
-
-#ifdef CONFIG_MTD_OMAP_NOR
-	int nor_size;
-		
-	if ((nor_size = omap3logic_NOR0_size()) > 0) {
-		nor_cs = 2;
-		if (gpmc_cs_request(nor_cs, SZ_8M, &cs_mem_base) < 0) {
-			printk(KERN_ERR "Failed to request GPMC mem for NOR flash\n");
-			return;
-		}
-
-		omap3logic_nor_resource.start = cs_mem_base;
-		omap3logic_nor_resource.end = cs_mem_base + (1 << nor_size) - 1;
-		if (platform_device_register(&omap3logic_nor_device) < 0)
-			printk(KERN_ERR "Unable to register NOR device\n");
-	}
-
-#endif
-	/* find out the chip-select on which NAND exists */
-	while (cs < GPMC_CS_NUM) {
-		u32 ret = 0;
-		ret = gpmc_cs_read_reg(cs, GPMC_CS_CONFIG1);
-
-		if ((ret & 0xC00) == 0x800) {
-			printk(KERN_INFO "Found NAND on CS%d\n", cs);
-			if (nandcs > GPMC_CS_NUM)
-				nandcs = cs;
-		}
-		cs++;
-	}
-
-	if (nandcs > GPMC_CS_NUM) {
-		printk(KERN_INFO "NAND: Unable to find configuration "
-				 "in GPMC\n ");
-		return;
-	}
-
-	if (nandcs < GPMC_CS_NUM) {
-		u32 nand0_size, part, part_size, delta;
-
-		omap3logic_nand_data.cs = nandcs;
-		omap3logic_nand_data.gpmc_cs_baseaddr = (void *)
-			(gpmc_base_add + GPMC_CS0_BASE + nandcs * GPMC_CS_SIZE);
-		omap3logic_nand_data.gpmc_baseaddr = (void *) (gpmc_base_add);
-
-
-		/* Find the size of the NAND device.  We want the u-boot
-		   environment to be in the last two blocks of NAND,
-		   so place it there and bump up the size of the previous
-		   partiton to take up the slack */
-		nand0_size = omap3logic_NAND0_size();
-		if (nand0_size > 0) {
-			nand0_size = 1 << nand0_size;
-			part = ARRAY_SIZE(omap3logic_nand_partitions) - 1;
-			part_size = omap3logic_nand_partitions[part].offset +
-				omap3logic_nand_partitions[part].size;
-			if (nand0_size > part_size && part) {
-				delta = nand0_size - part_size;
-				printk(KERN_INFO "Adjusting u-boot environment partition by %x\n", delta);
-				omap3logic_nand_partitions[part].offset += delta;
-				omap3logic_nand_partitions[part-1].size += delta;
-			}
-		}
-
-		printk(KERN_INFO "Registering NAND on CS%d\n", nandcs);
-		if (platform_device_register(&omap3logic_nand_device) < 0)
-			printk(KERN_ERR "Unable to register NAND device\n");
-	}
-}
-#endif
 
 static struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 
@@ -846,23 +690,15 @@ void omap3logic_usb_init(void)
 	omap3logic_init_ehci();
 }
 
-#ifdef TARR
-void kick_uf1050a_card_detect(void)
-{
-	/* Only the LV SOM has the uf1050a on it */
-	if (!machine_is_omap3530_lv_som())
-		return;
-
-	omap_zoom3_wifi_set_carddetect(1);
-}
-EXPORT_SYMBOL(kick_uf1050a_card_detect);
-#endif
-
 static void wifi_init(void)
 {
     struct clk *sys_clkout1_clk;
 
-    printk(KERN_INFO "%s: setup wilink mux signals\n", __FUNCTION__);
+    if (gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "wifi_en") != 0)
+        pr_err("GPIO %i request for wilink_en failed\n", OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
+    gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+    omap_mux_init_gpio(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, OMAP_PIN_OUTPUT);
+    gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 
    /* Pull the enables out of reset */
     msleep(10);
@@ -878,6 +714,16 @@ static void wifi_init(void)
     } else {
         clk_enable(sys_clkout1_clk);
     }
+    // Setup the mux for mmc3
+    omap_mux_init_signal("mcspi1_cs1.sdmmc3_cmd", OMAP_PIN_INPUT_PULLUP); /* McSPI1_CS1/ADPLLV2D_DITHERING_EN2/MMC3_CMD/GPIO_175 */
+    omap_mux_init_signal("mcspi1_cs2.sdmmc3_clk", OMAP_PIN_INPUT_PULLUP); /* McSPI1_CS2/MMC3_CLK/GPIO_176 */
+    omap_mux_init_signal("sdmmc2_dat4.sdmmc3_dat0", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT4/MMC2_DIR_DAT0/MMC3_DAT0/GPIO_136 */
+    omap_mux_init_signal("sdmmc2_dat5.sdmmc3_dat1", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT5/MMC2_DIR_DAT1/CAM_GLOBAL_RESET/MMC3_DAT1/HSUSB3_TLL_STP/MM3_RXDP/GPIO_137 */
+    omap_mux_init_signal("sdmmc2_dat6.sdmmc3_dat2", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT6/MMC2_DIR_CMD/CAM_SHUTTER/MMC3_DAT2/HSUSB3_TLL_DIR/GPIO_138 */
+    omap_mux_init_signal("sdmmc2_dat7.sdmmc3_dat3", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT7/MMC2_CLKIN/MMC3_DAT3/HSUSB3_TLL_NXT/MM3_RXDM/GPIO_139 */
+
+    omap_mux_init_signal("sys_boot0.gpio_2", OMAP_PIN_INPUT);
+
 }
 
 void omap3logic_musb_init(void)
@@ -981,30 +827,6 @@ void omap3logic_spi_init(void)
 	spi_register_board_info(&omap3logic_spi_brf6300, num_spi_devices);
 }
 
-#ifdef TARR
-static void brf6300_dev_init(void)
-{
-	/* Only the LV SOM has a BRF6300 */
-	if (!machine_is_omap3530_lv_som())
-		return;
-
-	if (!twl4030_base_gpio) {
-		printk(KERN_ERR "Huh?!? twl4030_base_gpio not set!\n");
-		return;
-	}
-
-	omap_mux_init_gpio(BT_IRQ_GPIO, OMAP_PIN_INPUT_PULLUP); /* GPIO_157 */
-	if (gpio_request(BT_IRQ_GPIO, "BRF6300 IRQ") < 0)
-		printk(KERN_ERR "can't get BRF6300 irq GPIO\n");
-
-	gpio_direction_input(BT_IRQ_GPIO);
-
-	brf6300_config.irq_gpio = BT_IRQ_GPIO;
-	brf6300_config.shutdown_gpio = twl4030_base_gpio + TWL4030_BT_nSHUTDOWN;
-}
-
-#endif
-
 extern void omap3logic_init_audio_mux(void);
 extern void __init board_lcd_init(void);
 
@@ -1028,7 +850,7 @@ static struct android_usb_product usb_products[] = {
 
 static struct android_usb_platform_data andusb_plat = {
 	.manufacturer_name     = "LogicPD",
-	.product_name          = "OMAP3730 SOM LV",
+	.product_name          = "DM3730 SOM LV",
 	.serial_number         = device_serial,
 	.functions             = usb_functions_all,
 	.products              = usb_products,
@@ -1059,6 +881,12 @@ void omap3logic_android_gadget_init(void)
 
 void cloudsurfer_gpio_init(void)
 {
+
+	/* Someone is dickering wiht the I2C3 pins... Fix it here */
+#define I2C3_SCLK  184
+#define I2C3_SDATA 185
+    omap_mux_init_gpio(I2C3_SCLK, OMAP_PIN_INPUT_PULLUP);
+    omap_mux_init_gpio(I2C3_SDATA, OMAP_PIN_INPUT_PULLUP);
 
 	gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "WIFI_ENABLE");
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");

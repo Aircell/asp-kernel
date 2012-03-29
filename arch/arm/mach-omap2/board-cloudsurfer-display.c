@@ -37,7 +37,7 @@
 
 #include <linux/spi/spi.h>
 #include <plat/mcspi.h>
-#include "aircell_gpio.h"
+#include "cloudsurfer-gpio.h"
 
 struct lcd_data {
 	int	gpio_enable;

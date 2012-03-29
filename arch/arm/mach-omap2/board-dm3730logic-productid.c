@@ -719,7 +719,6 @@ static int fetch_product_id_data(void)
 	if (dm3730logic_is_product_data_valid())
 	  return 0;
 
-	printk(KERN_INFO "Extract product_id data from ID chip\n");
 
 	printk(KERN_WARNING "%s: VAUX1 must be on by now to access product id data\n", __FUNCTION__);
 
@@ -932,7 +931,7 @@ static struct {
 	},
 	{
 		__ATTR(wifi_config_data, S_IRUGO, product_id_show_wifi_config_data, NULL),
-		NULL, //&valid_product_id_has_wifi_config_data,
+		&valid_product_id_has_wifi_config_data,
 	},
 };
 

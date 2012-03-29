@@ -36,6 +36,8 @@
 
 #define NAND_BLOCK_SIZE        SZ_128K
 
+/* TARR - NAND structured to support dual image (LINUX/ROOTFS) */
+
 static struct mtd_partition dm3730logic_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
 	{
@@ -57,73 +59,30 @@ static struct mtd_partition dm3730logic_nand_partitions[] = {
 		.mask_flags     = MTD_WRITEABLE
 	},
 	{
-		.name           = "kernel",
+		.name           = "kernel-A",
 		.offset         = MTDPART_OFS_APPEND,
 		.size           = 32*(SZ_128K)
 	},
 	{
-		.name           = "system",
-		.offset         = MTDPART_OFS_APPEND,
-		.size           = 1280*(SZ_128K)
-	},
-	{
-		.name           = "cache",
-		.offset         = MTDPART_OFS_APPEND,
-		.size           = 672*(SZ_128K)
-	},
-	{
-		.name           = "recovery",
+		.name           = "kernel-B",
 		.offset         = MTDPART_OFS_APPEND,
 		.size           = 32*(SZ_128K)
 	},
 	{
-		.name           = "userdata",
+		.name           = "rootfs-A",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 2000*(SZ_128K)
+	},
+	{
+		.name           = "rootfs-B",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 2000*(SZ_128K)
+	},
+	{
+		.name           = "misc",
 		.offset         = MTDPART_OFS_APPEND,
 		.size           = MTDPART_SIZ_FULL
 	},
-#if 0
-	{
-		.name		= CONFIG_DM3730LOGIC_NAND_PARTITION_ONE_NAME,
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x280000 */
-#if CONFIG_DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0
-		.size = (CONFIG_DM3730LOGIC_NAND_PARTITION_ONE_SIZE) << 17,
-#else
-		.size = MTDPART_SIZ_FULL,
-#endif
-#if defined (CONFIG_DM3730LOGIC_NAND_PARTITION_ONE_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#if defined(CONFIG_DM3730LOGIC_NAND_PARTITION_TWO_SIZE) && (CONFIG_DM3730LOGIC_NAND_PARTITION_ONE_SIZE != 0)
-	{
-		.name		= CONFIG_DM3730LOGIC_NAND_PARTITION_TWO_NAME,
-		.offset		= MTDPART_OFS_APPEND,
-#if CONFIG_DM3730LOGIC_NAND_PARTITION_TWO_SIZE != 0
-		.size = (CONFIG_DM3730LOGIC_NAND_PARTITION_TWO_SIZE) << 17,
-#else
-		.size = MTDPART_SIZ_FULL,
-#endif
-#if defined (CONFIG_DM3730LOGIC_NAND_PARTITION_TWO_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#endif
-#if defined(CONFIG_DM3730LOGIC_NAND_PARTITION_THREE_SIZE) && (CONFIG_DM3730LOGIC_NAND_PARTITION_TWO_SIZE != 0)
-	{
-		.name		= CONFIG_DM3730LOGIC_NAND_PARTITION_THREE_NAME,
-		.offset		= MTDPART_OFS_APPEND,
-#if CONFIG_DM3730LOGIC_NAND_PARTITION_THREE_SIZE != 0
-		.size = (CONFIG_DM3730LOGIC_NAND_PARTITION_THREE_SIZE) << 17,
-#else
-		.size = MTDPART_SIZ_FULL,
-#endif
-#if defined (CONFIG_DM3730LOGIC_NAND_PARTITION_THREE_READONLY)
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
-#endif
-	},
-#endif
-#endif // if 0
-
 };
 
 static struct omap_nand_platform_data dm3730logic_nand_data = {

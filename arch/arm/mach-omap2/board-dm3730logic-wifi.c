@@ -31,7 +31,6 @@ static int omap_dm3730logic_wifi_cd;	/* WIFI virtual 'card detect' status */
 static void (*wifi_status_cb) (int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 
-static int wifi_en_gpio;
 static int wifi_irq_gpio;
 
 int omap_wifi_status_register(void (*callback) (int card_present,
@@ -70,7 +69,7 @@ int omap_dm3730logic_wifi_power(int on)
 	int err;
 	struct regulator	*regl;
 
-	gpio_set_value(wifi_en_gpio, on);
+	gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, on);
 
 	omap_dm3730logic_wifi_power_state = on;
 
@@ -137,14 +136,13 @@ static int __init omap_dm3730logic_wifi_init(void)
 {
 	int ret;
 
+	printk("TARR - %s\n",__FUNCTION__);
 
-	wifi_en_gpio = OMAP_DM3730LOGIC_WIFI_PMENA_GPIO;
 	wifi_irq_gpio = OMAP_DM3730LOGIC_WIFI_IRQ_GPIO;
 
 	ret = gpio_request(wifi_irq_gpio, "wifi_irq");
 	if (ret < 0) {
-		pr_err("%s: can't reserve GPIO: %d\n", __func__,
-		       wifi_irq_gpio);
+		pr_err("%s: can't reserve GPIO: %d\n", __func__, wifi_irq_gpio);
 		goto out;
 	}
 	gpio_direction_input(wifi_irq_gpio);
