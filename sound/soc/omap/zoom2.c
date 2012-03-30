@@ -38,6 +38,12 @@
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
+/* These fucntions are define in arch/arm/mach-omap2/board-omap3logic-audio.c */
+extern int twl4030_get_headset_int(void);
+extern int twl4030_get_headset_enable(void);
+extern int twl4030_get_ringer_enable(void);
+
+
 static int zoom2_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
@@ -76,8 +82,35 @@ static int zoom2_hw_params(struct snd_pcm_substream *substream,
 
 	return 0;
 }
+int zoom2_voice_startup(struct snd_pcm_substream *stream) {
+	gpio_set_value(twl4030_get_headset_enable(), 0);
+	if(gpio_get_value(twl4030_get_headset_int()))
+		gpio_set_value(twl4030_get_ringer_enable(), 0);
+	else
+		gpio_set_value(twl4030_get_ringer_enable(), 1);
+	return 0;
+}
+
+void zoom2_voice_shutdown(struct snd_pcm_substream *stream) {
+	gpio_set_value(twl4030_get_ringer_enable(), 0);
+}
+
+int zoom2_audio_startup(struct snd_pcm_substream *stream) {
+	gpio_set_value(twl4030_get_ringer_enable(), 0);
+	if(gpio_get_value(twl4030_get_headset_int()))
+		gpio_set_value(twl4030_get_headset_enable(), 0);
+	else
+		gpio_set_value(twl4030_get_headset_enable(), 1);
+	return 0;
+}
+
+void zoom2_audio_shutdown(struct snd_pcm_substream *stream) {
+	gpio_set_value(twl4030_get_headset_enable(), 0);
+}
 
 static struct snd_soc_ops zoom2_ops = {
+	.startup = zoom2_audio_startup,
+	.shutdown = zoom2_audio_shutdown,
 	.hw_params = zoom2_hw_params,
 };
 
@@ -115,7 +148,6 @@ static int zoom2_gpak_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
 	int ret;
 
 	/* Set codec DAI configuration */
@@ -140,6 +172,8 @@ static int zoom2_gpak_params(struct snd_pcm_substream *substream,
 }
 
 static struct snd_soc_ops zoom2_gpak_ops = {
+	.startup = zoom2_audio_startup,
+	.shutdown = zoom2_audio_shutdown,
 	.hw_params = zoom2_gpak_params,
 };
 
@@ -182,7 +216,10 @@ static int zoom2_hw_voice_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+
 static struct snd_soc_ops zoom2_voice_ops = {
+	.startup = zoom2_voice_startup,
+	.shutdown = zoom2_voice_shutdown,
 	.hw_params = zoom2_hw_voice_params,
 };
 
