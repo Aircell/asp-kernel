@@ -357,6 +357,8 @@ static const struct gpio_pad_range gpio_pads_config[] = {
 	{ 2, 10, 0xa0a },
 	{ 11, 11, 0xa24 },
 	{ 31, 31, 0xa26 },
+/* TARR - DM3730 shuffled the GPIOs a bit */
+	{ 129, 129, 0xa5a },
 };
 
 /* GPIO -> PAD config mapping for OMAP3 */
@@ -369,7 +371,7 @@ struct gpio_pad {
 #define OMAP34XX_GPIO_AMT	(32 * OMAP34XX_NR_GPIOS)
 
 static struct gpio_pad *gpio_pads;
-static u16 gpio_pad_map[OMAP34XX_GPIO_AMT];
+u16 gpio_pad_map[OMAP34XX_GPIO_AMT];
 #endif
 
 #ifdef CONFIG_ARCH_OMAP4
