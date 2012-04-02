@@ -79,9 +79,9 @@
 #include "cloudsurfer-gpio.h"
 
 #define QT_I2C_ADDR			 0x4b
-#define DIE_ID_REG_BASE      (L4_WK_34XX_PHYS + 0xA000)
-#define DIE_ID_REG_OFFSET    0x218
-#define MAX_USB_SERIAL_NUM   17
+#define DIE_ID_REG_BASE		(L4_WK_34XX_PHYS + 0xA000)
+#define DIE_ID_REG_OFFSET	0x218
+#define MAX_USB_SERIAL_NUM	17
 
 #define OMAP3LOGIC_SMSC911X_CS		1
 #define OMAP3LOGIC_LV_SOM_SMSC911X_GPIO		152	/* LV SOM LAN IRQ */
@@ -103,10 +103,10 @@ static struct resource omap3logic_smsc911x_resources[] = {
 };
 
 static struct smsc911x_platform_config smsc911x_config = {
-	.phy_interface  = PHY_INTERFACE_MODE_MII,
-	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
-	.irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-	.flags          = (SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS)
+	.phy_interface	= PHY_INTERFACE_MODE_MII,
+	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
+	.irq_type		= SMSC911X_IRQ_TYPE_OPEN_DRAIN,
+	.flags			= (SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS)
 };
 
 static struct platform_device omap3logic_smsc911x_device = {
@@ -137,8 +137,8 @@ static inline void __init omap3logic_init_smsc911x(void)
 	}
 
 	omap3logic_smsc911x_resources[0].start = cs_mem_base + 0x0;
-	//omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0xff;
-	omap3logic_smsc911x_resources[0].end   = cs_mem_base + 0x0f;
+	//omap3logic_smsc911x_resources[0].end	= cs_mem_base + 0xff;
+	omap3logic_smsc911x_resources[0].end	= cs_mem_base + 0x0f;
 
 	if (gpio_request(eth_gpio, "eth0") < 0) {
 		printk(KERN_ERR "Failed to request GPIO_%d for smsc911x IRQ\n",
@@ -158,84 +158,122 @@ static inline void __init omap3logic_init_smsc911x(void)
 		return;
 	}
 }
+/* Fix the PBIAS voltage for Torpedo MMC1 pins that
+ * are used for other needs (IRQs, etc). */
+static void fix_pbias_voltage(void)
+{
+	u16 control_pbias_offset = OMAP343X_CONTROL_PBIAS_LITE;
+	static int pbias_fixed = 0;
+	u32 reg;
+
+	if (!pbias_fixed) {
+		/* Set the bias for the pin */
+		reg = omap_ctrl_readl(control_pbias_offset);
+
+		//reg &= ~OMAP343X_PBIASLITEVMODE1;
+		reg &= ~OMAP343X_PBIASLITEPWRDNZ1;
+		omap_ctrl_writel(reg, control_pbias_offset);
+		/* 100ms delay required for PBIAS configuration */
+		msleep(100);
+
+		reg &= ~OMAP343X_PBIASLITEVMODE1;
+		//reg |= OMAP343X_PBIASLITEVMODE1;
+		reg |= OMAP343X_PBIASLITEPWRDNZ1;
+		omap_ctrl_writel(reg, control_pbias_offset);
+
+		/* For DM3730, turn on GPIO_IO_PWRDNZ to connect input pads*/
+		if (cpu_is_omap3630()) {
+			reg = omap_ctrl_readl(OMAP343X_CONTROL_WKUP_CTRL);
+			reg |= OMAP343X_GPIO_IO_PWRDNZ;
+			omap_ctrl_writel(reg, OMAP343X_CONTROL_WKUP_CTRL);
+			printk("%s:%d PKUP_CTRL %#x\n", __FUNCTION__, __LINE__, omap_ctrl_readl(OMAP343X_CONTROL_WKUP_CTRL));
+		}
+		reg = omap_ctrl_readl(control_pbias_offset);
+		printk("TARR - PBIAS req = 0x%2.2X\n", reg);
+
+		pbias_fixed = 1;
+
+	}
+}
+
 
 /* TARR - FIXME: These values need to be updated based on more profiling
  * Originals came from the 3430sdp
  */
 static struct cpuidle_params cloudsurfer_cpuidle_params_table[] = {
-    /* C1 */
-    {1, 2, 2, 5},
-    /* C2 */
-    {1, 10, 10, 30},
-    /* C3 */
-    {1, 50, 50, 300},
-    /* C4 */
-    {1, 1500, 1800, 4000},
-    /* C5 */
-    {1, 2500, 7500, 12000},
-    /* C6 */
-    {1, 3000, 8500, 15000},
-    /* C7 */
-    {1, 10000, 30000, 300000},
+	/* C1 */
+	{1, 2, 2, 5},
+	/* C2 */
+	{1, 10, 10, 30},
+	/* C3 */
+	{1, 50, 50, 300},
+	/* C4 */
+	{1, 1500, 1800, 4000},
+	/* C5 */
+	{1, 2500, 7500, 12000},
+	/* C6 */
+	{1, 3000, 8500, 15000},
+	/* C7 */
+	{1, 10000, 30000, 300000},
 };
 
 static struct prm_setup_vc cloudsurfer_setuptime_table = {
-    .clksetup = 0xff,
-    .voltsetup_time1 = 0xfff,
-    .voltsetup_time2 = 0xfff,
-    .voltoffset = 0xff,
-    .voltsetup2 = 0xff,
-    .vdd0_on = 0x30,
-    .vdd0_onlp = 0x20,
-    .vdd0_ret = 0x1e,
-    .vdd0_off = 0x00,
-    .vdd1_on = 0x2c,
-    .vdd1_onlp = 0x20,
-    .vdd1_ret = 0x1e,
-    .vdd1_off = 0x00,
+	.clksetup = 0xff,
+	.voltsetup_time1 = 0xfff,
+	.voltsetup_time2 = 0xfff,
+	.voltoffset = 0xff,
+	.voltsetup2 = 0xff,
+	.vdd0_on = 0x30,
+	.vdd0_onlp = 0x20,
+	.vdd0_ret = 0x1e,
+	.vdd0_off = 0x00,
+	.vdd1_on = 0x2c,
+	.vdd1_onlp = 0x20,
+	.vdd1_ret = 0x1e,
+	.vdd1_off = 0x00,
 };
 
 
 
 /* VDDA_DAC needed for dss */
 static struct regulator_consumer_supply omap3logic_vdda_dac_supply = {
-	.supply         = "vdda_dac",
+	.supply		 = "vdda_dac",
 	.dev		= &dss_device.dev,
 };
 
 static struct regulator_init_data omap3logic_vdda_dac = {
 	.constraints = {
-		.min_uV            = 1800000,
-		.max_uV            = 1800000,
-		.valid_modes_mask  = REGULATOR_MODE_NORMAL | REGULATOR_MODE_STANDBY,
-		.valid_ops_mask    = REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL | REGULATOR_MODE_STANDBY,
+		.valid_ops_mask	= REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies  = 1,
-	.consumer_supplies      = &omap3logic_vdda_dac_supply,
+	.num_consumer_supplies	= 1,
+	.consumer_supplies		= &omap3logic_vdda_dac_supply,
 };
 
 /* VPLL2 for digital video outputs */
 static struct regulator_consumer_supply omap3logic_vpll2_supplies[] = {
 	{
-		.supply     = "vdvi",
+		.supply	 = "vdvi",
 		.dev		= &lcd_device.dev,
 	},
 	{
-		.supply     = "vdds_dsi",
+		.supply	 = "vdds_dsi",
 		.dev		= &dss_device.dev,
 	}
 };
 
 static struct regulator_init_data omap3logic_vpll2 = {
 	.constraints = {
-	 	.name             = "VDVI",
-		.min_uV           = 1800000,
-		.max_uV           = 1800000,
+	 	.name			 = "VDVI",
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
 		.valid_modes_mask = REGULATOR_MODE_NORMAL | REGULATOR_MODE_STANDBY,
-		.valid_ops_mask   = REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
+		.valid_ops_mask	= REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies  = ARRAY_SIZE(omap3logic_vpll2_supplies),
-	.consumer_supplies      = omap3logic_vpll2_supplies,
+	.num_consumer_supplies	= ARRAY_SIZE(omap3logic_vpll2_supplies),
+	.consumer_supplies		= omap3logic_vpll2_supplies,
 };
 
 /* VAUX1 for mainboard (touch and productID) */
@@ -249,8 +287,8 @@ static struct regulator_init_data omap3logic_vaux1 = {
 		.max_uV			= 3000000,
 		.name			= "VAUX1_30",
 		.apply_uV		= true,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL |  REGULATOR_MODE_STANDBY,
-		.valid_ops_mask     = REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL |	REGULATOR_MODE_STANDBY,
+		.valid_ops_mask	 = REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
 	},
 	.num_consumer_supplies	= 1,
 	.consumer_supplies	= &omap3logic_vaux1_supply,
@@ -258,19 +296,19 @@ static struct regulator_init_data omap3logic_vaux1 = {
 
 /* VAUX3 required to enable WiLink 26MHz clock */
 static struct regulator_consumer_supply omap3logic_vaux3_supply = {
-    .supply         = "vaux3",
+	.supply		 = "vaux3",
 };
 
 static struct regulator_init_data omap3logic_vaux3 = {
-    .constraints = {
-        .min_uV         = 2800000,
-        .max_uV         = 2800000,
-        .apply_uV       = true,
-        .valid_modes_mask   = REGULATOR_MODE_NORMAL | REGULATOR_MODE_STANDBY,
-        .valid_ops_mask     = REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
-    },
-    .num_consumer_supplies  = 1,
-    .consumer_supplies  = &omap3logic_vaux3_supply,
+	.constraints = {
+		.min_uV		 = 2800000,
+		.max_uV		 = 2800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL | REGULATOR_MODE_STANDBY,
+		.valid_ops_mask	 = REGULATOR_CHANGE_MODE | REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= 1,
+	.consumer_supplies	= &omap3logic_vaux3_supply,
 };
 
 static struct twl4030_hsmmc_info mmc[] = {
@@ -351,11 +389,11 @@ int omap3logic_twl_gpio_setup(struct device *dev,
 	/* SD card detect interrupt */
 	mmc[0].gpio_cd = 110;
 	omap_mux_init_gpio(110, OMAP_PIN_INPUT_PULLUP);
-    /* Since GPIO126 is routed on the OMAP35x to
-     * both sdmmc1_dat4 and cam_strobe we have to
-     * mux cam_strome/gpio_126 as a GPIO by hand */
-    //omap_mux_init_signal("cam_strobe.gpio_126", OMAP_PIN_INPUT_PULLUP);
-    //mmc[0].gpio_wp = 126;
+	/* Since GPIO126 is routed on the OMAP35x to
+	 * both sdmmc1_dat4 and cam_strobe we have to
+	 * mux cam_strome/gpio_126 as a GPIO by hand */
+	//omap_mux_init_signal("cam_strobe.gpio_126", OMAP_PIN_INPUT_PULLUP);
+	//mmc[0].gpio_wp = 126;
 
 
 	/* link regulators to MMC adapters */
@@ -395,7 +433,7 @@ static struct twl4030_codec_audio_data omap3logic_audio_data = {
 };
 
 static struct twl4030_codec_vibra_data omap3logic_vibra_data = {
-    .audio_mclk = 26000000,
+	.audio_mclk = 26000000,
 };
 
 static struct twl4030_codec_data omap3logic_codec_data = {
@@ -540,30 +578,30 @@ static struct pca9626_platform_data cloud_pca9626_data = {
 };
 
 static struct at24_platform_data m24c128 = { 
-            .byte_len       = 131072 / 8,
-            .page_size      = 64, 
+			.byte_len		= 131072 / 8,
+			.page_size		= 64, 
 			.flags			= AT24_FLAG_ADDR16,
 };
 
 	
 static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
-    {    
-        I2C_BOARD_INFO("at24", 0x50),
+	{	
+		I2C_BOARD_INFO("at24", 0x50),
 		.platform_data = &m24c128,
-    },
+	},
 #ifdef CONFIG_CLOUDSURFER_P2_CAMERA
 	{
 		I2C_BOARD_INFO("ov7692", 0x3C),
 		.platform_data = &cloud_ov7692_platform_data,
 	},
 #endif
-    {    
-        I2C_BOARD_INFO("pca9626", 0x12),
+	{	
+		I2C_BOARD_INFO("pca9626", 0x12),
 		.platform_data = &cloud_pca9626_data,
-    },
+	},
 	{
 		I2C_BOARD_INFO("bq27200", 0x55),
-    },
+	},
 };
 /*
  * D2vices on I2C bus 3 are the touchscreen controller\
@@ -574,22 +612,22 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
  */
 
 struct qt602240_platform_data omap3logic_touchscreendata = {
-    .x_line = 19,
-    .y_line = 11,
-    .x_size = 1170,
-    .y_size = 480,
-    .blen = 23,
-    .threshold = 80,
-    .voltage = 600,
-    .orient = QT602240_NORMAL
+	.x_line = 19,
+	.y_line = 11,
+	.x_size = 1170,
+	.y_size = 480,
+	.blen = 23,
+	.threshold = 80,
+	.voltage = 600,
+	.orient = QT602240_NORMAL
 };
 
 static struct platform_device omap3logic_touch_device = {
-    .name       = "qt602240_ts",
-    .id     	= 0, 
-    .dev        = {
-        .platform_data = &omap3logic_touchscreendata,
-    },
+	.name		= "qt602240_ts",
+	.id	 	= 0, 
+	.dev		= {
+		.platform_data = &omap3logic_touchscreendata,
+	},
 };
 
 
@@ -605,19 +643,19 @@ static struct i2c_board_info __initdata omap3logic_i2c3_boardinfo[] = {
 static void omap3logic_qt602240_init(void)
 {
 	printk("QT602240 Init");
-    if (platform_device_register(&omap3logic_touch_device) < 0){
-            printk(KERN_ERR "Unable to register touch device\n");
-        return;
-    }
+	if (platform_device_register(&omap3logic_touch_device) < 0){
+			printk(KERN_ERR "Unable to register touch device\n");
+		return;
+	}
 	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
-    omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
+	omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
 	/* 5V Digital is required for the touchscreen controller */
 	gpio_direction_output(AIRCELL_5VD_ENABLE, 1);
 
 	/* Take the touch screen out of reset */
 	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
-    omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(AIRCELL_TOUCH_INTERRUPT);
+	omap3logic_i2c3_boardinfo[0].irq = gpio_to_irq(AIRCELL_TOUCH_INTERRUPT);
 
 	return;
 }
@@ -627,8 +665,8 @@ int __init omap3logic_i2c_init(void)
 	printk("Cloudsurfer I2C Init");
 	omap_register_i2c_bus(1, 2600, omap3logic_i2c1_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c1_boardinfo));
-    omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
-            ARRAY_SIZE(omap3logic_i2c2_boardinfo));
+	omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
+			ARRAY_SIZE(omap3logic_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, omap3logic_i2c3_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c3_boardinfo));
 	return 0;
@@ -642,13 +680,13 @@ void __init omap3logic_init_irq(void)
 {
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
-    /* TARR HERE - Setup pwoer management tables */
-    omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
-    omap3_pm_init_vc(&cloudsurfer_setuptime_table);
+	/* TARR HERE - Setup pwoer management tables */
+	omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+	omap3_pm_init_vc(&cloudsurfer_setuptime_table);
 
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
-			     omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
-			     omap35x_l3_rate_table);
+				 omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
+				 omap35x_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }
@@ -673,10 +711,10 @@ static struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 	.port_mode[1] = EHCI_HCD_OMAP_MODE_PHY,
 	.port_mode[2] = EHCI_HCD_OMAP_MODE_UNKNOWN,
 
-	.phy_reset  = true,
-	.reset_gpio_port[0]  = -EINVAL,
-	.reset_gpio_port[1]  = 4,
-	.reset_gpio_port[2]  = -EINVAL
+	.phy_reset	= true,
+	.reset_gpio_port[0]	= -EINVAL,
+	.reset_gpio_port[1]	= 4,
+	.reset_gpio_port[2]	= -EINVAL
 };
 
 void omap3logic_init_ehci(void)
@@ -692,37 +730,37 @@ void omap3logic_usb_init(void)
 
 static void wifi_init(void)
 {
-    struct clk *sys_clkout1_clk;
+	struct clk *sys_clkout1_clk;
 
-    if (gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "wifi_en") != 0)
-        pr_err("GPIO %i request for wilink_en failed\n", OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
-    gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
-    omap_mux_init_gpio(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, OMAP_PIN_OUTPUT);
-    gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+	if (gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "wifi_en") != 0)
+		pr_err("GPIO %i request for wilink_en failed\n", OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
+	gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+	omap_mux_init_gpio(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, OMAP_PIN_OUTPUT);
+	gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 
-   /* Pull the enables out of reset */
-    msleep(10);
-    gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 1);
-    /* Put them back into reset (so they go into low-power mode) */
-    msleep(10);
-    gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+	/* Pull the enables out of reset */
+	msleep(10);
+	gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 1);
+	/* Put them back into reset (so they go into low-power mode) */
+	msleep(10);
+	gpio_set_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 
-   /* Enable sys_clkout1 (uP_CLKOUT1_26Mhz) */
-    sys_clkout1_clk = clk_get(NULL, "sys_clkout1");
-    if (IS_ERR(sys_clkout1_clk)) {
-        printk("%s: Can't get sys_clkout1\n", __FUNCTION__);
-    } else {
-        clk_enable(sys_clkout1_clk);
-    }
-    // Setup the mux for mmc3
-    omap_mux_init_signal("mcspi1_cs1.sdmmc3_cmd", OMAP_PIN_INPUT_PULLUP); /* McSPI1_CS1/ADPLLV2D_DITHERING_EN2/MMC3_CMD/GPIO_175 */
-    omap_mux_init_signal("mcspi1_cs2.sdmmc3_clk", OMAP_PIN_INPUT_PULLUP); /* McSPI1_CS2/MMC3_CLK/GPIO_176 */
-    omap_mux_init_signal("sdmmc2_dat4.sdmmc3_dat0", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT4/MMC2_DIR_DAT0/MMC3_DAT0/GPIO_136 */
-    omap_mux_init_signal("sdmmc2_dat5.sdmmc3_dat1", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT5/MMC2_DIR_DAT1/CAM_GLOBAL_RESET/MMC3_DAT1/HSUSB3_TLL_STP/MM3_RXDP/GPIO_137 */
-    omap_mux_init_signal("sdmmc2_dat6.sdmmc3_dat2", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT6/MMC2_DIR_CMD/CAM_SHUTTER/MMC3_DAT2/HSUSB3_TLL_DIR/GPIO_138 */
-    omap_mux_init_signal("sdmmc2_dat7.sdmmc3_dat3", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT7/MMC2_CLKIN/MMC3_DAT3/HSUSB3_TLL_NXT/MM3_RXDM/GPIO_139 */
+	/* Enable sys_clkout1 (uP_CLKOUT1_26Mhz) */
+	sys_clkout1_clk = clk_get(NULL, "sys_clkout1");
+	if (IS_ERR(sys_clkout1_clk)) {
+		printk("%s: Can't get sys_clkout1\n", __FUNCTION__);
+	} else {
+		clk_enable(sys_clkout1_clk);
+	}
+	// Setup the mux for mmc3
+	omap_mux_init_signal("mcspi1_cs1.sdmmc3_cmd", OMAP_PIN_INPUT_PULLUP); /* McSPI1_CS1/ADPLLV2D_DITHERING_EN2/MMC3_CMD/GPIO_175 */
+	omap_mux_init_signal("mcspi1_cs2.sdmmc3_clk", OMAP_PIN_INPUT_PULLUP); /* McSPI1_CS2/MMC3_CLK/GPIO_176 */
+	omap_mux_init_signal("sdmmc2_dat4.sdmmc3_dat0", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT4/MMC2_DIR_DAT0/MMC3_DAT0/GPIO_136 */
+	omap_mux_init_signal("sdmmc2_dat5.sdmmc3_dat1", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT5/MMC2_DIR_DAT1/CAM_GLOBAL_RESET/MMC3_DAT1/HSUSB3_TLL_STP/MM3_RXDP/GPIO_137 */
+	omap_mux_init_signal("sdmmc2_dat6.sdmmc3_dat2", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT6/MMC2_DIR_CMD/CAM_SHUTTER/MMC3_DAT2/HSUSB3_TLL_DIR/GPIO_138 */
+	omap_mux_init_signal("sdmmc2_dat7.sdmmc3_dat3", OMAP_PIN_INPUT_PULLUP); /* MMC2_DAT7/MMC2_CLKIN/MMC3_DAT3/HSUSB3_TLL_NXT/MM3_RXDM/GPIO_139 */
 
-    omap_mux_init_signal("sys_boot0.gpio_2", OMAP_PIN_INPUT);
+	omap_mux_init_signal("sys_boot0.gpio_2", OMAP_PIN_INPUT);
 
 }
 
@@ -748,7 +786,7 @@ void omap3logic_musb_init(void)
 #ifdef CONFIG_BT_HCIBRF6300_SPI
 static struct omap2_mcspi_device_config brf6300_mcspi_config = {
 	.turbo_mode	= 0,
-	.single_channel = 1,  /* 0: slave, 1: master */
+	.single_channel = 1,	/* 0: slave, 1: master */
 };
 
 
@@ -844,23 +882,23 @@ static char *usb_functions_all[] = {
 static struct android_usb_product usb_products[] = {
 	{
 		.num_functions = ARRAY_SIZE(usb_functions_adb),
-		.functions     = usb_functions_adb,
+		.functions	 = usb_functions_adb,
 	},
 };
 
 static struct android_usb_platform_data andusb_plat = {
-	.manufacturer_name     = "LogicPD",
-	.product_name          = "DM3730 SOM LV",
-	.serial_number         = device_serial,
-	.functions             = usb_functions_all,
-	.products              = usb_products,
-	.num_functions         = ARRAY_SIZE(usb_functions_all),
+	.manufacturer_name	 = "LogicPD",
+	.product_name			= "DM3730 SOM LV",
+	.serial_number		 = device_serial,
+	.functions			 = usb_functions_all,
+	.products				= usb_products,
+	.num_functions		 = ARRAY_SIZE(usb_functions_all),
 };
 
 static struct platform_device androidusb_device = {
-	.name                  = "android_usb",
-	.id                    = -1,
-	.dev                   = {
+	.name					= "android_usb",
+	.id					= -1,
+	.dev					= {
 		.platform_data = &andusb_plat,
 	},
 };
@@ -883,10 +921,10 @@ void cloudsurfer_gpio_init(void)
 {
 
 	/* Someone is dickering wiht the I2C3 pins... Fix it here */
-#define I2C3_SCLK  184
+#define I2C3_SCLK	184
 #define I2C3_SDATA 185
-    omap_mux_init_gpio(I2C3_SCLK, OMAP_PIN_INPUT_PULLUP);
-    omap_mux_init_gpio(I2C3_SDATA, OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_gpio(I2C3_SCLK, OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_gpio(I2C3_SDATA, OMAP_PIN_INPUT_PULLUP);
 
 	gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "WIFI_ENABLE");
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
@@ -917,24 +955,24 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
 	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
-    gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
-    gpio_direction_input(AIRCELL_BATTERY_POWERED);
-    gpio_direction_output(AIRCELL_18V_ENABLE,1);
-    gpio_direction_output(AIRCELL_LCD_RESET,0);
-    gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT);
-    gpio_direction_output(AIRCELL_LED_ENABLE,1);
-    gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
-    gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
-    gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
-    gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
-    gpio_direction_input(AIRCELL_HEADSET_DETECT);
-    gpio_direction_output(AIRCELL_TOUCH_RESET,0);
-    gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
-    gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
-    gpio_direction_input(AIRCELL_PROX_INTERRUPT);
-    gpio_direction_output(AIRCELL_MUTE,0);
+	gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+	gpio_direction_input(AIRCELL_BATTERY_POWERED);
+	gpio_direction_output(AIRCELL_18V_ENABLE,1);
+	gpio_direction_output(AIRCELL_LCD_RESET,0);
+	gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT);
+	gpio_direction_output(AIRCELL_LED_ENABLE,1);
+	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
+	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
+	gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
+	gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
+	gpio_direction_input(AIRCELL_HEADSET_DETECT);
+	gpio_direction_output(AIRCELL_TOUCH_RESET,0);
+	gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
+	gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
+	gpio_direction_input(AIRCELL_PROX_INTERRUPT);
+	gpio_direction_output(AIRCELL_MUTE,0);
 
-    gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+	gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_BATTERY_POWERED,0);
@@ -963,6 +1001,8 @@ static void __init omap3logic_init(void)
 	printk("Aircell CloudSurfer P3\n");
 
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBP);
+	
+	fix_pbias_voltage();
 
 	cloudsurfer_gpio_init();
 
