@@ -34,7 +34,7 @@
 
 #include <plat/control.h>
 
-#define DSI_DPLL_SPREADING_CONFIG_0   (0x00000000)	/* .43% Freq deviation */
+#define DSI_DPLL_SPREADING_CONFIG_0   (0x00000000)	/* .0% Freq deviation */
 #define DSI_DPLL_SPREADING_CONFIG_04  (0x00c10013)	/* .43% Freq deviation */
 #define DSI_DPLL_SPREADING_CONFIG_1   (0x01a0d813)	/* 1.0% Freq deviation */
 #define DSI_DPLL_SPREADING_CONFIG_15  (0x02714413)	/* 1.5% Freq deviation */
