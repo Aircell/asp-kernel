@@ -71,7 +71,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_ARXL1PGA		(0x11)	*/
 	0x32, /* REG_ARXR2PGA		(0x12)	*/
 	0x32, /* REG_ARXL2PGA		(0x13)	*/
-	0x25, /* REG_VRXPGA		(0x14)	*/
+	0x2B, /* REG_VRXPGA		(0x14)	*/
 	0x00, /* REG_VSTPGA		(0x15)	*/
 	0x00, /* REG_VRX2ARXPGA		(0x16)	*/
 	0x1c, /* REG_AVDAC_CTL		(0x17)	*/
@@ -119,7 +119,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
 	0x00, /* REG_RX_PATH_SEL	(0x43)	*/
-	0x63, /* REG_VDL_APGA_CTL	(0x44)	*/
+	0x13, /* REG_VDL_APGA_CTL	(0x44)	*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
 	0x00, /* REG_VIBRA_PWM_SET	(0x47)	*/
