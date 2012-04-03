@@ -83,11 +83,17 @@ static int zoom2_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 int zoom2_voice_startup(struct snd_pcm_substream *stream) {
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
 	gpio_set_value(twl4030_get_headset_enable(), 0);
 	if(gpio_get_value(twl4030_get_headset_int()))
 		gpio_set_value(twl4030_get_ringer_enable(), 0);
 	else
-		gpio_set_value(twl4030_get_ringer_enable(), 1);
+		/* Don't turn on ringer if earpiece already on */
+		if(gpio_get_value(twl4030_get_headset_enable())==0)
+			gpio_set_value(twl4030_get_ringer_enable(), 1);
+#else
+	gpio_set_value(twl4030_get_ringer_enable(), 1);
+#endif
 	return 0;
 }
 
@@ -96,11 +102,15 @@ void zoom2_voice_shutdown(struct snd_pcm_substream *stream) {
 }
 
 int zoom2_audio_startup(struct snd_pcm_substream *stream) {
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
 	gpio_set_value(twl4030_get_ringer_enable(), 0);
 	if(gpio_get_value(twl4030_get_headset_int()))
 		gpio_set_value(twl4030_get_headset_enable(), 0);
 	else
 		gpio_set_value(twl4030_get_headset_enable(), 1);
+#else
+	gpio_set_value(twl4030_get_headset_enable(), 1);
+#endif
 	return 0;
 }
 
