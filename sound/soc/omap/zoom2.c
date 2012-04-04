@@ -82,6 +82,13 @@ static int zoom2_hw_params(struct snd_pcm_substream *substream,
 
 	return 0;
 }
+
+void zoom2_gpio_debug( const char *fn ) {
+	printk( KERN_INFO "%s in  hs %d ring %d\n", fn,
+		gpio_get_value(twl4030_get_headset_enable()),
+		gpio_get_value(twl4030_get_ringer_enable()));
+}
+
 int zoom2_voice_startup(struct snd_pcm_substream *stream) {
 #ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
 	gpio_set_value(twl4030_get_headset_enable(), 0);
@@ -92,13 +99,17 @@ int zoom2_voice_startup(struct snd_pcm_substream *stream) {
 		if(gpio_get_value(twl4030_get_headset_enable())==0)
 			gpio_set_value(twl4030_get_ringer_enable(), 1);
 #else
-	gpio_set_value(twl4030_get_ringer_enable(), 1);
+	//gpio_set_value(twl4030_get_ringer_enable(), 1);
+	gpio_set_value(twl4030_get_ringer_enable(), 0);
+	gpio_set_value(twl4030_get_headset_enable(), 1);
 #endif
 	return 0;
 }
 
 void zoom2_voice_shutdown(struct snd_pcm_substream *stream) {
-	gpio_set_value(twl4030_get_ringer_enable(), 0);
+	//gpio_set_value(twl4030_get_headset_enable(), 0);
+	//gpio_set_value(twl4030_get_ringer_enable(), 0);
+		
 }
 
 int zoom2_audio_startup(struct snd_pcm_substream *stream) {
@@ -109,13 +120,15 @@ int zoom2_audio_startup(struct snd_pcm_substream *stream) {
 	else
 		gpio_set_value(twl4030_get_headset_enable(), 1);
 #else
+	gpio_set_value(twl4030_get_ringer_enable(), 0);
 	gpio_set_value(twl4030_get_headset_enable(), 1);
+		
 #endif
 	return 0;
 }
 
 void zoom2_audio_shutdown(struct snd_pcm_substream *stream) {
-	gpio_set_value(twl4030_get_headset_enable(), 0);
+	//gpio_set_value(twl4030_get_headset_enable(), 0);
 }
 
 static struct snd_soc_ops zoom2_ops = {
