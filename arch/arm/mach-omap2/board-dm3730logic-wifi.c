@@ -136,8 +136,6 @@ static int __init omap_dm3730logic_wifi_init(void)
 {
 	int ret;
 
-	printk("TARR - %s\n",__FUNCTION__);
-
 	wifi_irq_gpio = OMAP_DM3730LOGIC_WIFI_IRQ_GPIO;
 
 	ret = gpio_request(wifi_irq_gpio, "wifi_irq");

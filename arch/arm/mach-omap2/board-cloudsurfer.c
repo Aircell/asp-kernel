@@ -32,7 +32,6 @@
 #include <linux/interrupt.h>
 
 #include <linux/spi/spi.h>
-#include <linux/spi/brf6300.h>
 #include <linux/spi/eeprom.h>
 
 #include <linux/i2c/qt602240_ts.h>
@@ -77,6 +76,8 @@
 #include <linux/i2c/at24.h>
 #include <linux/leds-pca9626.h>
 #include "cloudsurfer-gpio.h"
+
+extern void print_omap_clocks(void);
 
 #define QT_I2C_ADDR			 0x4b
 #define DIE_ID_REG_BASE		(L4_WK_34XX_PHYS + 0xA000)
@@ -188,9 +189,6 @@ static void fix_pbias_voltage(void)
 			omap_ctrl_writel(reg, OMAP343X_CONTROL_WKUP_CTRL);
 			printk("%s:%d PKUP_CTRL %#x\n", __FUNCTION__, __LINE__, omap_ctrl_readl(OMAP343X_CONTROL_WKUP_CTRL));
 		}
-		reg = omap_ctrl_readl(control_pbias_offset);
-		printk("TARR - PBIAS req = 0x%2.2X\n", reg);
-
 		pbias_fixed = 1;
 
 	}
@@ -327,61 +325,7 @@ static struct twl4030_hsmmc_info mmc[] = {
 	{}	/* Terminator */
 };
 
-/* GPIO.0 of TWL4030 */
 static int twl4030_base_gpio;
-
-int brf6300_bt_nshutdown_gpio;
-
-int brf6300_request_bt_nshutdown_gpio(void)
-{
-	struct clk *sys_clkout1_clk;
-
-	BUG_ON(!brf6300_bt_nshutdown_gpio);
-	printk("%s: gpio %d\n", __FUNCTION__, brf6300_bt_nshutdown_gpio);
-
-	/* Enable sys_clkout1 (uP_CLKOUT1_26Mhz used by brf6300 */
-	sys_clkout1_clk = clk_get(NULL, "sys_clkout1");
-	if (IS_ERR(sys_clkout1_clk)) {
-		printk("%s: Can't get sys_clkout1\n", __FUNCTION__);
-		return -1;
-	}
-	clk_enable(sys_clkout1_clk);
-
-	return gpio_request(brf6300_bt_nshutdown_gpio, "BT_nSHUTDOWN");
-}
-
-void brf6300_free_bt_nshutdown_gpio(void)
-{
-	BUG_ON(!brf6300_bt_nshutdown_gpio);
-	printk("%s\n", __FUNCTION__);
-	gpio_free(brf6300_bt_nshutdown_gpio);
-}
-
-void brf6300_direction_bt_nshutdown_gpio(int direction, int value)
-{
-	BUG_ON(!brf6300_bt_nshutdown_gpio);
-	printk(KERN_INFO "%s: direction %d value %d\n", __FUNCTION__, direction, value);
-	if (!direction)
-		gpio_direction_output(brf6300_bt_nshutdown_gpio, value);
-	else
-		gpio_direction_input(brf6300_bt_nshutdown_gpio);
-}
-
-void brf6300_set_bt_nshutdown_gpio(int value)
-{
-	BUG_ON(!brf6300_bt_nshutdown_gpio);
-	printk("%s: value %d\n", __FUNCTION__, value);
-	gpio_set_value(brf6300_bt_nshutdown_gpio, value);
-}
-
-int brf6300_get_bt_nshutdown_gpio(int value)
-{
-	int ret;
-	BUG_ON(!brf6300_bt_nshutdown_gpio);
-	ret = gpio_get_value(brf6300_bt_nshutdown_gpio);
-	printk("%s: value %d\n", __FUNCTION__, ret);
-	return ret;
-}
 
 int omap3logic_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio)
@@ -401,9 +345,6 @@ int omap3logic_twl_gpio_setup(struct device *dev,
 	twl4030_vsim_supply.dev = mmc[0].dev;
 
 	twl4030_base_gpio = gpio;
-
-	/* TWL4030 GPIO for BT_nSHUTDOWN */
-	///brf6300_bt_nshutdown_gpio = gpio + TWL4030_BT_nSHUTDOWN;
 
 	printk(KERN_INFO "%s: TWL4030 base gpio: %d\n", __FUNCTION__, gpio);
 
@@ -783,35 +724,6 @@ void omap3logic_musb_init(void)
 	usb_musb_init();
 }
 
-#ifdef CONFIG_BT_HCIBRF6300_SPI
-static struct omap2_mcspi_device_config brf6300_mcspi_config = {
-	.turbo_mode	= 0,
-	.single_channel = 1,	/* 0: slave, 1: master */
-};
-
-
-/* Intialized in omap3logic_spi_init() */
-struct brf6300_platform_data brf6300_config;
-
-static struct spi_board_info omap3logic_spi_brf6300 =
-{
-	/*
-	 * BRF6300 operates at a max freqency of 2MHz, so
-	 * operate slightly below at 1.5MHz
-	 */
-	.modalias		= "brf6300",
-	.bus_num		= 1,
-	.chip_select		= 0,
-	.max_speed_hz		= 12000000,
-	.controller_data	= &brf6300_mcspi_config,
-	.irq			= OMAP_GPIO_IRQ(BT_IRQ_GPIO),
-	.platform_data		= &brf6300_config,
-	.mode			= SPI_MODE_1,
-	.bits_per_word		= 16,
-	.quirks			= SPI_QUIRK_BRF6300,
-};
-#endif
-
 #define USE_AT25_AS_EEPROM
 #ifdef USE_AT25_AS_EEPROM
 /* Access the AT25160AN chip on the Torpedo baseboard using eeprom driver */
@@ -852,19 +764,6 @@ static struct spi_board_info omap3logic_spi_at25160an = {
 	.bits_per_word		= 8,
 };
 #endif
-
-void omap3logic_spi_init(void)
-{
-	int num_spi_devices = 1;
-	/* config MCSPI1 pins */
-	omap_mux_init_signal("mcspi1_cs0", OMAP_PIN_INPUT);
-	omap_mux_init_signal("mcspi1_clk", OMAP_PIN_INPUT);
-	omap_mux_init_signal("mcspi1_simo", OMAP_PIN_INPUT);
-	omap_mux_init_signal("mcspi1_somi", OMAP_PIN_INPUT);
-
-	spi_register_board_info(&omap3logic_spi_brf6300, num_spi_devices);
-}
-
 extern void omap3logic_init_audio_mux(void);
 extern void __init board_lcd_init(void);
 
@@ -997,7 +896,6 @@ void cloudsurfer_gpio_init(void)
 
 static void __init omap3logic_init(void)
 {
-
 	printk("Aircell CloudSurfer P3\n");
 
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBP);
@@ -1035,12 +933,14 @@ static void __init omap3logic_init(void)
 
 	/* Must be here since on exit, omap2_init_devices(called later)
 	 * setups up SPI devices - can't add boardinfo afterwards */
-	omap3logic_spi_init();
+	//omap3logic_spi_init();
 
 	dump_omap3logic_timings();
 
 	//omap3logic_android_gadget_init();
 
+	printk("TARR - Done with cloudsurfer init\n");
+	print_omap_clocks();
 }
 
 void cloudsurfer_init_productid_specifics(void)

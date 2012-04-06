@@ -3485,6 +3485,7 @@ static struct omap_clk omap3xxx_clks[] = {
 	CLK("davinci_emac",	"fck",			&emac_fck,	CK_AM35XX),
 	CLK(NULL,           "hecc_ck",   	&hecc_ck,	CK_AM35XX),
 	CLK(NULL, 			"hecc_ck",		&hecc_ck,	CK_AM35XX),
+
 	CLK("vpfe-capture",	"master",		&vpfe_ick,	CK_AM35XX),
 	CLK("vpfe-capture",	"slave",		&vpfe_fck,	CK_AM35XX),
 	CLK(NULL,			"uart4_ick",	&uart4_ick, CK_AM35XX),
@@ -3492,6 +3493,14 @@ static struct omap_clk omap3xxx_clks[] = {
 	CLK("musb_hdrc",    "fck",      	&hsotgusb_fck_am35xx, CK_AM35XX),
 };
 
+void print_omap_clocks(void)
+{
+    printk(KERN_INFO "Clocking rate (Crystal/Core/MPU): "
+           "%ld.%01ld/%ld/%ld MHz\n",
+           (osc_sys_ck.rate / 1000000), (osc_sys_ck.rate / 100000) % 10,
+           (core_ck.rate / 1000000), (arm_fck.rate / 1000000));
+}
+EXPORT_SYMBOL(print_omap_clocks);
 
 int __init omap2_clk_init(void)
 {
@@ -3609,6 +3618,8 @@ int __init omap2_clk_init(void)
 	/* Avoid sleeping during omap3_core_dpll_m2_set_rate() */
 	sdrc_ick_p = clk_get(NULL, "sdrc_ick");
 	arm_fck_p = clk_get(NULL, "arm_fck");
+
+	print_omap_clocks();
 
 	return 0;
 }
