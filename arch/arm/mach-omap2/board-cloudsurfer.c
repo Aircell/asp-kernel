@@ -66,6 +66,7 @@
 #include <plat/dm3730logic-productid.h>
 #include <plat/omap3logic-cf.h>
 #include <plat/wifi_tiwlan.h>
+#include <linux/pda_power.h>
 
 #include "mux.h"
 #include "mmc-twl4030.h"
@@ -159,8 +160,42 @@ static inline void __init omap3logic_init_smsc911x(void)
 		return;
 	}
 }
-/* Fix the PBIAS voltage for Torpedo MMC1 pins that
- * are used for other needs (IRQs, etc). */
+
+/* PDA Power stuff */
+static int cloudsurfer_is_ac_online(void)
+{
+    return 0;
+}
+
+static int cloudsurfer_is_usb_online(void)
+{
+    return 0;
+}
+
+static char *cloudsurfer_supplicants[] = {
+    "bq27000"
+};
+
+static struct pda_power_pdata power_supply_info = {
+    .is_ac_online     = cloudsurfer_is_ac_online,
+    .is_usb_online    = cloudsurfer_is_usb_online,
+    .supplied_to      = cloudsurfer_supplicants,
+    .num_supplicants  = ARRAY_SIZE(cloudsurfer_supplicants),
+};
+
+static struct platform_device power_supply = {
+    .name             = "pda-power",
+    .id               = -1,
+    .dev = {
+        .platform_data = &power_supply_info,
+    },
+};
+
+static struct platform_device *cloudsurfer_devices[] __initdata = {
+    &power_supply,
+};
+
+/* Fix the PBIAS voltage for GPIO-129 */
 static void fix_pbias_voltage(void)
 {
 	u16 control_pbias_offset = OMAP343X_CONTROL_PBIAS_LITE;
@@ -622,8 +657,8 @@ void __init omap3logic_init_irq(void)
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
 	/* TARR HERE - Setup pwoer management tables */
-	omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
-	omap3_pm_init_vc(&cloudsurfer_setuptime_table);
+	//omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+	//omap3_pm_init_vc(&cloudsurfer_setuptime_table);
 
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
 				 omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
@@ -631,9 +666,6 @@ void __init omap3logic_init_irq(void)
 	omap_init_irq();
 	omap_gpio_init();
 }
-
-static struct platform_device *omap3logic_devices[] __initdata = {
-};
 
 static struct omap_board_mux board_mux[] __initdata = {
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
@@ -908,16 +940,15 @@ static void __init omap3logic_init(void)
 
 	omap3logic_i2c_init();
 
+	platform_add_devices(cloudsurfer_devices, ARRAY_SIZE(cloudsurfer_devices));
+
 	board_lcd_init();
 
-	platform_add_devices(omap3logic_devices, ARRAY_SIZE(omap3logic_devices));
-
 	omap_serial_init_port(0);
-
 	omap_serial_init_port(1);
 
-	//omap3logic_usb_init();
-	//omap3logic_musb_init();
+	omap3logic_usb_init();
+	omap3logic_musb_init();
 
 	/* Check the SRAM for valid product_id data(put there by
 	 * u-boot). If not, then it will be read later. */
@@ -937,7 +968,7 @@ static void __init omap3logic_init(void)
 
 	dump_omap3logic_timings();
 
-	//omap3logic_android_gadget_init();
+	omap3logic_android_gadget_init();
 
 	printk("TARR - Done with cloudsurfer init\n");
 	print_omap_clocks();
