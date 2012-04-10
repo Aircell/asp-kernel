@@ -857,7 +857,6 @@ void cloudsurfer_gpio_init(void)
 	omap_mux_init_gpio(I2C3_SCLK, OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_gpio(I2C3_SDATA, OMAP_PIN_INPUT_PULLUP);
 
-	gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "WIFI_ENABLE");
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
 	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");
@@ -886,7 +885,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
 	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
 
-	gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 	gpio_direction_input(AIRCELL_BATTERY_POWERED);
 	gpio_direction_output(AIRCELL_18V_ENABLE,1);
 	gpio_direction_output(AIRCELL_LCD_RESET,0);
@@ -903,7 +901,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_input(AIRCELL_PROX_INTERRUPT);
 	gpio_direction_output(AIRCELL_MUTE,0);
 
-	gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_BATTERY_POWERED,0);

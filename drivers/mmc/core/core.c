@@ -794,6 +794,8 @@ int mmc_regulator_set_ocr(struct regulator *supply, unsigned short vdd_bit)
 	int			min_uV, max_uV;
 	int			enabled;
 
+	if ( supply == NULL ) 
+		return -ENODEV;
 	enabled = regulator_is_enabled(supply);
 	if (enabled < 0)
 		return enabled;
