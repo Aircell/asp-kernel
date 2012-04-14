@@ -38,6 +38,12 @@
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
+/* These fucntions are define in arch/arm/mach-omap2/board-omap3logic-audio.c */
+extern int twl4030_get_headset_int(void);
+extern int twl4030_get_headset_enable(void);
+extern int twl4030_get_ringer_enable(void);
+
+
 static int zoom2_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
@@ -77,8 +83,122 @@ static int zoom2_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+void zoom2_gpio_debug( const char *fn ) {
+	printk( KERN_INFO "%s in  hs %d ring %d\n", fn,
+		gpio_get_value(twl4030_get_headset_enable()),
+		gpio_get_value(twl4030_get_ringer_enable()));
+}
+
+int zoom2_voice_startup(struct snd_pcm_substream *stream) {
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
+	gpio_set_value(twl4030_get_headset_enable(), 0);
+	if(gpio_get_value(twl4030_get_headset_int()))
+		gpio_set_value(twl4030_get_ringer_enable(), 0);
+	else
+		/* Don't turn on ringer if earpiece already on */
+		if(gpio_get_value(twl4030_get_headset_enable())==0)
+			gpio_set_value(twl4030_get_ringer_enable(), 1);
+#else
+	//gpio_set_value(twl4030_get_ringer_enable(), 1);
+	gpio_set_value(twl4030_get_ringer_enable(), 1);
+#endif
+	zoom2_gpio_debug( __func__ );
+	return 0;
+}
+
+void zoom2_voice_shutdown(struct snd_pcm_substream *stream) {
+	gpio_set_value(twl4030_get_ringer_enable(), 0);
+	zoom2_gpio_debug( __func__ );
+		
+}
+
+int zoom2_audio_startup(struct snd_pcm_substream *stream) {
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
+	gpio_set_value(twl4030_get_ringer_enable(), 0);
+	if(gpio_get_value(twl4030_get_headset_int()))
+		gpio_set_value(twl4030_get_headset_enable(), 0);
+	else
+		gpio_set_value(twl4030_get_headset_enable(), 1);
+#else
+	gpio_set_value(twl4030_get_headset_enable(), 1);
+		
+#endif
+	zoom2_gpio_debug( __func__ );
+	return 0;
+}
+
+void zoom2_audio_shutdown(struct snd_pcm_substream *stream) {
+	gpio_set_value(twl4030_get_headset_enable(), 0);
+	zoom2_gpio_debug( __func__ );
+}
+
 static struct snd_soc_ops zoom2_ops = {
+	.startup = zoom2_audio_startup,
+	.shutdown = zoom2_audio_shutdown,
 	.hw_params = zoom2_hw_params,
+};
+
+static struct snd_soc_dai_ops gpak_dai_ops = {
+	.startup	= NULL,
+	.shutdown	= NULL,
+	.trigger	= NULL,
+	.hw_params	= NULL,
+	.set_fmt	= NULL,
+	.set_clkdiv	= NULL,
+	.set_sysclk	= NULL,
+};
+unsigned int gpak_mcbsp_channel =  1; /* MCBSP2 */
+static struct snd_soc_dai gpak_dai = {
+	.id = 1,						\
+	.playback = {						\
+		.channels_min = 1,				\
+		.channels_max = 16,				\
+		.rates = SNDRV_PCM_RATE_8000_96000,		\
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,		\
+	},							\
+	.capture = {						\
+		.channels_min = 1,				\
+		.channels_max = 16,				\
+		.rates = SNDRV_PCM_RATE_8000_96000,		\
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,		\
+	},							\
+	.name = "gpak-dai",
+	.ops = &gpak_dai_ops,
+	.private_data = &gpak_mcbsp_channel
+};
+
+static int zoom2_gpak_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
+	int ret;
+
+	/* Set codec DAI configuration */
+	ret = snd_soc_dai_set_fmt(codec_dai,
+				  SND_SOC_DAIFMT_I2S |
+				  SND_SOC_DAIFMT_NB_NF |
+				  SND_SOC_DAIFMT_CBM_CFM);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec DAI configuration\n");
+		return ret;
+	}
+
+	/* Set the codec system clock for DAC and ADC */
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 26000000,
+					SND_SOC_CLOCK_IN);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec system clock\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static struct snd_soc_ops zoom2_gpak_ops = {
+	.startup = zoom2_audio_startup,
+	.shutdown = zoom2_audio_shutdown,
+	.hw_params = zoom2_gpak_params,
 };
 
 static int zoom2_hw_voice_params(struct snd_pcm_substream *substream,
@@ -120,7 +240,10 @@ static int zoom2_hw_voice_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+
 static struct snd_soc_ops zoom2_voice_ops = {
+	.startup = zoom2_voice_startup,
+	.shutdown = zoom2_voice_shutdown,
 	.hw_params = zoom2_hw_voice_params,
 };
 
@@ -206,6 +329,10 @@ static int zoom2_twl4030_voice_init(struct snd_soc_codec *codec)
 
 	return 0;
 }
+static int zoom2_gpak_init(struct snd_soc_codec *codec) 
+{
+	return 0;
+}
 
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link zoom2_dai[] = {
@@ -214,17 +341,30 @@ static struct snd_soc_dai_link zoom2_dai[] = {
 		.stream_name = "TWL4030 Voice",
 		.cpu_dai = &omap_mcbsp_dai[1],
 		.codec_dai = &twl4030_dai[TWL4030_DAI_VOICE],
-		.init = zoom2_twl4030_voice_init,
 		.ops = &zoom2_voice_ops,
+		.init = zoom2_twl4030_voice_init,
 	},
+	{
+		.name = "TWL4030 GPAK I2S",
+		.stream_name = "TWL4030 GPAK Audio",
+		.cpu_dai = &gpak_dai,
+		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
+		.ops = &zoom2_gpak_ops,
+#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
+		.init = zoom2_gpak_init,
+#else
+		.init = zoom2_twl4030_init,
+#endif
+	},
+
 #ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
 	{
-		.name = "TWL4030 I2S",
-		.stream_name = "TWL4030 Audio",
+		.name = "TWL4030 ALSA I2S",
+		.stream_name = "TWL4030 Alsa Audio",
 		.cpu_dai = &omap_mcbsp_dai[0],
 		.codec_dai = &twl4030_dai[TWL4030_DAI_HIFI],
-		.init = zoom2_twl4030_init,
 		.ops = &zoom2_ops,
+		.init = zoom2_twl4030_init,
 	},
 #endif
 };
@@ -272,6 +412,8 @@ static int __init zoom2_soc_init(void)
 	}
 	printk(KERN_INFO "Zoom2 SoC init\n");
 
+	snd_soc_register_dai(&gpak_dai);
+
 	zoom2_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!zoom2_snd_device) {
 		printk(KERN_ERR "Platform device allocation failed\n");
@@ -282,7 +424,8 @@ static int __init zoom2_soc_init(void)
 	zoom2_snd_devdata.dev = &zoom2_snd_device->dev;
 	*(unsigned int *)zoom2_dai[0].cpu_dai->private_data = 2; /* McBSP3 */
 #ifdef CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO
-	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 1; /* McBSP2 */
+	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 0; /* GPAK */
+	*(unsigned int *)zoom2_dai[2].cpu_dai->private_data = 1; /* McBSP2 */
 #endif
 	ret = platform_device_add(zoom2_snd_device);
 	if (ret)
