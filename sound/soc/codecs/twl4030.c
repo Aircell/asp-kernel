@@ -59,31 +59,31 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x0e, /* REG_AVADC_CTL		(0x7)TARR ADCL_EN, AVADC_CLK_PRIORITY, ADCR_EN*/
 	0x00, /* REG_ADCMICSEL		(0x8)	*/
 	0x00, /* REG_DIGMIXING		(0x9)	*/
-	0x0c, /* REG_ATXL1PGA		(0xA)	*/
-	0x0c, /* REG_ATXR1PGA		(0xB)	*/
+	0x06, /* REG_ATXL1PGA		(0xA)	*/
+	0x06, /* REG_ATXR1PGA		(0xB)	*/
 	0x00, /* REG_AVTXL2PGA		(0xC)	*/
 	0x00, /* REG_AVTXR2PGA		(0xD)	*/
 	0x01, /* REG_AUDIO_IF		(0xE)	*/
-	0x00, /* REG_VOICE_IF		(0xF)	*/
+	0x61, /* REG_VOICE_IF		(0xF)	*/
 	0x00, /* REG_ARXR1PGA		(0x10)	*/
 	0x00, /* REG_ARXL1PGA		(0x11)	*/
-	0xFF, /* REG_ARXR2PGA		(0x12)	*/
-	0xFF, /* REG_ARXL2PGA		(0x13)	*/
-	0x00, /* REG_VRXPGA		(0x14)	*/
+	0x32, /* REG_ARXR2PGA		(0x12)	*/
+	0x32, /* REG_ARXL2PGA		(0x13)	*/
+	0x2B, /* REG_VRXPGA		(0x14)	*/
 	0x00, /* REG_VSTPGA		(0x15)	*/
 	0x00, /* REG_VRX2ARXPGA		(0x16)	*/
-	0x0c, /* REG_AVDAC_CTL		(0x17)	*/
+	0x1c, /* REG_AVDAC_CTL		(0x17)	*/
 	0x00, /* REG_ARX2VTXPGA		(0x18)	*/
 	0x00, /* REG_ARXL1_APGA_CTL	(0x19)	*/
 	0x00, /* REG_ARXR1_APGA_CTL	(0x1A)	*/
-	0x32, /* REG_ARXL2_APGA_CTL	(0x1B)	*/
-	0x32, /* REG_ARXR2_APGA_CTL	(0x1C)	*/
+	0x33, /* REG_ARXL2_APGA_CTL	(0x1B)	*/
+	0x33, /* REG_ARXR2_APGA_CTL	(0x1C)	*/
 	0x00, /* REG_ATX2ARXPGA		(0x1D)	*/
 	0x00, /* REG_BT_IF		(0x1E)	*/
 	0x00, /* REG_BTPGA		(0x1F)	*/
 	0x00, /* REG_BTSTPGA		(0x20)	*/
 	0x00, /* REG_EAR_CTL		(0x21)	*/
-	0x24, /* REG_HS_SEL		(0x22)	*/
+	0x2d, /* REG_HS_SEL		(0x22)	*/
 	0x0a, /* REG_HS_GAIN_SET	(0x23)	*/
 	0x00, /* REG_HS_POPN_SET	(0x24)	*/
 	0x00, /* REG_PREDL_CTL		(0x25)	*/
@@ -117,11 +117,11 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
 	0x00, /* REG_RX_PATH_SEL	(0x43)	*/
-	0x00, /* REG_VDL_APGA_CTL	(0x44)	*/
+	0x13, /* REG_VDL_APGA_CTL	(0x44)	*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
 	0x00, /* REG_VIBRA_PWM_SET	(0x47)	*/
-	0x2D, /* REG_ANAMIC_GAIN	(0x48)	TARR - FULL VOLUME*/
+	0x00, /* REG_ANAMIC_GAIN	(0x48)	*/
 	0x00, /* REG_MISC_SET_2		(0x49)	*/
 	0x00, /* REG_SW_SHADOW		(0x4A)	- Shadow, non HW register */
 };

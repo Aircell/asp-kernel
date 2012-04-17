@@ -35,6 +35,8 @@
 #include "omap-pcm.h"
 #include "../codecs/twl4030.h"
 
+#define CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO 1
+
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
