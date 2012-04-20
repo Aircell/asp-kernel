@@ -50,13 +50,11 @@ static struct mtd_partition dm3730logic_nand_partitions[] = {
 		.name           = "u-boot",
 		.offset         = MTDPART_OFS_APPEND,
 		.size           = 15*(SZ_128K),
-		.mask_flags     = MTD_WRITEABLE
 	},
 	{
 		.name           = "u-boot-env",
 		.offset         = MTDPART_OFS_APPEND,
 		.size           = 1*(SZ_128K),
-		.mask_flags     = MTD_WRITEABLE
 	},
 	{
 		.name           = "kernel-A",
