@@ -565,18 +565,13 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 		I2C_BOARD_INFO("at24", 0x50),
 		.platform_data = &m24c128,
 	},
-#ifdef CONFIG_CLOUDSURFER_P2_CAMERA
-	{
-		I2C_BOARD_INFO("ov7692", 0x3C),
-		.platform_data = &cloud_ov7692_platform_data,
-	},
-#endif
 	{	
 		I2C_BOARD_INFO("pca9626", 0x12),
 		.platform_data = &cloud_pca9626_data,
 	},
 	{
-		I2C_BOARD_INFO("bq27200", 0x55),
+		/* Place holder for Battery Fuel Guage */
+		//I2C_BOARD_INFO("bq27200", 0x55),
 	},
 };
 /*
@@ -641,6 +636,19 @@ int __init omap3logic_i2c_init(void)
 	printk("Cloudsurfer I2C Init");
 	omap_register_i2c_bus(1, 2600, omap3logic_i2c1_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c1_boardinfo));
+	/* Check to see if we need to add in the Battery Charger Controller
+     * and the Battery Fuel Gauge. This is done based on the 
+     * AIRCELL_BATTERY_POWERED gpio. If the pin is high, it is a
+     * battery powered phone and we need to add the two devices
+     * to the I2C2 boardinfo
+     */
+	if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
+		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"bq27200");
+		omap3logic_i2c2_boardinfo[2].addr = 0x55;
+		printk("Cloudsurfer is Battery Powered");
+	} else {
+		printk("Cloudsurfer is POE Powered");
+	}
 	omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, omap3logic_i2c3_boardinfo,
@@ -876,7 +884,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_VOLUME_DOWN_DETECT,"AIRCELL_VOLUME_DOWN_DETECT");
 	gpio_request(AIRCELL_HEADSET_DETECT,"AIRCELL_HEADSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
-	gpio_request(AIRCELL_BATTERY_CUT_ENABLE,"AIRCELL_BATTERY_CUT_ENABLE");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
@@ -913,7 +920,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
 	gpio_export(AIRCELL_HEADSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
-	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
 	gpio_export(AIRCELL_TOUCH_INTERRUPT,0);
@@ -955,7 +961,14 @@ static void __init omap3logic_init(void)
 
 	omap3logic_init_smsc911x();
 
-	wifi_init();
+    /* Check to see if we need to add in the WiFi controller
+     * This is done based on the * AIRCELL_BATTERY_POWERED gpio. 
+	 * If the pin is high, it is a battery powered phone and we need 
+     * initialize the WiFi controller 
+     */
+    if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
+		wifi_init();
+	}
 
 	omap3logic_init_audio_mux();
 

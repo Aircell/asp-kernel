@@ -26,6 +26,7 @@
 
 #include <plat/wifi_tiwlan.h>
 #include <asm/mach-types.h>
+#include "cloudsurfer-gpio.h"
 
 static int omap_dm3730logic_wifi_cd;	/* WIFI virtual 'card detect' status */
 static void (*wifi_status_cb) (int card_present, void *dev_id);
@@ -135,6 +136,10 @@ static struct platform_device omap_dm3730logic_wifi_device = {
 static int __init omap_dm3730logic_wifi_init(void)
 {
 	int ret;
+
+	/* Again, if we are POE/corded, we don't need the WiFi controller */
+	if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 0 )
+		return 0;
 
 	wifi_irq_gpio = OMAP_DM3730LOGIC_WIFI_IRQ_GPIO;
 
