@@ -12,5 +12,8 @@
 
 extern void dm3730logic_init_twl_audio(void);
 extern void twl4030_set_ext_mute(int mute);
-extern int twl4030_get_ext_mute(void);
+extern int  twl4030_get_ext_mute(void);
 extern void twl4030_set_path_mute(int mute);
+extern void twl4030_set_ext_ringer(int );
+extern int  twl4030_get_ext_ringer(void);
+

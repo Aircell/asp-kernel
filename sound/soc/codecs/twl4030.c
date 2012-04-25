@@ -162,11 +162,18 @@ static inline unsigned int twl4030_read_reg_cache(struct snd_soc_codec *codec,
 {
 	u8 *cache = codec->reg_cache;
 
-	if (reg >= TWL4030_CACHEREGNUM)
+	if (reg >= TWL4030_CACHEREGNUM) {
 		return -EIO;
-	if (reg == TWL4030_REG_EXT_MUTE)
+	}
+
+	switch(reg) {
+	case TWL4030_REG_EXT_MUTE:
 		return twl4030_get_ext_mute();
-	return cache[reg];
+	case TWL4030_REG_EXT_RINGER:
+		return twl4030_get_ext_ringer();
+	default:
+		return cache[reg];
+	}
 }
 
 /*
@@ -177,13 +184,20 @@ static inline void twl4030_write_reg_cache(struct snd_soc_codec *codec,
 {
 	u8 *cache = codec->reg_cache;
 
-	if (reg >= TWL4030_CACHEREGNUM)
-		return;
-	if (reg == TWL4030_REG_EXT_MUTE) {
-		twl4030_set_ext_mute(value);
+	if (reg >= TWL4030_CACHEREGNUM) {
 		return;
 	}
-	cache[reg] = value;
+
+	switch(reg) {
+	case TWL4030_REG_EXT_MUTE:
+		twl4030_set_ext_mute(value);
+	case TWL4030_REG_EXT_RINGER:
+		twl4030_set_ext_ringer(value);
+	default:
+		cache[reg] = value;
+	}
+	return;
+
 }
 
 /*
@@ -1108,6 +1122,9 @@ static const struct snd_kcontrol_new twl4030_snd_controls[] = {
 
 	SOC_SINGLE("Master Playback Switch",
 		 TWL4030_REG_EXT_MUTE, 0, 1, 0),
+
+	SOC_SINGLE("Ringer Switch",
+		 TWL4030_REG_EXT_RINGER, 0, 1, 0),
 
 	SOC_DOUBLE_R_TLV_TWL4030("Carkit Playback Volume",
 		TWL4030_REG_PRECKL_CTL, TWL4030_REG_PRECKR_CTL,

@@ -29,8 +29,9 @@
 #define TWL4030_REG_SW_SHADOW		0x4A
 /* External mute (gpio-controlled FETs as pseudo register) */
 #define TWL4030_REG_EXT_MUTE		0x50
+#define TWL4030_REG_EXT_RINGER		0x51
 
-#define TWL4030_CACHEREGNUM	(TWL4030_REG_EXT_MUTE + 1)
+#define TWL4030_CACHEREGNUM	(TWL4030_REG_EXT_RINGER + 1)
 
 
 /* TWL4030_REG_SW_SHADOW (0x4A) Fields */
