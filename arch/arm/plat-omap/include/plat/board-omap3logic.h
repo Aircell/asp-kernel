@@ -18,6 +18,8 @@ extern void omap3logic_init_twl_external_mute(void);
 extern void twl4030_set_ext_mute(int mute);
 extern int twl4030_get_ext_mute(void);
 extern void twl4030_set_path_mute(int mute);
+extern void twl4030_set_ext_ringer(int );
+extern int twl4030_get_ext_ringer(void);
 
 /* brt6300 Bluetooth define/prototypes */
 #define TWL4030_BT_nSHUTDOWN	8

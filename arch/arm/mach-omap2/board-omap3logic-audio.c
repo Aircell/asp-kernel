@@ -75,6 +75,26 @@ int twl4030_get_ext_mute(void)
 }
 EXPORT_SYMBOL(twl4030_get_ext_mute);
 
+int twl4030_set_ext_ringer(int ringer)
+{
+	printk(KERN_INFO "%s Ringer set to %d\n", __func__, ringer);
+	if(ringer) {
+		gpio_set_value(AIRCELL_EARPIECE_ENABLE, 0);
+		gpio_set_value(AIRCELL_RINGER_ENABLE, 1);
+	} else {
+		gpio_set_value(AIRCELL_EARPIECE_ENABLE, 1);
+		gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(twl4030_set_ext_ringer);
+
+int twl4030_get_ext_ringer(void)
+{
+	return gpio_get_value(AIRCELL_RINGER_ENABLE);
+}
+EXPORT_SYMBOL(twl4030_get_ext_ringer);
+
 void omap3logic_init_twl_external_mute(void)
 {
 	/* Note that omap3logic_external_mute is valid if a GPIO pin

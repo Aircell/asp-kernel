@@ -35,6 +35,8 @@
 #include "omap-pcm.h"
 #include "../codecs/twl4030.h"
 
+#define CONFIG_SND_OMAP_SOC_ZOOM2_AUDIO 1
+
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
@@ -83,52 +85,38 @@ static int zoom2_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-void zoom2_gpio_debug( const char *fn ) {
-	printk( KERN_INFO "%s in  hs %d ring %d\n", fn,
+void zoom2_gpio_debug( const char *fn, struct snd_pcm_substream *stream ) {
+	struct task_struct *task = pid_task( stream->pid , PIDTYPE_PID);
+	int pid = 0;
+	char *comm = "(swapper)";
+
+	if(task) {
+		pid= task->pid;
+		comm = task->comm;
+	}	
+	printk( KERN_INFO "%s in  hs %d ring %d (%d, %s)\n", fn,
 		gpio_get_value(twl4030_get_headset_enable()),
-		gpio_get_value(twl4030_get_ringer_enable()));
+		gpio_get_value(twl4030_get_ringer_enable()),
+		pid, comm);
 }
 
 int zoom2_voice_startup(struct snd_pcm_substream *stream) {
-#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
-	gpio_set_value(twl4030_get_headset_enable(), 0);
-	if(gpio_get_value(twl4030_get_headset_int()))
-		gpio_set_value(twl4030_get_ringer_enable(), 0);
-	else
-		/* Don't turn on ringer if earpiece already on */
-		if(gpio_get_value(twl4030_get_headset_enable())==0)
-			gpio_set_value(twl4030_get_ringer_enable(), 1);
-#else
-	//gpio_set_value(twl4030_get_ringer_enable(), 1);
-	gpio_set_value(twl4030_get_ringer_enable(), 0);
-	gpio_set_value(twl4030_get_headset_enable(), 1);
-#endif
+	zoom2_gpio_debug( __func__ , stream);
 	return 0;
 }
 
 void zoom2_voice_shutdown(struct snd_pcm_substream *stream) {
-	//gpio_set_value(twl4030_get_headset_enable(), 0);
-	//gpio_set_value(twl4030_get_ringer_enable(), 0);
+	zoom2_gpio_debug( __func__ , stream );
 		
 }
 
 int zoom2_audio_startup(struct snd_pcm_substream *stream) {
-#ifdef CONFIG_SND_OMAP_SOC_ZOOM2_HEADSET
-	gpio_set_value(twl4030_get_ringer_enable(), 0);
-	if(gpio_get_value(twl4030_get_headset_int()))
-		gpio_set_value(twl4030_get_headset_enable(), 0);
-	else
-		gpio_set_value(twl4030_get_headset_enable(), 1);
-#else
-	gpio_set_value(twl4030_get_ringer_enable(), 0);
-	gpio_set_value(twl4030_get_headset_enable(), 1);
-		
-#endif
+	zoom2_gpio_debug( __func__ , stream );
 	return 0;
 }
 
 void zoom2_audio_shutdown(struct snd_pcm_substream *stream) {
-	//gpio_set_value(twl4030_get_headset_enable(), 0);
+	zoom2_gpio_debug( __func__ , stream );
 }
 
 static struct snd_soc_ops zoom2_ops = {
@@ -336,7 +324,7 @@ static int zoom2_gpak_init(struct snd_soc_codec *codec)
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link zoom2_dai[] = {
 	{
-		.name = "TWL4030 PCM",
+		.name = "TWL4030 PCM Voice",
 		.stream_name = "TWL4030 Voice",
 		.cpu_dai = &omap_mcbsp_dai[1],
 		.codec_dai = &twl4030_dai[TWL4030_DAI_VOICE],
