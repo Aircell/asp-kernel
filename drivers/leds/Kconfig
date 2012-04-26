@@ -119,6 +119,12 @@ config LEDS_PCA9532
 	  LED controller. It is generally only useful
 	  as a platform driver
 
+config LEDS_PCA9626
+	tristate "LED driver for PCA9626 dimmer"
+	depends on LEDS_CLASS && I2C && INPUT 
+	help
+	  Cloudsurfer is LED dimmer and Backlight control
+
 config LEDS_GPIO
 	tristate "LED Support for GPIO connected LEDs"
 	depends on LEDS_CLASS && GENERIC_GPIO

@@ -164,6 +164,12 @@ static int pca9626_probe(struct i2c_client *client,
 
 	local_data->leds = platform_data->leds;
 	local_data->client = client;
+	/* Take the controller out of sleep mode */
+	if ( pca9626_write(client,0x00,0x01) < 0 ) {
+		printk(KERN_ERR "LED - PWM control write failed\n");
+		return -EIO;
+	}
+	
 	if ( pca9626_configure(client,local_data,platform_data) < 0 ) {
 		kfree(local_data);
 		return -ENOMEM;
@@ -171,12 +177,6 @@ static int pca9626_probe(struct i2c_client *client,
 	my_data = local_data;
 	i2c_set_clientdata(client, local_data);
 
-	/* Take the controller out of sleep mode */
-	if ( pca9626_write(client,0x00,0x01) < 0 ) {
-		printk(KERN_ERR "LED - PWM control write failed\n");
-		return -EIO;
-	}
-	
 	return 0;
 }
 
