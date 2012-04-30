@@ -530,6 +530,10 @@ static struct pca9626_platform_data cloud_pca9626_data = {
 			.ldev.name = "LED_ZONE_S3",
 			.ldev.brightness = 16,
 		},
+		{	.id = 23,
+			.ldev.name = "BACKLIGHT",
+			.ldev.brightness = 16,
+		},
 	},
 };
 

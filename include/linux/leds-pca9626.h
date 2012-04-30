@@ -20,7 +20,7 @@
 #include <linux/leds.h>
 #include <linux/workqueue.h>
 
-#define PCA9626_MAX_LEDS 24
+#define PCA9626_MAX_LEDS 20
 
 struct pca9626_led {
     u8 id;							/* This is the pin on the controller */
