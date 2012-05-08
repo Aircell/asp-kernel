@@ -79,6 +79,12 @@ void omap3logic_init_audio_mux(void)
 {
 }
 
+int twl4030_get_ext_ringer(void)
+{
+       return gpio_get_value(AIRCELL_RINGER_ENABLE);
+}
+EXPORT_SYMBOL(twl4030_get_ext_ringer);
+
 
 int twl4030_set_ext_ringer(int ringer)
 {
@@ -94,10 +100,5 @@ int twl4030_set_ext_ringer(int ringer)
 }
 EXPORT_SYMBOL(twl4030_set_ext_ringer);
 
-int twl4030_get_ext_ringer(void)
-{
-       return gpio_get_value(AIRCELL_RINGER_ENABLE);
-}
-EXPORT_SYMBOL(twl4030_get_ext_ringer);
 
 
