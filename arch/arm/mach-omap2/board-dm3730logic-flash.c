@@ -77,6 +77,11 @@ static struct mtd_partition dm3730logic_nand_partitions[] = {
 		.size           = 2000*(SZ_128K)
 	},
 	{
+		.name           = "bootscr",
+		.offset         = MTDPART_OFS_APPEND,
+		.size           = 1*(SZ_128K),
+	},
+	{
 		.name           = "misc",
 		.offset         = MTDPART_OFS_APPEND,
 		.size           = MTDPART_SIZ_FULL
