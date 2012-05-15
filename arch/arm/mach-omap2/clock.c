@@ -78,6 +78,7 @@ void omap2_init_dpll_parent(struct clk *clk)
 	u32 v;
 	struct dpll_data *dd;
 
+
 	dd = clk->dpll_data;
 	if (!dd)
 		return;
@@ -809,7 +810,7 @@ int omap2_clk_set_rate(struct clk *clk, unsigned long rate)
 {
 	int ret = -EINVAL;
 
-	//printk("TARR -clock: set_rate for clock %s to rate %ld\n", clk->name, rate);
+	printk("TARR - clock: set_rate for %s to rate %ld\n", clk->name, rate);
 	//pr_debug("clock: set_rate for clock %s to rate %ld\n", clk->name, rate);
 
 	/* CONFIG_PARTICIPANT clocks are changed only in sets via the

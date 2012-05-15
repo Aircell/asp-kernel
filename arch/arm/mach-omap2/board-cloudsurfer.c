@@ -653,8 +653,8 @@ void __init omap3logic_init_irq(void)
 	//omap3_pm_init_vc(&cloudsurfer_setuptime_table);
 
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
-				 omap35x_mpu_rate_table, omap35x_dsp_rate_table, 
-				 omap35x_l3_rate_table);
+				 omap37x_mpu_rate_table, omap37x_dsp_rate_table, 
+				 omap37x_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }
@@ -964,7 +964,6 @@ static void __init omap3logic_init(void)
 
 	omap3logic_android_gadget_init();
 
-	printk("TARR - Done with cloudsurfer init\n");
 	print_omap_clocks();
 }
 
