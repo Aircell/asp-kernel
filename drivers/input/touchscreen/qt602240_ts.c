@@ -719,9 +719,14 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	/* Tarr - x is reported in 12 bits, y is reported in 10 due to 
        scaling size difference */
 	x = (message->message[1] << 4) | ((message->message[3] & ~0x0f) >> 4);
+	/* Tarr - Because the touchscreen got "flipped" in the P3, need to
+     * adjust x accordingly
+	 */
+	x = 1170 - x;
 	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
 	area = message->message[4];
 
+	/* TARR - the keypad is at the "lower" portion of thte screen */
 	if ( x > 800 ) {
 		keypad_input(data,x,y,message->message[0]);
 		return;
