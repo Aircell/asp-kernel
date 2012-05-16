@@ -89,6 +89,7 @@ EXPORT_SYMBOL(twl4030_get_ext_ringer);
 int twl4030_set_ext_ringer(int ringer)
 {
        printk(KERN_INFO "%s Ringer set to %d\n", __func__, ringer);
+       gpio_set_value(AIRCELL_5VA_ENABLE, 1);
        if(ringer) {
                gpio_set_value(AIRCELL_EARPIECE_ENABLE, 0);
                gpio_set_value(AIRCELL_RINGER_ENABLE, 1);
