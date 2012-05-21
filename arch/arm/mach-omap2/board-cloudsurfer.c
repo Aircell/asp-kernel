@@ -26,6 +26,7 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/gpio.h>
+#include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/input/matrix_keypad.h>
 #include <linux/leds.h>
@@ -191,8 +192,46 @@ static struct platform_device power_supply = {
     },
 };
 
+
+/*
+ * GPIO Buttons
+ */
+static struct gpio_keys_button cs_volume_buttons[] = {
+	{
+		.gpio		= AIRCELL_VOLUME_UP_DETECT,
+		.code		= KEY_VOLUMEUP,
+		.desc		= "VOLUME_UP",
+		.type		=  EV_KEY,
+		.active_low	= 1,
+		.wakeup		= 1,
+	},
+	{
+		.gpio		= AIRCELL_VOLUME_DOWN_DETECT,
+		.code		= KEY_VOLUMEDOWN,
+		.desc		= "VOLUME_DOWN",
+		.type		=  EV_KEY,
+		.active_low	= 1,
+		.wakeup		= 1,
+	}
+};
+
+static struct gpio_keys_platform_data volume_button_data = {
+	.buttons	= cs_volume_buttons,
+	.nbuttons	= ARRAY_SIZE(cs_volume_buttons),
+};
+
+static struct platform_device volume_buttons = {
+	.name		= "gpio-keys",
+	.id		= -1,
+	.num_resources	= 0,
+	.dev		= {
+		.platform_data	= &volume_button_data,
+	}
+};
+
 static struct platform_device *cloudsurfer_devices[] __initdata = {
     &power_supply,
+    &volume_buttons,
 };
 
 /* Fix the PBIAS voltage for GPIO-129 */
@@ -864,8 +903,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
 	gpio_request(AIRCELL_EARPIECE_ENABLE,"AIRCELL_EARPIECE_ENABLE");
 	gpio_request(AIRCELL_RINGER_ENABLE,"AIRCELL_RINGER_ENABLE");
-	gpio_request(AIRCELL_VOLUME_UP_DETECT,"AIRCELL_VOLUME_UP_DETECT");
-	gpio_request(AIRCELL_VOLUME_DOWN_DETECT,"AIRCELL_VOLUME_DOWN_DETECT");
 	gpio_request(AIRCELL_HEADSET_DETECT,"AIRCELL_HEADSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
@@ -883,8 +920,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
 	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
-	gpio_direction_input(AIRCELL_VOLUME_UP_DETECT);
-	gpio_direction_input(AIRCELL_VOLUME_DOWN_DETECT);
 	gpio_direction_input(AIRCELL_HEADSET_DETECT);
 	gpio_direction_output(AIRCELL_TOUCH_RESET,0);
 	gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
@@ -900,8 +935,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_LED_ENABLE,0);
 	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_export(AIRCELL_RINGER_ENABLE,0);
-	gpio_export(AIRCELL_VOLUME_UP_DETECT,0);
-	gpio_export(AIRCELL_VOLUME_DOWN_DETECT,0);
 	gpio_export(AIRCELL_HEADSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);

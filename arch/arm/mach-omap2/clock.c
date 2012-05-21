@@ -810,8 +810,11 @@ int omap2_clk_set_rate(struct clk *clk, unsigned long rate)
 {
 	int ret = -EINVAL;
 
-	//printk("TARR - clock: set_rate for %s to rate %ld\n", clk->name, rate);
+#ifdef TARR
+	printk("TARR - clock: set_rate for %s to rate %ld\n", clk->name, rate);
+#else
 	pr_debug("clock: set_rate for clock %s to rate %ld\n", clk->name, rate);
+#endif
 
 	/* CONFIG_PARTICIPANT clocks are changed only in sets via the
 	   rate table mechanism, driven by mpu_speed  */
