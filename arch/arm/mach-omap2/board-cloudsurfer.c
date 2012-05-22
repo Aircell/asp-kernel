@@ -192,47 +192,47 @@ static struct platform_device power_supply = {
     },
 };
 
-
 /*
  * GPIO Buttons
  */
 static struct gpio_keys_button cs_volume_buttons[] = {
-	{
-		.gpio		= AIRCELL_VOLUME_UP_DETECT,
-		.code		= KEY_VOLUMEUP,
-		.desc		= "VOLUME_UP",
-		.type		=  EV_KEY,
-		.active_low	= 1,
-		.wakeup		= 1,
-	},
-	{
-		.gpio		= AIRCELL_VOLUME_DOWN_DETECT,
-		.code		= KEY_VOLUMEDOWN,
-		.desc		= "VOLUME_DOWN",
-		.type		=  EV_KEY,
-		.active_low	= 1,
-		.wakeup		= 1,
-	}
+    {
+        .gpio       = AIRCELL_VOLUME_UP_DETECT,
+        .code       = KEY_VOLUMEUP,
+        .desc       = "VOLUME_UP",
+        .type       =  EV_KEY,
+        .active_low = 1,
+        .wakeup     = 1,
+    },
+    {
+        .gpio       = AIRCELL_VOLUME_DOWN_DETECT,
+        .code       = KEY_VOLUMEDOWN,
+        .desc       = "VOLUME_DOWN",
+        .type       =  EV_KEY,
+        .active_low = 1,
+        .wakeup     = 1,
+    }
 };
 
 static struct gpio_keys_platform_data volume_button_data = {
-	.buttons	= cs_volume_buttons,
-	.nbuttons	= ARRAY_SIZE(cs_volume_buttons),
+    .buttons    = cs_volume_buttons,
+    .nbuttons   = ARRAY_SIZE(cs_volume_buttons),
 };
 
 static struct platform_device volume_buttons = {
-	.name		= "gpio-keys",
-	.id		= -1,
-	.num_resources	= 0,
-	.dev		= {
-		.platform_data	= &volume_button_data,
-	}
+    .name       = "gpio-keys",
+    .id     = -1,
+    .num_resources  = 0,
+    .dev        = {
+        .platform_data  = &volume_button_data,
+    }
 };
 
 static struct platform_device *cloudsurfer_devices[] __initdata = {
     &power_supply,
     &volume_buttons,
 };
+
 
 /* Fix the PBIAS voltage for GPIO-129 */
 static void fix_pbias_voltage(void)
@@ -267,6 +267,42 @@ static void fix_pbias_voltage(void)
 
 	}
 }
+
+/* TARR - The OPP clock rates need to be specific to CloudSurfer as we 
+ * are using the Extended TEmperature Range versio of the DM3730 that 
+ * does not support the higher MPU/DSP clock rates
+ */
+static struct omap_opp cloudsurfer_mpu_rate_table[] = {
+    {0, 0, 0},
+    /*OPP1 (OPP50)*/
+    {S125M, VDD1_OPP1, 0x1B},
+    /*OPP2 (OPP100)*/
+    {S300M, VDD1_OPP2, 0x28},
+    /*OPP3 (OPP120)*/
+    {S600M, VDD1_OPP3, 0x35},
+    /*OPP4 (OPPTM)*/
+    {S800M, VDD1_OPP4, 0x35},
+};
+
+struct omap_opp cloudsurfer_dsp_rate_table[] = {
+    {0, 0, 0},
+    /*OPP1 (OPP50) */
+    {S90M, VDD1_OPP1, 0x1B},
+    /*OPP2 (OPP100) */
+    {S260M, VDD1_OPP2, 0x28},
+    /*OPP3 (OPP120) */
+    {S520M, VDD1_OPP3, 0x35},
+    /*OPP4 (OPPTM) */
+    {S660M, VDD1_OPP4, 0x3C},
+};
+
+struct omap_opp cloudsurfer_l3_rate_table[] = {
+    {0, 0, 0},
+    /*OPP1 (OPP50)  */
+    {S100M, VDD2_OPP1, 0x1B},
+    /*OPP2 (OPP100) */
+    {S200M, VDD2_OPP2, 0x2B},
+};
 
 
 /* TARR - FIXME: These values need to be updated based on more profiling
@@ -688,12 +724,12 @@ void __init omap3logic_init_irq(void)
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
 	/* TARR HERE - Setup pwoer management tables */
-	//omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
-	//omap3_pm_init_vc(&cloudsurfer_setuptime_table);
+	omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
+	omap3_pm_init_vc(&cloudsurfer_setuptime_table);
 
 	omap2_init_common_hw(omap3logic_get_sdram_timings(), NULL, 
-				 omap37x_mpu_rate_table, omap37x_dsp_rate_table, 
-				 omap37x_l3_rate_table);
+				 cloudsurfer_mpu_rate_table, cloudsurfer_dsp_rate_table, 
+				 cloudsurfer_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }
@@ -735,12 +771,6 @@ void omap3logic_usb_init(void)
 static void wifi_init(void)
 {
 	struct clk *sys_clkout1_clk;
-
-	if (gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "wifi_en") != 0)
-		pr_err("GPIO %i request for wilink_en failed\n", OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
-	gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
-	omap_mux_init_gpio(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, OMAP_PIN_OUTPUT);
-	gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 
 	/* Pull the enables out of reset */
 	msleep(10);
@@ -887,7 +917,11 @@ void cloudsurfer_gpio_init(void)
 #define I2C3_SDATA 185
 	omap_mux_init_gpio(I2C3_SCLK, OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_gpio(I2C3_SDATA, OMAP_PIN_INPUT_PULLUP);
+    omap_mux_init_gpio(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, OMAP_PIN_OUTPUT);
 
+	gpio_request(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, "wifi_en");
+    gpio_direction_output(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
+    gpio_export(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO, 0);
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
 	gpio_request(AIRCELL_5VA_ENABLE,"AIRCELL_5VA_ENABLE");
 	gpio_request(AIRCELL_5VD_ENABLE,"AIRCELL_5VD_ENABLE");

@@ -1034,6 +1034,7 @@ int dm3730logic_has_wilink_wifi_module(void)
 	static int wilink_found = 0;
 	int i;
 
+#ifdef TARR
 	printk("%s:%d\n", __FUNCTION__, __LINE__);
 	/* No valid data, then no WiLink */
 	if (!dm3730logic_is_product_data_valid()) {
@@ -1076,10 +1077,14 @@ int dm3730logic_has_wilink_wifi_module(void)
 		val = gpio_get_value(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
 		
 		wilink_found = !val;
-		gpio_free(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
+		//gpio_free(OMAP_DM3730LOGIC_WIFI_PMENA_GPIO);
 	}
 
 	return(wilink_found);
+#else
+	return 1;
+#endif
+
 }
 
 /*
