@@ -54,8 +54,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0xc3, /* REG_OPTION		(0x2)	*/
 	0x00, /* REG_UNKNOWN		(0x3)	*/
 	0x03, /* REG_MICBIAS_CTL	(0x4): Enable MICBIAS1,2	*/
-	0x15, /* REG_ANAMICL		(0x5): use the Mic	*/
-	0x15, /* REG_ANAMICR		(0x6): use the Mic	*/
+	0x11, /* REG_ANAMICL		(0x5): use the Mic	*/
+	0x11, /* REG_ANAMICR		(0x6): use the Mic	*/
 	0x0e, /* REG_AVADC_CTL		(0x7)TARR ADCL_EN, AVADC_CLK_PRIORITY, ADCR_EN*/
 	0x00, /* REG_ADCMICSEL		(0x8)	*/
 	0x00, /* REG_DIGMIXING		(0x9)	*/
