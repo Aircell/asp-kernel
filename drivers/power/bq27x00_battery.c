@@ -60,6 +60,7 @@
 static DEFINE_IDR(battery_id);
 #endif /* CONFIG_BATTERY_BQ27200 */
 static DEFINE_MUTEX(battery_mutex);
+static DEFINE_MUTEX(reg_lock);
 
 struct bq27x00_device_info;
 struct bq27x00_access_methods {
@@ -73,12 +74,12 @@ struct bq27x00_device_info {
 	struct i2c_client	*client;
 	int			id;
 #endif
-	struct mutex reg_lock; /* protects data */
+	//struct mutex reg_lock; /* protects data */
 
 	struct bq27x00_access_methods	*bus;
 	struct power_supply	bat;
 
-	struct i2c_client	*client;
+	//struct i2c_client	*client;
 };
 
 static enum power_supply_property bq27x00_battery_props[] = {
@@ -104,9 +105,9 @@ static int bq27x00_read(u8 reg, int *rt_value, int b_single,
 {
 	int ret;
 	
-	mutex_lock(&di->reg_lock);
+	mutex_lock(&reg_lock);
 	ret = di->bus->read(reg, rt_value, b_single, di);
-	mutex_unlock(&di->reg_lock);
+	mutex_unlock(&reg_lock);
 
 	return ret;
 }
@@ -410,7 +411,7 @@ static int bq27000_battery_probe(struct platform_device *pdev)
 
 	bq27x00_powersupply_init(di);
 
-	mutex_init(&di->reg_lock);
+	//mutex_init(&di->reg_lock);
 
 	retval = power_supply_register(&pdev->dev, &di->bat);
 	if (retval) {
@@ -419,6 +420,7 @@ static int bq27000_battery_probe(struct platform_device *pdev)
 	}
 
 
+	printk("TARR - %s\n",__FUNCTION__);
 	dev_info(&pdev->dev, "support ver. %s enabled\n", DRIVER_VERSION);
 
 	return 0;
