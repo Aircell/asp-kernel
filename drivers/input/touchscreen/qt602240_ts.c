@@ -310,25 +310,25 @@ struct key {
 };
 
 struct key keypad[] = {
-	{801, 874,0,159,1,0,KEY_BACK,'B'}, 		/* BACK key */
-	{801, 874,160,319,1,0,KEY_HOME,'H'},	/* HOME key */
-	{801, 874,320,479,1,0,KEY_MENU,'M'},	/* MENU key */
+	{800, 900,0,153,1,0,KEY_BACK,'B'}, 		/* BACK key */
+	{800, 900,170,307,1,0,KEY_HOME,'H'},	/* HOME key */
+	{800, 900,323,479,1,0,KEY_MENU,'M'},	/* MENU key */
 
-	{875, 948,0,159,1,0,KEY_1,'1'}, 		/* 1 key */
-	{875, 948,160,319,1,0,KEY_2,'2'},		/* 2 key */
-	{875, 948,320,479,1,0,KEY_3,'3'},		/* 3 key */
+	{912, 964,0,153,1,0,KEY_1,'1'}, 		/* 1 key */
+	{912, 964,170,307,1,0,KEY_2,'2'},		/* 2 key */
+	{912, 964,323,479,1,0,KEY_3,'3'},		/* 3 key */
 
-	{949, 1022,0,159,1,0,KEY_4,'4'}, 		/* 4 key */
-	{949, 1022,160,319,1,0,KEY_5,'5'},		/* 5 key */
-	{949, 1022,320,479,1,0,KEY_6,'6'},		/* 6 key */
+	{976, 1029,0,153,1,0,KEY_4,'4'}, 		/* 4 key */
+	{976, 1029,170,307,1,0,KEY_5,'5'},		/* 5 key */
+	{976, 1029,323,479,1,0,KEY_6,'6'},		/* 6 key */
 
-	{1023, 1096,0,159,1,0,KEY_7,'7'},		/* 7 key */
-	{1023, 1096,160,319,1,0,KEY_8,'8'},		/* 8 key */
-	{1023, 1096,320,479,1,0,KEY_9,'9'},		/* 9 key */
+	{1041, 1097,0,153,1,0,KEY_7,'7'},		/* 7 key */
+	{1041, 1097,170,307,1,0,KEY_8,'8'},		/* 8 key */
+	{1041, 1097,323,479,1,0,KEY_9,'9'},		/* 9 key */
 
-	{1097, 1170,0,159,1,0,KEY_NUMERIC_STAR,'*'},/* * key */
-	{1097, 1170,160,319,1,0,KEY_0,'0'},			/* 0 key */
-	{1097, 1170,320,479,1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
+	{1109, 1169,0,153,1,0,KEY_NUMERIC_STAR,'*'},/* * key */
+	{1109, 1169,170,307,1,0,KEY_0,'0'},			/* 0 key */
+	{1109, 1169,323,479,1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
 	{0,0,0,0,0,0,0,0},					/* End of keys */
 };
 
@@ -1491,13 +1491,18 @@ static int qt602240_suspend(struct device *dev)
 	struct qt602240_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
 
+	printk("TARR - %s\n",__FUNCTION__);
+#ifdef TARR
 	mutex_lock(&input_dev->mutex);
 
 	if (input_dev->users)
 		qt602240_stop(data);
 
 	mutex_unlock(&input_dev->mutex);
-
+#else
+    set_irq_wake(client->irq, 1);
+    disable_irq(client->irq);
+#endif
 	return 0;
 }
 
@@ -1507,6 +1512,8 @@ static int qt602240_resume(struct device *dev)
 	struct qt602240_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
 
+	printk("TARR - %s\n",__FUNCTION__);
+#ifdef TARR
 	/* Soft reset */
 	qt602240_write_object(data, QT602240_GEN_COMMAND,
 			QT602240_COMMAND_RESET, 1);
@@ -1519,7 +1526,10 @@ static int qt602240_resume(struct device *dev)
 		qt602240_start(data);
 
 	mutex_unlock(&input_dev->mutex);
-
+#else
+    enable_irq(client->irq);
+    set_irq_wake(client->irq, 0);
+#endif
 	return 0;
 }
 
