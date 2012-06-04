@@ -1699,7 +1699,7 @@ CONFIG_LEDS_TRIGGER_DEFAULT_ON=y
 # iptables trigger is under Netfilter config (LED target)
 #
 CONFIG_SWITCH=y
-# CONFIG_SWITCH_GPIO is not set
+CONFIG_SWITCH_GPIO=y
 # CONFIG_ACCESSIBILITY is not set
 CONFIG_RTC_LIB=y
 CONFIG_RTC_CLASS=y

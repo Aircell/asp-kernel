@@ -27,6 +27,7 @@
 #include <linux/clk.h>
 #include <linux/gpio.h>
 #include <linux/gpio_keys.h>
+#include <linux/switch.h>
 #include <linux/input.h>
 #include <linux/input/matrix_keypad.h>
 #include <linux/leds.h>
@@ -228,9 +229,23 @@ static struct platform_device volume_buttons = {
     }
 };
 
+static struct gpio_switch_platform_data headset_switch_data = {
+	.name = "h2w",
+	.gpio = AIRCELL_HEADSET_DETECT,
+};
+
+static struct platform_device headset_jack = {
+    .name       = "switch-gpio",
+    .id     = -1,
+    .dev        = {
+        .platform_data  = &headset_switch_data,
+    }
+};
+
 static struct platform_device *cloudsurfer_devices[] __initdata = {
     &power_supply,
     &volume_buttons,
+    &headset_jack,
 };
 
 
@@ -950,7 +965,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
 	gpio_request(AIRCELL_EARPIECE_ENABLE,"AIRCELL_EARPIECE_ENABLE");
 	gpio_request(AIRCELL_RINGER_ENABLE,"AIRCELL_RINGER_ENABLE");
-	gpio_request(AIRCELL_HEADSET_DETECT,"AIRCELL_HEADSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
@@ -967,7 +981,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
 	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
-	gpio_direction_input(AIRCELL_HEADSET_DETECT);
 	gpio_direction_output(AIRCELL_TOUCH_RESET,0);
 	gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
@@ -982,7 +995,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_LED_ENABLE,0);
 	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_export(AIRCELL_RINGER_ENABLE,0);
-	gpio_export(AIRCELL_HEADSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
