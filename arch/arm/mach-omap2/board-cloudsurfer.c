@@ -27,6 +27,7 @@
 #include <linux/clk.h>
 #include <linux/gpio.h>
 #include <linux/gpio_keys.h>
+#include <linux/switch.h>
 #include <linux/input.h>
 #include <linux/input/matrix_keypad.h>
 #include <linux/leds.h>
@@ -228,9 +229,23 @@ static struct platform_device volume_buttons = {
     }
 };
 
+static struct gpio_switch_platform_data headset_switch_data = {
+	.name = "h2w",
+	.gpio = AIRCELL_HEADSET_DETECT,
+};
+
+static struct platform_device headset_jack = {
+    .name       = "switch-gpio",
+    .id     = -1,
+    .dev        = {
+        .platform_data  = &headset_switch_data,
+    }
+};
+
 static struct platform_device *cloudsurfer_devices[] __initdata = {
     &power_supply,
     &volume_buttons,
+    &headset_jack,
 };
 
 
@@ -471,9 +486,11 @@ static struct twl4030_gpio_platform_data omap3logic_gpio_data = {
 	.setup		= omap3logic_twl_gpio_setup,
 };
 
+#ifdef USE_USB
 static struct twl4030_usb_data omap3logic_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
 };
+#endif
 
 static struct twl4030_madc_platform_data omap3logic_madc_data = {
 	.irq_line	= 1,
@@ -499,7 +516,9 @@ static struct twl4030_platform_data omap3logic_twldata = {
 
 	/* platform_data for children goes here */
 	.madc		= &omap3logic_madc_data,
+#ifdef USE_USB
 	.usb		= &omap3logic_usb_data,
+#endif
 	.gpio		= &omap3logic_gpio_data,
 	.codec		= &omap3logic_codec_data,
 
@@ -677,6 +696,8 @@ static void omap3logic_qt602240_init(void)
 			printk(KERN_ERR "Unable to register touch device\n");
 		return;
 	}
+	omap_mux_init_gpio(AIRCELL_TOUCH_INTERRUPT, 
+			OMAP_PIN_INPUT_PULLUP | OMAP_WAKEUP_EN | OMAP_MUX_MODE4);
 	omap_set_gpio_debounce(AIRCELL_TOUCH_INTERRUPT, 1);
 	omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
@@ -745,6 +766,7 @@ void omap3logic_lcd_panel_init(int *p_gpio_enable, int *p_gpio_backlight)
 	*p_gpio_backlight = 0;
 }
 
+#ifdef USE_USB
 static struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 
 	.port_mode[0] = EHCI_HCD_OMAP_MODE_UNKNOWN,
@@ -767,6 +789,8 @@ void omap3logic_usb_init(void)
 {
 	omap3logic_init_ehci();
 }
+
+#endif
 
 static void wifi_init(void)
 {
@@ -798,6 +822,7 @@ static void wifi_init(void)
 
 }
 
+#ifdef USE_USB
 void omap3logic_musb_init(void)
 {
 	/* Set up the mux for musb */
@@ -816,6 +841,7 @@ void omap3logic_musb_init(void)
 
 	usb_musb_init();
 }
+#endif
 
 #define USE_AT25_AS_EEPROM
 #ifdef USE_AT25_AS_EEPROM
@@ -863,6 +889,7 @@ extern void __init board_lcd_init(void);
 
 static char device_serial[MAX_USB_SERIAL_NUM];
 
+#ifdef USE_USB
 static char *usb_functions_adb[] = {
 	"adb",
 };
@@ -908,6 +935,7 @@ void omap3logic_android_gadget_init(void)
 
 	platform_device_register(&androidusb_device);
 }
+#endif
 
 void cloudsurfer_gpio_init(void)
 {
@@ -937,7 +965,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
 	gpio_request(AIRCELL_EARPIECE_ENABLE,"AIRCELL_EARPIECE_ENABLE");
 	gpio_request(AIRCELL_RINGER_ENABLE,"AIRCELL_RINGER_ENABLE");
-	gpio_request(AIRCELL_HEADSET_DETECT,"AIRCELL_HEADSET_DETECT");
 	gpio_request(AIRCELL_TOUCH_RESET,"AIRCELL_TOUCH_RESET");
 	gpio_request(AIRCELL_PROX_INTERRUPT,"AIRCELL_PROX_INTERRUPT");
 	gpio_request(AIRCELL_ACCEL_INTERRUPT,"AIRCELL_ACCEL_INTERRUPT");
@@ -954,7 +981,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
 	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
-	gpio_direction_input(AIRCELL_HEADSET_DETECT);
 	gpio_direction_output(AIRCELL_TOUCH_RESET,0);
 	gpio_direction_output(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
@@ -969,7 +995,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_LED_ENABLE,0);
 	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_export(AIRCELL_RINGER_ENABLE,0);
-	gpio_export(AIRCELL_HEADSET_DETECT,0);
 	gpio_export(AIRCELL_TOUCH_RESET,0);
 	gpio_export(AIRCELL_PROX_INTERRUPT,0);
 	gpio_export(AIRCELL_ACCEL_INTERRUPT,0);
@@ -1001,8 +1026,11 @@ static void __init omap3logic_init(void)
 	omap_serial_init_port(0);
 	omap_serial_init_port(1);
 
+#ifdef USE_USB
 	omap3logic_usb_init();
 	omap3logic_musb_init();
+	omap3logic_android_gadget_init();
+#endif
 
 	/* Check the SRAM for valid product_id data(put there by
 	 * u-boot). If not, then it will be read later. */
@@ -1029,7 +1057,6 @@ static void __init omap3logic_init(void)
 
 	dump_omap3logic_timings();
 
-	omap3logic_android_gadget_init();
 
 	print_omap_clocks();
 }
