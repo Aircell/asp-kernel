@@ -174,7 +174,7 @@ static int cloudsurfer_is_usb_online(void)
 }
 
 static char *cloudsurfer_supplicants[] = {
-    "bq27000"
+    "bq27500"
 };
 
 static struct pda_power_pdata power_supply_info = {
@@ -702,7 +702,7 @@ int __init omap3logic_i2c_init(void)
      * to the I2C2 boardinfo
      */
 	if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
-		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"bq27200");
+		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"bq27500");
 		omap3logic_i2c2_boardinfo[2].addr = 0x55;
 		printk("Cloudsurfer is Battery Powered");
 	} else {
