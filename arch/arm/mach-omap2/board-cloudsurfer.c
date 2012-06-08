@@ -49,6 +49,8 @@
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/physmap.h>
 
+#include <linux/power/gpio-charger.h>
+
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -68,7 +70,6 @@
 #include <plat/dm3730logic-productid.h>
 #include <plat/omap3logic-cf.h>
 #include <plat/wifi_tiwlan.h>
-#include <linux/pda_power.h>
 
 #include "mux.h"
 #include "mmc-twl4030.h"
@@ -161,36 +162,28 @@ static inline void __init omap3logic_init_smsc911x(void)
 		printk(KERN_ERR "Unable to register smsc911x device\n");
 		return;
 	}
-}
+};
 
-/* PDA Power stuff */
-static int cloudsurfer_is_ac_online(void)
-{
-    return 0;
-}
-
-static int cloudsurfer_is_usb_online(void)
-{
-    return 0;
-}
+/* Power stuff */
 
 static char *cloudsurfer_supplicants[] = {
     "bq27500"
 };
 
-static struct pda_power_pdata power_supply_info = {
-    .is_ac_online     = cloudsurfer_is_ac_online,
-    .is_usb_online    = cloudsurfer_is_usb_online,
-    .supplied_to      = cloudsurfer_supplicants,
-    .num_supplicants  = ARRAY_SIZE(cloudsurfer_supplicants),
+static struct gpio_charger_platform_data cloudsurfer_charger_pdata = {
+	.name = "ac",
+	.type = POWER_SUPPLY_TYPE_MAINS,
+	.gpio = AIRCELL_POWER_APPLIED_DETECT,
+	.gpio_active_low = 1,
+	.supplied_to = cloudsurfer_supplicants,
+	.num_supplicants = ARRAY_SIZE(cloudsurfer_supplicants),
 };
 
-static struct platform_device power_supply = {
-    .name             = "pda-power",
-    .id               = -1,
-    .dev = {
-        .platform_data = &power_supply_info,
-    },
+static struct platform_device cloudsurfer_charger_device = {
+	.name = "gpio-charger",
+	.dev = {
+		.platform_data = &cloudsurfer_charger_pdata,
+	},
 };
 
 /*
@@ -243,7 +236,7 @@ static struct platform_device headset_jack = {
 };
 
 static struct platform_device *cloudsurfer_devices[] __initdata = {
-    &power_supply,
+    &cloudsurfer_charger_device,
     &volume_buttons,
     &headset_jack,
 };

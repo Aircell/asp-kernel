@@ -125,7 +125,7 @@ static enum power_supply_property bq27x00_battery_props[] = {
 	POWER_SUPPLY_PROP_ENERGY_NOW,
 };
 
-static unsigned int poll_interval = 360;
+static unsigned int poll_interval = 60;
 module_param(poll_interval, uint, 0644);
 MODULE_PARM_DESC(poll_interval, "battery poll interval in seconds - " \
 				"0 disables polling");
@@ -274,7 +274,7 @@ static int bq27x00_battery_read_temperature(struct bq27x00_device_info *di)
  * Return the battery Cycle count total
  * Or < 0 if something fails.
  */
-static int bq27x00_battery_read_cyct(struct bq27x00_device_info *di)
+/*TC* static int bq27x00_battery_read_cyct(struct bq27x00_device_info *di)
 {
 	int cyct;
 
@@ -283,7 +283,7 @@ static int bq27x00_battery_read_cyct(struct bq27x00_device_info *di)
 		dev_err(di->dev, "error reading cycle count total\n");
 
 	return cyct;
-}
+	} */
 
 /*
  * Read a time register.
@@ -339,7 +339,10 @@ static void bq27x00_update(struct bq27x00_device_info *di)
 
 	if (memcmp(&di->cache, &cache, sizeof(cache)) != 0) {
 		di->cache = cache;
+		dev_info(di->dev, "power_supply_changed: %s", di->bat.dev->kobj.name);
 		power_supply_changed(&di->bat);
+	} else {
+		dev_info(di->dev, "power supply did not change");
 	}
 
 	di->last_update = jiffies;
