@@ -954,7 +954,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_SOFTWARE_RESET,"AIRCELL_SOFTWARE_RESET");
 	gpio_request(AIRCELL_BATTERY_POWERED,"AIRCELL_BATTERY_POWERED");
 	gpio_request(AIRCELL_LCD_RESET,"AIRCELL_LCD_RESET");
-	gpio_request(AIRCELL_POWER_APPLIED_DETECT,"AIRCELL_POWER_APPLIED_DETECT");
+	/*TC* gpio_request(AIRCELL_POWER_APPLIED_DETECT,"AIRCELL_POWER_APPLIED_DETECT"); */
 	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
 	gpio_request(AIRCELL_EARPIECE_ENABLE,"AIRCELL_EARPIECE_ENABLE");
 	gpio_request(AIRCELL_RINGER_ENABLE,"AIRCELL_RINGER_ENABLE");
@@ -970,7 +970,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_input(AIRCELL_BATTERY_POWERED);
 	gpio_direction_output(AIRCELL_18V_ENABLE,1);
 	gpio_direction_output(AIRCELL_LCD_RESET,0);
-	gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT);
+	/*TC* gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT); */
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
 	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
@@ -984,7 +984,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_BATTERY_POWERED,0);
 	gpio_export(AIRCELL_LCD_RESET,0);
-	gpio_export(AIRCELL_POWER_APPLIED_DETECT,0);
+	/* gpio_export(AIRCELL_POWER_APPLIED_DETECT,0);*/
 	gpio_export(AIRCELL_LED_ENABLE,0);
 	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_export(AIRCELL_RINGER_ENABLE,0);

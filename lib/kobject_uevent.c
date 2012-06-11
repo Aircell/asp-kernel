@@ -182,9 +182,9 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 	if (uevent_ops && uevent_ops->uevent) {
 		retval = uevent_ops->uevent(kset, kobj, env);
 		if (retval) {
-			pr_debug("kobject: '%s' (%p): %s: uevent() returned "
+			pr_debug("kobject: '%s' (%p): %s: uevent() (%p) returned "
 				 "%d\n", kobject_name(kobj), kobj,
-				 __func__, retval);
+					 __func__, uevent_ops->uevent, retval);
 			goto exit;
 		}
 	}

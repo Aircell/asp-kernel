@@ -76,6 +76,8 @@ static int __devinit gpio_charger_probe(struct platform_device *pdev)
 	int ret;
 	int irq;
 
+	dev_info(&pdev->dev, "beginning gpio-charger probe");
+
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -EINVAL;
@@ -104,7 +106,8 @@ static int __devinit gpio_charger_probe(struct platform_device *pdev)
 
 	ret = gpio_request(pdata->gpio, dev_name(&pdev->dev));
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to request gpio pin: %d\n", ret);
+        /*TC* Problem is here. Returns -EBUSY. */
+		dev_err(&pdev->dev, "Failed to request gpio pin %d: %d\n", pdata->gpio, ret);
 		goto err_free;
 	}
 	ret = gpio_direction_input(pdata->gpio);
@@ -123,16 +126,16 @@ static int __devinit gpio_charger_probe(struct platform_device *pdev)
 	}
 
 	irq = 0;
-	/*TC*irq = gpio_to_irq(pdata->gpio);
+	irq = gpio_to_irq(pdata->gpio);
 	if (irq > 0) {
-		ret = request_any_context_irq(irq, gpio_charger_irq,
+		ret = request_irq(irq, gpio_charger_irq,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				dev_name(&pdev->dev), charger);
 		if (ret < 0)
 			dev_warn(&pdev->dev, "Failed to request irq: %d\n", ret);
 		else
 			gpio_charger->irq = irq;
-			}*/
+	}
 
 	platform_set_drvdata(pdev, gpio_charger);
 
@@ -186,7 +189,23 @@ static struct platform_driver gpio_charger_driver = {
 	},
 };
 
-module_platform_driver(gpio_charger_driver);
+/*module_platform_driver(gpio_charger_driver);*/
+/* The above macro is from a more recent kernel version.
+ * it would have replaced the boiler-plate code below
+ */
+
+static int __init gpio_charger_init(void)
+{
+	return platform_driver_register(&gpio_charger_driver);
+}
+module_init(gpio_charger_init);
+
+static void __exit gpio_charger_exit(void)
+{
+	platform_driver_unregister(&gpio_charger_driver);
+}
+module_exit(gpio_charger_exit);
+
 
 MODULE_AUTHOR("Lars-Peter Clausen <lars@metafoo.de>");
 MODULE_DESCRIPTION("Driver for chargers which report their online status through a GPIO");
