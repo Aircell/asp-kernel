@@ -44,12 +44,14 @@
 #define OP_PLUG_EVENT		1
 #define OP_SLEEP			2
 #define OP_WAKE				3
+#define DELAY_REPORT_SECS	5
 
 struct gpio_charger {
 	struct i2c_client *client;
 	const struct gpio_charger_platform_data *pdata;
 	unsigned int irq;
-	struct work_struct work;
+	struct work_struct irq_work;
+	struct delayed_work delayed_report;
 
 	struct power_supply charger;
 };
@@ -107,8 +109,20 @@ static void set_charger_state(struct gpio_charger *gc, int operation_id) {
 static void set_charger_on_irq(struct work_struct *work)
 {
 	struct gpio_charger *gc =
-		container_of(work, struct gpio_charger, work);
+		container_of(work, struct gpio_charger, irq_work);
 	set_charger_state(gc, OP_PLUG_EVENT);
+	/*power_supply_changed(&gc->charger);*/
+	schedule_delayed_work(&gc->delayed_report, DELAY_REPORT_SECS * HZ);
+}
+
+/*
+ * The fuel gauge takes 3-4 seconds before it shows the correct status.
+ * We have to wait a bit before reporting power_supply_changed.
+ */
+static void delayed_change_report(struct work_struct *work)
+{
+	struct gpio_charger *gc =
+		container_of(work, struct gpio_charger, delayed_report.work);
 	power_supply_changed(&gc->charger);
 }
 
@@ -117,7 +131,7 @@ static irqreturn_t gpio_charger_irq(int irq, void *devid)
 	struct power_supply *charger = devid;
 	struct gpio_charger *gc = psy_to_gpio_charger(charger);
 
-	schedule_work(&gc->work); /* will soon call set_charger_on_irq() above */
+	schedule_work(&gc->irq_work); /* will soon call set_charger_on_irq() above */
 
 	return IRQ_HANDLED;
 }
@@ -197,7 +211,8 @@ static int gpio_charger_probe(struct i2c_client *client,
 
 	gpio_charger->pdata = pdata;
 
-	INIT_WORK(&gpio_charger->work, set_charger_on_irq);
+	INIT_WORK(&gpio_charger->irq_work, set_charger_on_irq);
+	INIT_DELAYED_WORK(&gpio_charger->delayed_report, delayed_change_report);
 
 	ret = power_supply_register(&client->dev, charger);
 	if (ret < 0) {
