@@ -116,7 +116,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x40)	*/
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
-	0x00, /* REG_RX_PATH_SEL	(0x43)	*/
+	0x30, /* REG_RX_PATH_SEL	(0x43)	JFK - Mono output*/
 	0x03, /* REG_VDL_APGA_CTL	(0x44)	*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
@@ -430,6 +430,13 @@ static const struct soc_enum twl4030_vibrapath_enum =
 
 static const struct snd_kcontrol_new twl4030_dapm_vibrapath_control =
 SOC_DAPM_ENUM("Route", twl4030_vibrapath_enum);
+
+/* Microphone bias selection */
+static const struct snd_kcontrol_new twl4030_micbias_controls[] = {
+	SOC_DAPM_SINGLE("Main Mic Bias Switch",    TWL4030_REG_MICBIAS_CTL, 0, 1, 0),
+	SOC_DAPM_SINGLE("Sub Mic Bias Switch",     TWL4030_REG_MICBIAS_CTL, 1, 1, 0),
+	SOC_DAPM_SINGLE("Headset Mic Bias Switch", TWL4030_REG_MICBIAS_CTL, 2, 1, 0),
+};
 
 /* Left analog microphone selection */
 static const struct snd_kcontrol_new twl4030_dapm_analoglmic_controls[] = {
@@ -1150,6 +1157,10 @@ static const struct snd_kcontrol_new twl4030_snd_controls[] = {
 
 	SOC_ENUM("Vibra H-bridge mode", twl4030_vibradirmode_enum),
 	SOC_ENUM("Vibra H-bridge direction", twl4030_vibradir_enum),
+
+	SOC_SINGLE("Main Mic Bias Switch",    TWL4030_REG_MICBIAS_CTL, 0, 1, 0),
+	SOC_SINGLE("Sub Mic Bias Switch",     TWL4030_REG_MICBIAS_CTL, 1, 1, 0),
+	SOC_SINGLE("Headset Mic Bias Switch", TWL4030_REG_MICBIAS_CTL, 2, 1, 0),
 };
 
 static const struct snd_soc_dapm_widget twl4030_dapm_widgets[] = {
