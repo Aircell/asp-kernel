@@ -339,10 +339,8 @@ static void bq27x00_update(struct bq27x00_device_info *di)
 
 	if (memcmp(&di->cache, &cache, sizeof(cache)) != 0) {
 		di->cache = cache;
-		dev_info(di->dev, "power_supply_changed: %s", di->bat.dev->kobj.name);
+		dev_dbg(di->dev, "power_supply_changed: %s", di->bat.dev->kobj.name);
 		power_supply_changed(&di->bat);
-	} else {
-		dev_info(di->dev, "power supply did not change");
 	}
 
 	di->last_update = jiffies;
@@ -693,7 +691,7 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	di->bat.name = name;
 	di->bus.read = &bq27x00_read_i2c;
 
-	if (bq27x00_powersupply_init(di))
+	if (retval = bq27x00_powersupply_init(di))
 		goto batt_failed_3;
 
 	i2c_set_clientdata(client, di);

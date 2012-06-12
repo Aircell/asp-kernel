@@ -150,7 +150,7 @@ static int pca9626_configure(struct i2c_client *client,
 static int pca9626_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
-	struct pca9626_data *local_data = i2c_get_clientdata(client);
+	struct pca9626_data *local_data;
 	struct pca9626_platform_data *platform_data = client->dev.platform_data;
 
 

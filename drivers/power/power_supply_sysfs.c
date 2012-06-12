@@ -241,8 +241,10 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 		attr = &power_supply_static_attrs[j];
 
 		ret = power_supply_show_static_attrs(dev, attr, prop_buf);
-		if (ret < 0)
+		if (ret < 0) {
+			dev_dbg(dev, "power_supply_show_static_attrs returned %d\n", ret);
 			goto out;
+		}
 
 		line = strchr(prop_buf, '\n');
 		if (line)
@@ -271,15 +273,18 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 		attr = &power_supply_attrs[psy->properties[j]];
 
 		ret = power_supply_show_property(dev, attr, prop_buf);
-		if (ret == -ENODEV) {
+		if (ret == -ENODEV || ret == -ENODATA) {
 			/* When a battery is absent, we expect -ENODEV. Don't abort;
 			   send the uevent with at least the the PRESENT=0 property */
 			ret = 0;
 			continue;
 		}
 
-		if (ret < 0)
+		if (ret < 0) {
+			dev_dbg(dev, "power_supply_show_property returned %d for attr %s\n", ret,
+				attr->attr.name);
 			goto out;
+		}
 
 		line = strchr(prop_buf, '\n');
 		if (line)

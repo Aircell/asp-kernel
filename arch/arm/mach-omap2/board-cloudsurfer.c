@@ -49,7 +49,7 @@
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/physmap.h>
 
-#include <linux/power/gpio-charger.h>
+#include <linux/power/cloudsurfer-charger.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -236,7 +236,6 @@ static struct platform_device headset_jack = {
 };
 
 static struct platform_device *cloudsurfer_devices[] __initdata = {
-    &cloudsurfer_charger_device,
     &volume_buttons,
     &headset_jack,
 };
@@ -644,6 +643,9 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 		/* Place holder for Battery Fuel Guage */
 		//I2C_BOARD_INFO("bq27200", 0x55),
 	},
+	{
+		/* Place holder for Battery Charger */
+	},
 };
 /*
  * D2vices on I2C bus 3 are the touchscreen controller\
@@ -716,8 +718,11 @@ int __init omap3logic_i2c_init(void)
      * to the I2C2 boardinfo
      */
 	if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
-		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"bq27500");
-		omap3logic_i2c2_boardinfo[2].addr = 0x55;
+		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"cloudsurfer-charger");
+		omap3logic_i2c2_boardinfo[2].addr = 0x41;
+		omap3logic_i2c2_boardinfo[2].platform_data = &cloudsurfer_charger_pdata;
+		strcpy(&omap3logic_i2c2_boardinfo[3].type[0],"bq27500");
+		omap3logic_i2c2_boardinfo[3].addr = 0x55;
 		printk("Cloudsurfer is Battery Powered");
 	} else {
 		printk("Cloudsurfer is POE Powered");
@@ -954,7 +959,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_SOFTWARE_RESET,"AIRCELL_SOFTWARE_RESET");
 	gpio_request(AIRCELL_BATTERY_POWERED,"AIRCELL_BATTERY_POWERED");
 	gpio_request(AIRCELL_LCD_RESET,"AIRCELL_LCD_RESET");
-	/*TC* gpio_request(AIRCELL_POWER_APPLIED_DETECT,"AIRCELL_POWER_APPLIED_DETECT"); */
+	gpio_request(AIRCELL_POWER_APPLIED_DETECT,"AIRCELL_POWER_APPLIED_DETECT");
 	gpio_request(AIRCELL_LED_ENABLE,"AIRCELL_LED_ENABLE");
 	gpio_request(AIRCELL_EARPIECE_ENABLE,"AIRCELL_EARPIECE_ENABLE");
 	gpio_request(AIRCELL_RINGER_ENABLE,"AIRCELL_RINGER_ENABLE");
@@ -970,7 +975,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_input(AIRCELL_BATTERY_POWERED);
 	gpio_direction_output(AIRCELL_18V_ENABLE,1);
 	gpio_direction_output(AIRCELL_LCD_RESET,0);
-	/*TC* gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT); */
+	gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT);
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
 	gpio_direction_output(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_direction_output(AIRCELL_RINGER_ENABLE,0);
@@ -984,7 +989,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_BATTERY_POWERED,0);
 	gpio_export(AIRCELL_LCD_RESET,0);
-	/* gpio_export(AIRCELL_POWER_APPLIED_DETECT,0);*/
+	gpio_export(AIRCELL_POWER_APPLIED_DETECT,0);
 	gpio_export(AIRCELL_LED_ENABLE,0);
 	gpio_export(AIRCELL_EARPIECE_ENABLE,0);
 	gpio_export(AIRCELL_RINGER_ENABLE,0);
