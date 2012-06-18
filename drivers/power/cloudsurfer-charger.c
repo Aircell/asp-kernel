@@ -236,6 +236,7 @@ static int gpio_charger_probe(struct i2c_client *client,
 	/*platform_set_drvdata(pdev, gpio_charger);*/
 	i2c_set_clientdata(client, gpio_charger);
 
+	schedule_work(&gpio_charger->irq_work);
 	return 0;
 
 err_gpio_free:
