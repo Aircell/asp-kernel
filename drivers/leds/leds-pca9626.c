@@ -16,6 +16,7 @@
 #include <linux/leds.h>
 #include <linux/input.h>
 #include <linux/leds-pca9626.h>
+#include <linux/mutex.h>
 
 #define ldev_to_led(c)       container_of(c, struct pca9626_led, ldev)
 
@@ -29,6 +30,8 @@ struct pca9626_data {
 	struct i2c_client *client;
 	struct pca9626_led *leds;
 };
+
+static DEFINE_MUTEX(pca9626_mutex);
 
 static struct pca9626_data *my_data;
 
@@ -62,6 +65,7 @@ static int pca9626_read(struct i2c_client *client, u8 reg, u8 *value)
 }
 static int pca9626_write(struct i2c_client *client, u8 reg, u8 value)
 {
+	int ret;
 	struct i2c_msg xfer;
 	u8 buf[2];
 	
@@ -75,11 +79,12 @@ static int pca9626_write(struct i2c_client *client, u8 reg, u8 value)
     xfer.len = 2;
     xfer.buf = buf;
 
-    if (i2c_transfer(client->adapter, &xfer, 1) != 1) {
-        dev_err(&client->dev, "%s: i2c transfer failed\n", __func__);
-        return -EIO;
+	mutex_lock(&pca9626_mutex);
+    if ((ret = i2c_transfer(client->adapter, &xfer, 1)) != 1) {
+        dev_err(&client->dev, "%s: i2c transfer failed %d\n", __func__,ret);
     }
-    return 0;
+	mutex_unlock(&pca9626_mutex);
+    return ret;
 }
 
 static int pca9626_present(struct i2c_client *client) 
@@ -98,7 +103,9 @@ static void pca9626_set_brightness(struct led_classdev *led_cdev,
 		enum led_brightness value)
 {
 	struct pca9626_led *led;
-		
+	
+	//printk("TARR - %s - %d\n",__FUNCTION__,(unsigned int)value);
+	
 	led = ldev_to_led(led_cdev);
 	if ( pca9626_write(led->client,led->id+LED_REG_OFFSET,(u8)value) < 0 ) {
 		printk("LED - write failed\n");
@@ -184,15 +191,33 @@ static int pca9626_remove(struct i2c_client *client)
 {
 	struct pca9626_data *data = i2c_get_clientdata(client);
 
+	printk("TARR - %s\n",__FUNCTION__);
 	kfree(data);
 	i2c_set_clientdata(client, NULL);
 	return 0;
 }
 
+static int pca9626_suspend(struct device *dev)
+{
+	printk("Tarr - %s\n",__FUNCTION__);
+	return 0;
+}
+
+static int pca9626_resume(struct device *dev)
+{
+	printk("Tarr - %s\n",__FUNCTION__);
+	return 0;
+}
+static const struct dev_pm_ops pca9626_pm_ops = {
+    .suspend    = pca9626_suspend,
+    .resume     = pca9626_resume,
+};
+
 static struct i2c_driver pca9626_driver = {
 	.driver = {
 		.name = "pca9626",
 		.owner = THIS_MODULE,
+		.pm = &pca9626_pm_ops,
 	},
 	.probe = pca9626_probe,
 	.remove = pca9626_remove,
