@@ -974,6 +974,7 @@ void cloudsurfer_gpio_init(void)
 
 	gpio_direction_input(AIRCELL_BATTERY_POWERED);
 	gpio_direction_output(AIRCELL_18V_ENABLE,1);
+	gpio_direction_output(AIRCELL_SOFTWARE_RESET,0);
 	gpio_direction_output(AIRCELL_LCD_RESET,0);
 	gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT);
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
