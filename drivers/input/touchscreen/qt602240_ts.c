@@ -722,7 +722,8 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	/* Tarr - Because the touchscreen got "flipped" in the P3, need to
      * adjust x accordingly
 	 */
-	// TARR - for the moment (5/16/2012) leave it alone --x = 1170 - x;
+	// TARR - for the moment (5/16/2012) leave it alone --
+    x = 1170 - x;
 	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
 	area = message->message[4];
 
