@@ -70,6 +70,7 @@
 #include <plat/dm3730logic-productid.h>
 #include <plat/omap3logic-cf.h>
 #include <plat/wifi_tiwlan.h>
+#include <plat/dmtimer.h>
 
 #include "mux.h"
 #include "mmc-twl4030.h"
@@ -134,7 +135,8 @@ static inline void __init omap3logic_init_smsc911x(void)
 
 	eth_gpio = OMAP3LOGIC_LV_SOM_SMSC911X_GPIO;
 
-	omap_mux_init_gpio(eth_gpio, OMAP_PIN_INPUT | OMAP_PIN_OFF_WAKEUPENABLE);
+	omap_mux_init_gpio(eth_gpio, OMAP_PIN_INPUT | 
+						OMAP_WAKEUP_EN | OMAP_MUX_MODE4);
 
 	if (gpmc_cs_request(eth_cs, SZ_16M, &cs_mem_base) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem for smsc911x\n");
@@ -742,7 +744,7 @@ void __init omap3logic_init_irq(void)
 {
 	omap_board_config = omap3logic_config;
 	omap_board_config_size = ARRAY_SIZE(omap3logic_config);
-	/* TARR HERE - Setup pwoer management tables */
+	/* TARR HERE - Setup power management tables */
 	omap3_pm_init_cpuidle(cloudsurfer_cpuidle_params_table);
 	omap3_pm_init_vc(&cloudsurfer_setuptime_table);
 
@@ -974,7 +976,7 @@ void cloudsurfer_gpio_init(void)
 
 	gpio_direction_input(AIRCELL_BATTERY_POWERED);
 	gpio_direction_output(AIRCELL_18V_ENABLE,1);
-	gpio_direction_output(AIRCELL_SOFTWARE_RESET,1); /* active low */
+	gpio_direction_output(AIRCELL_SOFTWARE_RESET,1);
 	gpio_direction_output(AIRCELL_LCD_RESET,0);
 	gpio_direction_input(AIRCELL_POWER_APPLIED_DETECT);
 	gpio_direction_output(AIRCELL_LED_ENABLE,1);
@@ -1023,7 +1025,6 @@ static void __init omap3logic_init(void)
 	board_lcd_init();
 
 	omap_serial_init_port(0);
-	omap_serial_init_port(1);
 
 #ifdef USE_USB
 	omap3logic_usb_init();
@@ -1037,15 +1038,15 @@ static void __init omap3logic_init(void)
 
 	dm3730logic_flash_init();
 
-	omap3logic_init_smsc911x();
-
     /* Check to see if we need to add in the WiFi controller
-     * This is done based on the * AIRCELL_BATTERY_POWERED gpio. 
+     * This is done based on the AIRCELL_BATTERY_POWERED gpio. 
 	 * If the pin is high, it is a battery powered phone and we need 
-     * initialize the WiFi controller 
+     * initialize the WiFi controller otherwise go with Ethernet 
      */
     if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
 		wifi_init();
+	} else {
+		omap3logic_init_smsc911x();
 	}
 
 	omap3logic_init_audio_mux();
@@ -1054,10 +1055,9 @@ static void __init omap3logic_init(void)
 	 * setups up SPI devices - can't add boardinfo afterwards */
 	//omap3logic_spi_init();
 
-	dump_omap3logic_timings();
+	//dump_omap3logic_timings();
 
-
-	print_omap_clocks();
+	//print_omap_clocks();
 }
 
 void cloudsurfer_init_productid_specifics(void)
