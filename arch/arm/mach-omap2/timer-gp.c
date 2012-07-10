@@ -45,7 +45,9 @@
 
 static struct omap_dm_timer *gptimer;
 static struct clock_event_device clockevent_gpt;
-static u8 __initdata gptimer_id = 1;
+/* TARR - default is to use GPTIMER1, but we need GPTIMER1 as a sleep
+ *        wakeup timer, so use the next one */
+static u8 __initdata gptimer_id = 2;
 static u8 __initdata inited;
 struct omap_dm_timer *gptimer_wakeup;
 
