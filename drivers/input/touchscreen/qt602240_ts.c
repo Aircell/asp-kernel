@@ -632,7 +632,7 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 #endif
 		input_report_abs(input_dev, ABS_MT_TOUCH_MAJOR,
 				finger[id].status != QT602240_RELEASE ?
-				finger[id].area : 0);
+				finger[id].area + 1 : 0);
 		input_report_abs(input_dev, ABS_MT_POSITION_X,
 				finger[id].x);
 		input_report_abs(input_dev, ABS_MT_POSITION_Y,
@@ -655,11 +655,12 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 	input_sync(input_dev);
 }
 
+/* static that holds the index of current key that is pressed */
+static struct key *key_pressed = NULL;
+
 static void report_key(struct qt602240_data *data, struct key *k, u8 status)
 {
 	struct input_dev *input_dev = data->input_dev;
-	/* static that holds the index of current key that is pressed */
-	static struct key *key_pressed = NULL;
 
 	/* Only presses and releases are reported */
 	/* Has the key been pressed already? */
@@ -669,7 +670,6 @@ static void report_key(struct qt602240_data *data, struct key *k, u8 status)
 		if ( status & QT602240_RELEASE || k != key_pressed ) {
 			printk("KEY - %c released\n",key_pressed->character);
 			input_report_key(input_dev,key_pressed->code,0);
-			//input_report_rel(input_dev,key_pressed->code,1);
 			input_sync(input_dev);
 			key_pressed->status = 0;
 			key_pressed = NULL;
@@ -711,6 +711,7 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 				      struct qt602240_message *message, int id)
 {
 	struct qt602240_finger *finger = data->finger;
+	struct input_dev *input_dev = data->input_dev;
 	u8 status = message->message[0];
 	int x;
 	int y;
@@ -731,6 +732,17 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	if ( x > 800 ) {
 		keypad_input(data,x,y,message->message[0]);
 		return;
+	}
+	/* Topher - send keyup if a key is down when touchscreen is pressed */
+	if (key_pressed != NULL) {
+		if (status & QT602240_RELEASE) {
+			printk("KEY - %c released\n",key_pressed->character);
+			input_report_key(input_dev,key_pressed->code,0);
+			//input_report_rel(input_dev,key_pressed->code,1);
+			input_sync(input_dev);
+			key_pressed->status = 0;
+			key_pressed = NULL;
+		}
 	}
 
 #ifdef TARR_DEBUG
@@ -1489,11 +1501,11 @@ static int __devexit qt602240_remove(struct i2c_client *client)
 static int qt602240_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
-	struct qt602240_data *data = i2c_get_clientdata(client);
-	struct input_dev *input_dev = data->input_dev;
 
 	printk("TARR - %s\n",__FUNCTION__);
 #ifdef TARR
+	struct qt602240_data *data = i2c_get_clientdata(client);
+	struct input_dev *input_dev = data->input_dev;
 	mutex_lock(&input_dev->mutex);
 
 	if (input_dev->users)
@@ -1510,11 +1522,11 @@ static int qt602240_suspend(struct device *dev)
 static int qt602240_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
-	struct qt602240_data *data = i2c_get_clientdata(client);
-	struct input_dev *input_dev = data->input_dev;
 
 	printk("TARR - %s\n",__FUNCTION__);
 #ifdef TARR
+	struct qt602240_data *data = i2c_get_clientdata(client);
+	struct input_dev *input_dev = data->input_dev;
 	/* Soft reset */
 	qt602240_write_object(data, QT602240_GEN_COMMAND,
 			QT602240_COMMAND_RESET, 1);
