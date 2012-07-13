@@ -661,7 +661,7 @@ struct qt602240_platform_data omap3logic_touchscreendata = {
 	.x_size = 1170,
 	.y_size = 480,
 	.blen = 23,
-	.threshold = 80,
+	.threshold = 60,
 	.voltage = 600,
 	.orient = QT602240_NORMAL
 };
