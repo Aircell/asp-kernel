@@ -42,7 +42,6 @@ static irqreturn_t cloudsurfer_wakeup_handler(int irq, void *_wkup_in)
 {
 	struct input_dev *wkup_in = _wkup_in;
 	struct cloudsurfer_wakeup_struct *wkup = input_get_drvdata(wkup_in);
-	printk("TARR - Wakeup dude!\n");
 	omap_dm_timer_write_status(wkup->timer, OMAP_TIMER_INT_OVERFLOW);
 	input_event(wkup_in,EV_MSC,1,0);
 	input_sync(wkup_in);
