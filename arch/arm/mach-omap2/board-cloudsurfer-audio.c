@@ -96,7 +96,7 @@ int twl4030_set_ext_ringer(int ringer)
        gpio_set_value(AIRCELL_MUTE, 1);
        if(headset) {
 	       gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
-	       gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
+	       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 0);
 	} else {
 	       gpio_set_value(AIRCELL_5VA_ENABLE, 1);
 	       if(ringer) {
