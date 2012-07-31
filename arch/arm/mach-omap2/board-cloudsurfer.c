@@ -699,7 +699,8 @@ static void omap3logic_qt602240_init(void)
 	omap_set_gpio_debounce_time(AIRCELL_TOUCH_INTERRUPT, 0xa);
 
 	/* 5V Digital is required for the touchscreen controller */
-	gpio_direction_output(AIRCELL_5VD_ENABLE, 1);
+	/* Now I am told no... */
+	//gpio_direction_output(AIRCELL_5VD_ENABLE, 1);
 
 	/* Take the touch screen out of reset */
 	gpio_direction_output(AIRCELL_TOUCH_RESET, 1);
