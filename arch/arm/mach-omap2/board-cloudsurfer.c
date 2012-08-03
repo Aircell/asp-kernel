@@ -224,9 +224,23 @@ static struct platform_device volume_buttons = {
     }
 };
 
+static void handle_gpio_change(unsigned int gpio, int state)  {
+	if(gpio==AIRCELL_HEADSET_DETECT) {
+		gpio_set_value(AIRCELL_MUTE, 1);
+		if(state==0) {
+			gpio_set_value(AIRCELL_5VA_ENABLE, 1);
+		} else {
+			gpio_set_value(AIRCELL_5VA_ENABLE, 0);
+		}
+		printk(KERN_INFO "Headset state set to %d\n", state);
+		gpio_set_value(AIRCELL_MUTE, 0);
+	}
+}
+
 static struct gpio_switch_platform_data headset_switch_data = {
 	.name = "h2w",
 	.gpio = AIRCELL_HEADSET_DETECT,
+	.notify = handle_gpio_change,
 };
 
 static struct platform_device headset_jack = {

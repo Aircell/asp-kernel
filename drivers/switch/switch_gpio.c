@@ -31,6 +31,7 @@ struct gpio_switch_data {
 	const char *name_off;
 	const char *state_on;
 	const char *state_off;
+	void (*notify)(unsigned int gpio, int state);
 	int irq;
 	struct work_struct work;
 };
@@ -43,6 +44,7 @@ static void gpio_switch_work(struct work_struct *work)
 
 	state = gpio_get_value(data->gpio);
 	switch_set_state(&data->sdev, state);
+	if(data->notify) data->notify(data->gpio, state);
 }
 
 static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
@@ -88,6 +90,7 @@ static int gpio_switch_probe(struct platform_device *pdev)
 	switch_data->name_off = pdata->name_off;
 	switch_data->state_on = pdata->state_on;
 	switch_data->state_off = pdata->state_off;
+	switch_data->notify = pdata->notify;
 	switch_data->sdev.print_state = switch_gpio_print_state;
 
     ret = switch_dev_register(&switch_data->sdev);

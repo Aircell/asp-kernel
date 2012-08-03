@@ -94,19 +94,13 @@ int twl4030_set_ext_ringer(int ringer)
        printk(KERN_INFO "%s Ringer set to %d (headset %s)\n", __func__, ringer, headset?"in":"out");
 
        gpio_set_value(AIRCELL_MUTE, 1);
-       if(headset) {
-	       gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
+       if(ringer) {
 	       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 0);
-	} else {
-	       gpio_set_value(AIRCELL_5VA_ENABLE, 1);
-	       if(ringer) {
-		       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 0);
-		       gpio_set_value(AIRCELL_RINGER_ENABLE, 1);
-	       } else {
-		       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 1);
-		       gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
-	       }
-	}
+	       gpio_set_value(AIRCELL_RINGER_ENABLE, 1);
+       } else {
+	       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 1);
+	       gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
+       }
        gpio_set_value(AIRCELL_MUTE, 0);
 	
        return 0;
