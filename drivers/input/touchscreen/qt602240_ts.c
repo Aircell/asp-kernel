@@ -229,6 +229,8 @@
 
 #define QT602240_MAX_FINGER		10
 
+#define DISPLAY_START_OFFSET	17
+
 /* Modified to support 19X11 touchscreen based on email from
  * Tu T. Phan at Touch Internaltional to AirCell on 24 Aug 2011
  */
@@ -310,25 +312,25 @@ struct key {
 };
 
 struct key keypad[] = {
-	{800, 900,0,153,1,0,KEY_BACK,'B'}, 		/* BACK key */
-	{800, 900,170,307,1,0,KEY_HOME,'H'},	/* HOME key */
-	{800, 900,323,479,1,0,KEY_MENU,'M'},	/* MENU key */
+	{852, 964,0,153,1,0,KEY_BACK,'B'}, 		/* BACK key */
+	{852, 964,170,307,1,0,KEY_HOME,'H'},	/* HOME key */
+	{852, 964,323,479,1,0,KEY_MENU,'M'},	/* MENU key */
 
-	{912, 964,0,153,1,0,KEY_1,'1'}, 		/* 1 key */
-	{912, 964,170,307,1,0,KEY_2,'2'},		/* 2 key */
-	{912, 964,323,479,1,0,KEY_3,'3'},		/* 3 key */
+	{977, 1032,0,153,1,0,KEY_1,'1'}, 		/* 1 key */
+	{977, 1032,170,307,1,0,KEY_2,'2'},		/* 2 key */
+	{977, 1032,323,479,1,0,KEY_3,'3'},		/* 3 key */
 
-	{976, 1029,0,153,1,0,KEY_4,'4'}, 		/* 4 key */
-	{976, 1029,170,307,1,0,KEY_5,'5'},		/* 5 key */
-	{976, 1029,323,479,1,0,KEY_6,'6'},		/* 6 key */
+	{1045, 1102,0,153,1,0,KEY_4,'4'}, 		/* 4 key */
+	{1045, 1102,170,307,1,0,KEY_5,'5'},		/* 5 key */
+	{1045, 1102,323,479,1,0,KEY_6,'6'},		/* 6 key */
 
-	{1041, 1097,0,153,1,0,KEY_7,'7'},		/* 7 key */
-	{1041, 1097,170,307,1,0,KEY_8,'8'},		/* 8 key */
-	{1041, 1097,323,479,1,0,KEY_9,'9'},		/* 9 key */
+	{1115, 1175,0,153,1,0,KEY_7,'7'},		/* 7 key */
+	{1115, 1175,170,307,1,0,KEY_8,'8'},		/* 8 key */
+	{1115, 1175,323,479,1,0,KEY_9,'9'},		/* 9 key */
 
-	{1109, 1169,0,153,1,0,KEY_NUMERIC_STAR,'*'},/* * key */
-	{1109, 1169,170,307,1,0,KEY_0,'0'},			/* 0 key */
-	{1109, 1169,323,479,1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
+	{1188, 1252,0,153,1,0,KEY_NUMERIC_STAR,'*'},/* * key */
+	{1188, 1252,170,307,1,0,KEY_0,'0'},			/* 0 key */
+	{1188, 1252,323,479,1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
 	{0,0,0,0,0,0,0,0},					/* End of keys */
 };
 
@@ -624,7 +626,6 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 	for (id = 0; id < QT602240_MAX_FINGER; id++) {
 		if (!finger[id].status)
 			continue;
-
 #ifdef TARR_DEBUG
 		printk("QT - [%d] x: %d y: %d %s\n",id,
 			finger[id].x,finger[id].y,
@@ -723,16 +724,23 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	/* Tarr - Because the touchscreen got "flipped" in the P3, need to
      * adjust x accordingly
 	 */
-	// TARR - for the moment (5/16/2012) leave it alone --
-    x = 1170 - x;
+    x = 1252 - x;
 	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
 	area = message->message[4];
 
+	//printk("touch at %dx%d\n",x,y);
+	//TARR - Touch screen starts before display
+	if ( x < DISPLAY_START_OFFSET )
+		return;
+
 	/* TARR - the keypad is at the "lower" portion of thte screen */
-	if ( x > 800 ) {
+	if ( x > 800+DISPLAY_START_OFFSET ) {
+		//printk("Key at %dx%d\n",x,y);
 		keypad_input(data,x,y,message->message[0]);
 		return;
 	}
+	//TARR - need to remove an offset 
+	x -= DISPLAY_START_OFFSET;
 	/* Topher - send keyup if a key is down when touchscreen is pressed */
 	if (key_pressed != NULL) {
 		if (status & QT602240_RELEASE) {
