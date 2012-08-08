@@ -553,6 +553,70 @@ static int micpath_event(struct snd_soc_dapm_widget *w,
 	}
 
 	twl4030_write(w->codec, TWL4030_REG_MICBIAS_CTL, micbias_ctl);
+	pr_debug("MICBIAS: %02x\n", micbias_ctl);
+
+	return 0;
+}
+
+static int micmixl_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	unsigned char  old, micbias;
+	unsigned char  micsw;
+	unsigned char  avadc;
+
+
+	micbias = twl4030_read_reg_cache(w->codec, TWL4030_REG_MICBIAS_CTL);
+	micsw = twl4030_read_reg_cache(w->codec, TWL4030_REG_ANAMICL);
+	avadc = twl4030_read_reg_cache(w->codec, TWL4030_REG_AVADC_CTL);
+
+	old = micbias;
+
+	micbias &= ~( (1<<0) | (1<<2));
+	micsw &= ~( (1<<4));
+	avadc &= ~( (1<<3));
+	if(event != SND_SOC_DAPM_POST_PMD) {
+		if(micsw & (1<<0)) { 
+			micbias |= (1<<0); micsw |= (1<<4); avadc |= (1<<3); 
+		}
+		if(micsw & (1<<1)) { 
+			micbias |= (1<<2); micsw |= (1<<4); avadc |= (1<<3); 
+		}
+	}
+	
+	twl4030_write(w->codec, TWL4030_REG_MICBIAS_CTL, micbias);
+	twl4030_write(w->codec, TWL4030_REG_ANAMICL, micsw);
+	twl4030_write(w->codec, TWL4030_REG_AVADC_CTL, avadc);
+	pr_debug("%2d MICBIAS: %02x->%02x Micsw %02x Avadc %02x\n", event, old, micbias, micsw, avadc);
+
+	return 0;
+}
+
+static int micmixr_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	unsigned char  old, micbias;
+	unsigned char  micsw;
+	unsigned char  avadc;
+
+	micbias = twl4030_read_reg_cache(w->codec, TWL4030_REG_MICBIAS_CTL);
+	micsw = twl4030_read_reg_cache(w->codec, TWL4030_REG_ANAMICR);
+	avadc = twl4030_read_reg_cache(w->codec, TWL4030_REG_AVADC_CTL);
+	old = micbias;
+
+	micbias &= ~( 1<<1);
+	micsw &= ~( (1<<4));
+	avadc &= ~( (1<<1));
+	if(event != SND_SOC_DAPM_POST_PMD) {
+		if(micsw & (1<<0)) { 
+			micbias |= (1<<1); micsw |= (1<<4); avadc |= (1<<1); 
+		}
+	}
+	
+	twl4030_write(w->codec, TWL4030_REG_MICBIAS_CTL, micbias);
+	twl4030_write(w->codec, TWL4030_REG_ANAMICR, micsw);
+	twl4030_write(w->codec, TWL4030_REG_AVADC_CTL, avadc);
+	pr_debug("%2d MICBIAS: %02x->%02x Micsw %02x Avadc %02x\n", event, old, micbias, micsw, avadc);
 
 	return 0;
 }
@@ -1341,14 +1405,19 @@ static const struct snd_soc_dapm_widget twl4030_dapm_widgets[] = {
 		SND_SOC_DAPM_POST_REG),
 
 	/* Analog input mixers for the capture amplifiers */
-	SND_SOC_DAPM_MIXER("Analog Left",
+	SND_SOC_DAPM_MIXER_E("Analog Left",
 		TWL4030_REG_ANAMICL, 4, 0,
 		&twl4030_dapm_analoglmic_controls[0],
-		ARRAY_SIZE(twl4030_dapm_analoglmic_controls)),
-	SND_SOC_DAPM_MIXER("Analog Right",
+		ARRAY_SIZE(twl4030_dapm_analoglmic_controls),
+		micmixl_event, SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_POST_PMD|
+		SND_SOC_DAPM_POST_REG),
+
+	SND_SOC_DAPM_MIXER_E("Analog Right",
 		TWL4030_REG_ANAMICR, 4, 0,
 		&twl4030_dapm_analogrmic_controls[0],
-		ARRAY_SIZE(twl4030_dapm_analogrmic_controls)),
+		ARRAY_SIZE(twl4030_dapm_analogrmic_controls),
+		micmixr_event, SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_POST_PMD|
+		SND_SOC_DAPM_POST_REG),
 
 	SND_SOC_DAPM_PGA("ADC Physical Left",
 		TWL4030_REG_AVADC_CTL, 3, 0, NULL, 0),
