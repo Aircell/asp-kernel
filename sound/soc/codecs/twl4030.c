@@ -531,6 +531,8 @@ static int micpath_event(struct snd_soc_dapm_widget *w,
 	struct soc_enum *e = (struct soc_enum *)w->kcontrols->private_value;
 	unsigned char adcmicsel, micbias_ctl;
 
+	pr_debug("Event %d Widget %s %s\n", event, w->name, w->sname);
+
 	adcmicsel = twl4030_read_reg_cache(w->codec, TWL4030_REG_ADCMICSEL);
 	micbias_ctl = twl4030_read_reg_cache(w->codec, TWL4030_REG_MICBIAS_CTL);
 	/* Prepare the bits for the given TX path:
@@ -1358,9 +1360,11 @@ static const struct snd_soc_dapm_widget twl4030_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("Digimic1 Enable",
 		TWL4030_REG_ADCMICSEL, 3, 0, NULL, 0),
 
+/*
 	SND_SOC_DAPM_MICBIAS("Mic Bias 1", TWL4030_REG_MICBIAS_CTL, 0, 0),
 	SND_SOC_DAPM_MICBIAS("Mic Bias 2", TWL4030_REG_MICBIAS_CTL, 1, 0),
 	SND_SOC_DAPM_MICBIAS("Headset Mic Bias", TWL4030_REG_MICBIAS_CTL, 2, 0),
+*/
 
 };
 

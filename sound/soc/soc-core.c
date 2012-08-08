@@ -551,6 +551,9 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 	}
 
 	mutex_unlock(&pcm_mutex);
+	pr_debug("PCM %s for %s\n", 
+		substream->name, 
+		substream->stream==SNDRV_PCM_STREAM_PLAYBACK?"Playback":"Capture");
 	return 0;
 }
 
@@ -573,6 +576,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 
 	mutex_lock(&pcm_mutex);
 
+	
 	if (machine->ops && machine->ops->prepare) {
 		ret = machine->ops->prepare(substream);
 		if (ret < 0) {
@@ -625,6 +629,10 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 
 out:
 	mutex_unlock(&pcm_mutex);
+	pr_debug("PCM %s for %s ret %d\n", 
+		substream->name, 
+		substream->stream==SNDRV_PCM_STREAM_PLAYBACK?"Playback":"Capture",
+		ret);
 	return ret;
 }
 
@@ -701,6 +709,10 @@ codec_err:
 		machine->ops->hw_free(substream);
 
 	mutex_unlock(&pcm_mutex);
+	pr_debug("PCM %s for %s ret %d\n", 
+		substream->name, 
+		substream->stream==SNDRV_PCM_STREAM_PLAYBACK?"Playback":"Capture",
+		ret);
 	return ret;
 }
 
@@ -1411,6 +1423,9 @@ int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
 	change = old != new;
 	if (change)
 		snd_soc_write(codec, reg, new);
+
+	pr_debug("Register %02X change from %02x to %02x\n", 
+		 reg, old, new);
 
 	return change;
 }

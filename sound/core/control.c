@@ -679,6 +679,7 @@ static int snd_ctl_elem_info(struct snd_ctl_file *ctl,
 		}
 	}
 	up_read(&card->controls_rwsem);
+	pr_debug("id %u type %u access %u count %u\n", info->id.numid, info->type, info->access, info->count);
 	return result;
 }
 
@@ -724,6 +725,7 @@ static int snd_ctl_elem_read(struct snd_card *card,
 			result = -EPERM;
 	}
 	up_read(&card->controls_rwsem);
+	pr_debug("id %u value %d result %d\n", control->id, control->value.integer.value[0], result);
 	return result;
 }
 
@@ -780,6 +782,7 @@ static int snd_ctl_elem_write(struct snd_card *card, struct snd_ctl_file *file,
 		}
 	}
 	up_read(&card->controls_rwsem);
+	pr_debug("id %u value %d result %d\n", control->id, control->value.integer.value[0], result);
 	return result;
 }
 
@@ -1160,6 +1163,9 @@ static long snd_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	card = ctl->card;
 	if (snd_BUG_ON(!card))
 		return -ENXIO;
+	
+	pr_debug("cmd %08X arg %08x\n", cmd, arg);
+
 	switch (cmd) {
 	case SNDRV_CTL_IOCTL_PVERSION:
 		return put_user(SNDRV_CTL_VERSION, ip) ? -EFAULT : 0;

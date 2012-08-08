@@ -773,8 +773,12 @@ static void dapm_seq_run_coalesced(struct snd_soc_codec *codec,
 	unsigned int mask = 0;
 	unsigned int cur_mask;
 
-	reg = list_first_entry(pending, struct snd_soc_dapm_widget,
-			       power_list)->reg;
+	w=list_first_entry(pending, struct snd_soc_dapm_widget,
+			       power_list);
+	reg = w->reg;
+
+	pr_debug("%s %x shift %d power %d invert %d\n", 
+			w->name, w->reg, w->shift, w->power, w->invert);
 
 	list_for_each_entry(w, pending, power_list) {
 		cur_mask = 1 << w->shift;
@@ -823,6 +827,8 @@ static void dapm_seq_run_coalesced(struct snd_soc_codec *codec,
 	if (reg >= 0) {
 		pop_dbg(codec->pop_time,
 			"pop test : Applying 0x%x/0x%x to %x in %dms\n",
+			value, mask, reg, codec->pop_time);
+		pr_debug("Applying 0x%x/0x%x to %x in %dms\n",
 			value, mask, reg, codec->pop_time);
 		pop_wait(codec->pop_time);
 		snd_soc_update_bits(codec, reg, mask, value);
@@ -888,6 +894,8 @@ static void dapm_seq_run(struct snd_soc_codec *codec, struct list_head *list,
 			cur_reg = SND_SOC_NOPM;
 		}
 
+		pr_debug("id %d active %d power %d name %s sname %s\n",
+			w->id, w->active, w->power, w->name, w->sname);
 		switch (w->id) {
 		case snd_soc_dapm_pre:
 			if (!w->event)
@@ -965,6 +973,10 @@ static int dapm_power_widgets(struct snd_soc_codec *codec, int event)
 	 * lists indicating if they should be powered up or down.
 	 */
 	list_for_each_entry(w, &codec->dapm_widgets, list) {
+		pr_debug("%-10.10s ID %02d Act %d Power %d Pcheck %d %s\n", 
+			w->sname, 
+			w->id, w->active, w->power, w->power_check?w->power_check(w):-1,
+			w->name );
 		switch (w->id) {
 		case snd_soc_dapm_pre:
 			dapm_seq_insert(w, &down_list, dapm_down_seq);
@@ -1025,6 +1037,8 @@ static int dapm_power_widgets(struct snd_soc_codec *codec, int event)
 	}
 
 	/* If we're changing to all on or all off then prepare */
+	pr_debug( "%s %d\n", "sys_power", sys_power);
+	pr_debug( "%s %d\n", "codec->bias_level", codec->bias_level);
 	if ((sys_power && codec->bias_level == SND_SOC_BIAS_STANDBY) ||
 	    (!sys_power && codec->bias_level == SND_SOC_BIAS_ON)) {
 		ret = snd_soc_dapm_set_bias_level(socdev,
@@ -1643,6 +1657,7 @@ int snd_soc_dapm_get_volsw(struct snd_kcontrol *kcontrol,
 	unsigned int invert = mc->invert;
 	unsigned int mask = (1 << fls(max)) - 1;
 
+
 	/* return the saved value if we are powered down */
 	if (widget->id == snd_soc_dapm_pga && !widget->power) {
 		ucontrol->value.integer.value[0] = widget->saved_value;
@@ -1662,6 +1677,7 @@ int snd_soc_dapm_get_volsw(struct snd_kcontrol *kcontrol,
 				max - ucontrol->value.integer.value[1];
 	}
 
+	pr_debug("%s %x %x\n", widget->name, mc->reg, ucontrol->value.integer.value[0]);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_get_volsw);
@@ -1704,6 +1720,7 @@ int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 		val |= val2 << rshift;
 	}
 
+	pr_debug("%s %x %x\n", widget->name, mc->reg, val);
 	mutex_lock(&widget->codec->mutex);
 	widget->value = val;
 
@@ -2116,12 +2133,13 @@ int snd_soc_dapm_stream_event(struct snd_soc_codec *codec,
 	if (stream == NULL)
 		return 0;
 
+
 	mutex_lock(&codec->mutex);
 	list_for_each_entry(w, &codec->dapm_widgets, list)
 	{
 		if (!w->sname)
 			continue;
-		pr_debug("widget %s\n %s stream %s event %d\n",
+		pr_debug("widget %s sname %s stream %s event %d\n",
 			 w->name, w->sname, stream, event);
 		if (strstr(w->sname, stream)) {
 			switch(event) {
