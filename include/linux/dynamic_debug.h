@@ -57,9 +57,9 @@ extern int ddebug_remove_module(char *mod_name);
 	{ KBUILD_MODNAME, __func__, __FILE__, fmt, DEBUG_HASH,	\
 		DEBUG_HASH2, __LINE__, _DPRINTK_FLAGS_DEFAULT };	\
 	if (__dynamic_dbg_enabled(descriptor))				\
-		printk(KERN_DEBUG pr_fmt(fmt),	##__VA_ARGS__);		\
+		printk(KERN_INFO "|%25.25s|%5d|" fmt,\
+		 __func__, __LINE__, ##__VA_ARGS__);		\
 	} while (0)
-
 
 #define dynamic_dev_dbg(dev, fmt, ...) do {				\
 	static struct _ddebug descriptor				\
