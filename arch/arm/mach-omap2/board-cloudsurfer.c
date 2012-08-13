@@ -82,6 +82,10 @@
 #include <linux/leds-pca9626.h>
 #include "cloudsurfer-gpio.h"
 
+void cloudsurfer_init_audio();
+void twl4030_unmute_delay(int delay);
+void twl4030_mute();
+
 extern void print_omap_clocks(void);
 
 #define QT_I2C_ADDR			 0x4b
@@ -226,14 +230,14 @@ static struct platform_device volume_buttons = {
 
 static void handle_gpio_change(unsigned int gpio, int state)  {
 	if(gpio==AIRCELL_HEADSET_DETECT) {
-		gpio_set_value(AIRCELL_MUTE, 1);
 		if(state==0) {
+			twl4030_mute();
+			twl4030_unmute_delay(150);
 			gpio_set_value(AIRCELL_5VA_ENABLE, 1);
 		} else {
 			gpio_set_value(AIRCELL_5VA_ENABLE, 0);
 		}
 		printk(KERN_INFO "Headset state set to %d\n", state);
-		gpio_set_value(AIRCELL_MUTE, 0);
 	}
 }
 
@@ -1065,6 +1069,7 @@ static void __init omap3logic_init(void)
 	}
 
 	omap3logic_init_audio_mux();
+	cloudsurfer_init_audio();
 
 	/* Must be here since on exit, omap2_init_devices(called later)
 	 * setups up SPI devices - can't add boardinfo afterwards */

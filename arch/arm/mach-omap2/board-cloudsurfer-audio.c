@@ -2,6 +2,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/timer.h>
+#include <linux/delay.h>
 #include <plat/mux.h>
 #include <plat/board.h>
 #include <plat/gpio.h>
@@ -11,6 +13,22 @@
 #include "cloudsurfer-gpio.h"
 
 static int omap3logic_extern_audio_mute = -EINVAL;
+
+void twl4030_mute(unsigned long data) {
+	gpio_set_value(AIRCELL_MUTE, 1);
+}
+EXPORT_SYMBOL(twl4030_mute);
+
+static void twl_do_unmute(unsigned long data) {
+	pr_debug("Unmuting from the timer function\n");
+	gpio_set_value(AIRCELL_MUTE, 0);
+}
+DEFINE_TIMER(mute_timer, twl_do_unmute, 0, 0);
+
+void twl4030_unmute_delay(unsigned int delay) {
+	mod_timer(&mute_timer, jiffies + delay);
+}
+EXPORT_SYMBOL(twl4030_unmute_delay);
 
 static void setup_mute_io_mux(void)
 {
@@ -91,21 +109,29 @@ int twl4030_set_ext_ringer(int ringer)
        int headset = 0;
        headset = gpio_get_value(AIRCELL_HEADSET_DETECT);
 
-       printk(KERN_INFO "%s Ringer set to %d (headset %s)\n", __func__, ringer, headset?"in":"out");
+       pr_debug("%s Ringer set to %d (headset %s)\n", __func__, ringer, headset?"in":"out");
 
-       gpio_set_value(AIRCELL_MUTE, 1);
        if(ringer) {
 	       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 0);
+		udelay(50);
 	       gpio_set_value(AIRCELL_RINGER_ENABLE, 1);
        } else {
-	       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 1);
 	       gpio_set_value(AIRCELL_RINGER_ENABLE, 0);
+		udelay(50);
+	       gpio_set_value(AIRCELL_EARPIECE_ENABLE, 1);
        }
-       gpio_set_value(AIRCELL_MUTE, 0);
-	
        return 0;
 }
 EXPORT_SYMBOL(twl4030_set_ext_ringer);
+
+
+
+void cloudsurfer_init_audio(void) {
+	init_timer(&mute_timer);
+	add_timer(&mute_timer);
+}
+
+
 
 
 
