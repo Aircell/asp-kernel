@@ -93,10 +93,7 @@ static int pca9626_present(struct i2c_client *client)
 	if ( pca9626_read(client,PCA9626_MODE1,&value) < 0 ) {
 		return 0;
 	}
-	if ( value != MODE1_RESET_VALUE )
-		return 0;
-	else
-		return 1;
+	return 1;
 }
 
 static void pca9626_set_brightness(struct led_classdev *led_cdev, 
