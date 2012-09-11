@@ -676,6 +676,9 @@ static void report_key(struct qt602240_data *data, struct key *k, u8 status)
 			key_pressed = NULL;
 		}
 	}
+	if (k == NULL) {
+		return;
+	}
 	if ( status & QT602240_PRESS && k->status == 0 ) {
 		/* A (previously up) key has been pressed */
 		k->status = 1;
@@ -705,6 +708,7 @@ static void keypad_input(struct qt602240_data *data, int x, int y, u8 status)
 		index++;
 		k++;
 	}
+	report_key(data,NULL,status);
 	return;
 }
 
@@ -718,6 +722,12 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	int y;
 	int area;
 
+	static enum ACTIVE_DIVISION {
+		UNTOUCHED = 0,
+		ON_TOUCHSCREEN,
+		ON_KEYPAD
+	} active_division = UNTOUCHED;
+
 	/* Tarr - x is reported in 12 bits, y is reported in 10 due to 
        scaling size difference */
 	x = (message->message[1] << 4) | ((message->message[3] & ~0x0f) >> 4);
@@ -730,27 +740,33 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 
 	//printk("touch at %dx%d\n",x,y);
 	//TARR - Touch screen starts before display
-	if ( x < DISPLAY_START_OFFSET )
-		return;
 
-	/* TARR - the keypad is at the "lower" portion of thte screen */
-	if ( x > 800+DISPLAY_START_OFFSET ) {
-		//printk("Key at %dx%d\n",x,y);
+	if (status & QT602240_PRESS || active_division == UNTOUCHED) {
+		if (x > 800+DISPLAY_START_OFFSET) {
+			/* TARR - the keypad is at the "lower" portion of thte screen */
+			active_division = ON_KEYPAD;
+		} else {
+			active_division = ON_TOUCHSCREEN;
+		}
+	}
+
+	if (active_division == ON_KEYPAD) {
 		keypad_input(data,x,y,message->message[0]);
+		if (status & QT602240_RELEASE) {
+			active_division = UNTOUCHED;
+		}
 		return;
 	}
-	//TARR - need to remove an offset 
-	x -= DISPLAY_START_OFFSET;
-	/* Topher - send keyup if a key is down when touchscreen is pressed */
-	if (key_pressed != NULL) {
-		if (status & QT602240_RELEASE) {
-			printk("KEY - %c released\n",key_pressed->character);
-			input_report_key(input_dev,key_pressed->code,0);
-			//input_report_rel(input_dev,key_pressed->code,1);
-			input_sync(input_dev);
-			key_pressed->status = 0;
-			key_pressed = NULL;
-		}
+
+	if (status & QT602240_RELEASE) {
+		active_division = UNTOUCHED;
+	}
+
+	//TARR - need to remove an offset
+	if (x > DISPLAY_START_OFFSET) {
+		x -= DISPLAY_START_OFFSET;
+	} else {
+		x = 0;
 	}
 
 #ifdef TARR_DEBUG
@@ -766,6 +782,12 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 			//printk("QT - [%d] released\n", id);
 			finger[id].status = QT602240_RELEASE;
 			qt602240_input_report(data, id);
+		} else {
+			printk("QT - input [%d] %2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+				   id,
+				   message->message[0], message->message[1],
+				   message->message[2], message->message[3],
+				   message->message[4]);
 		}
 		return;
 	}
