@@ -214,6 +214,7 @@
 #define QT602240_BOOT_STATUS_MASK	0x3f
 
 /* Touch status */
+#define QT602240_UNGRIP			(1 << 0)
 #define QT602240_SUPPRESS		(1 << 1)
 #define QT602240_AMP			(1 << 2)
 #define QT602240_VECTOR			(1 << 3)
@@ -334,11 +335,19 @@ struct key keypad[] = {
 	{0,0,0,0,0,0,0,0},					/* End of keys */
 };
 
+enum ACTIVE_DIVISION {
+	UNTOUCHED = 0,
+	ON_TOUCHSCREEN,
+	ON_KEYPAD
+};
+
 struct qt602240_finger {
 	int status;
 	int x;
 	int y;
 	int area;
+	struct key *k;
+	enum ACTIVE_DIVISION where;
 };
 
 /* Each client has this additional data */
@@ -624,7 +633,7 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 	int id;
 
 	for (id = 0; id < QT602240_MAX_FINGER; id++) {
-		if (!finger[id].status)
+		if (finger[id].where != ON_TOUCHSCREEN)
 			continue;
 #ifdef TARR_DEBUG
 		printk("QT - [%d] x: %d y: %d %s\n",id,
@@ -640,10 +649,12 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 				finger[id].y);
 		input_mt_sync(input_dev);
 
-		if (finger[id].status == QT602240_RELEASE)
+		if (finger[id].status == QT602240_RELEASE) {
 			finger[id].status = 0;
-		else
+			finger[id].where = UNTOUCHED;
+		} else {
 			finger_num++;
+		}
 	}
 
 	input_report_key(input_dev, BTN_TOUCH, finger_num > 0);
@@ -656,77 +667,88 @@ static void qt602240_input_report(struct qt602240_data *data, int single_id)
 	input_sync(input_dev);
 }
 
-/* static that holds the index of current key that is pressed */
-static struct key *key_pressed = NULL;
-
-static void report_key(struct qt602240_data *data, struct key *k, u8 status)
-{
-	struct input_dev *input_dev = data->input_dev;
-
-	/* Only presses and releases are reported */
-	/* Has the key been pressed already? */
-	if ( key_pressed != NULL ) {
-		/* A key is currently down. We may want to release it. */
-		/* One key at a time, please!*/
-		if ( status & QT602240_RELEASE || k != key_pressed ) {
-			printk("KEY - %c released\n",key_pressed->character);
-			input_report_key(input_dev,key_pressed->code,0);
-			input_sync(input_dev);
-			key_pressed->status = 0;
-			key_pressed = NULL;
-		}
-	}
-	if (k == NULL) {
-		return;
-	}
-	if ( status & QT602240_PRESS && k->status == 0 ) {
-		/* A (previously up) key has been pressed */
-		k->status = 1;
-		key_pressed = k;
-		printk("KEY - %c pressed\n",k->character);
-		input_report_key(input_dev,key_pressed->code,1);
-		input_sync(input_dev);
-	}
-	return;
-}
-
-static void keypad_input(struct qt602240_data *data, int x, int y, u8 status)
+/*
+ * keypad_input looks up the key by raw x and y values, and calls report_key
+ */
+static struct key* find_key_on_keypad(int rawx, int rawy)
 {
 	struct key *k = &keypad[0];
 	int index = 0;
 
 	/* Walk through the keypad definition table to find the key */	
 	while ( k->start_x != 0 ) {
-		if ( k->start_x <= x && k->end_x >= x &&
-				 k->start_y <= y && k->end_y >= y ) {
-			/* Is it an active key? */
+		if ( k->start_x <= rawx && k->end_x >= rawx &&
+				 k->start_y <= rawy && k->end_y >= rawy ) {
+			// Is it an active key?
 			if ( k->valid ) {
-				report_key(data,k,status);
+				return k; // Yep
 			}
-			return;
+			return NULL; // Nope
 		}
 		index++;
 		k++;
 	}
-	report_key(data,NULL,status);
-	return;
+	return NULL;
+}
+
+static void report_key(struct qt602240_data *data,
+					   struct qt602240_finger *finger)
+{
+	struct input_dev *input_dev = data->input_dev;
+
+	if (finger->status == QT602240_PRESS) {
+		if (finger->k != NULL) {
+			// Should not happen -- press not preceded by release
+			input_report_key(input_dev, finger->k->code, 0);
+			input_sync(input_dev);
+			finger->k = NULL;
+		}
+		finger->k = find_key_on_keypad(finger->x, finger->y);
+		if (finger->k != NULL) {
+			input_report_key(input_dev, finger->k->code, 1);
+			input_sync(input_dev);
+			printk("KEY - %c pressed\n",finger->k->character);
+		}
+
+	} else if (finger->status == QT602240_MOVE) {
+		// If a key is held down, report key up if we move outside the key's box
+		if (finger->k != NULL) {
+			struct key *newkey = find_key_on_keypad(finger->x, finger->y);
+			if (newkey != finger->k) {
+				input_report_key(input_dev, finger->k->code, 0);
+				input_sync(input_dev);
+				finger->k = NULL;
+			}
+		}
+
+	} else if (finger->status == QT602240_RELEASE) {
+		if (finger->k != NULL) {
+			input_report_key(input_dev, finger->k->code, 0);
+			input_sync(input_dev);
+		}
+		finger->k = NULL;
+		finger->where = UNTOUCHED;
+
+	} // No other possibilities for finger->status
 }
 
 static void qt602240_input_touchevent(struct qt602240_data *data,
 				      struct qt602240_message *message, int id)
 {
-	struct qt602240_finger *finger = data->finger;
-	struct input_dev *input_dev = data->input_dev;
+	struct qt602240_finger *finger = data->finger + id;
+	//struct input_dev *input_dev = data->input_dev;
 	u8 status = message->message[0];
 	int x;
 	int y;
 	int area;
 
-	static enum ACTIVE_DIVISION {
-		UNTOUCHED = 0,
-		ON_TOUCHSCREEN,
-		ON_KEYPAD
-	} active_division = UNTOUCHED;
+#ifdef TARR_DEBUG
+	printk("QT - input [%d] %2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+			id,
+			message->message[0], message->message[1],
+			message->message[2], message->message[3],
+			message->message[4]);
+#endif
 
 	/* Tarr - x is reported in 12 bits, y is reported in 10 due to 
        scaling size difference */
@@ -741,78 +763,59 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	//printk("touch at %dx%d\n",x,y);
 	//TARR - Touch screen starts before display
 
-	if (status & QT602240_PRESS || active_division == UNTOUCHED) {
-		if (x > 800+DISPLAY_START_OFFSET) {
-			/* TARR - the keypad is at the "lower" portion of thte screen */
-			active_division = ON_KEYPAD;
-		} else {
-			active_division = ON_TOUCHSCREEN;
-		}
-	}
+	// Manage fingers data, where each finger is tracked separately
 
-	if (active_division == ON_KEYPAD) {
-		keypad_input(data,x,y,message->message[0]);
-		if (status & QT602240_RELEASE) {
-			active_division = UNTOUCHED;
-		}
-		return;
-	}
-
-	if (status & QT602240_RELEASE) {
-		active_division = UNTOUCHED;
-	}
-
-	//TARR - need to remove an offset
-	if (x > DISPLAY_START_OFFSET) {
-		x -= DISPLAY_START_OFFSET;
+	// Simplify message status
+	if (status & (QT602240_RELEASE | QT602240_SUPPRESS)) {
+		finger->status = QT602240_RELEASE;
+	} else if (status & (QT602240_UNGRIP | QT602240_PRESS)) {
+		finger->status = QT602240_PRESS;
+	} else if (status & QT602240_MOVE) {
+		finger->status = QT602240_MOVE;
 	} else {
-		x = 0;
+		// We don't care
+		return;
 	}
 
-#ifdef TARR_DEBUG
-	printk("QT - input [%d] %2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
-			id,
-			message->message[0], message->message[1],
-			message->message[2], message->message[3],
-			message->message[4]);
-#endif
-	/* Check the touch is present on the screen */
-	if (!(status & QT602240_DETECT)) {
-		if (status & QT602240_RELEASE) {
-			//printk("QT - [%d] released\n", id);
-			finger[id].status = QT602240_RELEASE;
-			qt602240_input_report(data, id);
+	//printk("Finger %d status %x where %d key %p\n", id, status, finger->where, finger->k);
+
+	if (finger->where == UNTOUCHED) {
+		// first report on this finger since up -- call it keypad or touchscreen
+		// If a finger starts in one area, it keeps reporting there until up.
+		if (x > 800+DISPLAY_START_OFFSET) {
+			/* TARR - the keypad is at the "lower" portion of the screen */
+			finger->where = ON_KEYPAD;
+			//printk("qt602240 - finger %d on keypad\n", id);
 		} else {
-			printk("QT - input [%d] %2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
-				   id,
-				   message->message[0], message->message[1],
-				   message->message[2], message->message[3],
-				   message->message[4]);
+			finger->where = ON_TOUCHSCREEN;
+			//printk("qt602240 - finger %d on touchscreen\n", id);
 		}
-		return;
 	}
 
-	/* Check only AMP detection */
-	if (!(status & (QT602240_PRESS | QT602240_MOVE)))
-		return;
+	if (finger->where == ON_KEYPAD) {
+		// Store raw X and Y values
+		finger->x = x;
+		finger->y = y;
+		report_key(data, finger);
+	} else {
+		// Must be ON_TOUCHSCREEN
+		
+		//TARR - need to remove an offset
+		if (x > DISPLAY_START_OFFSET) {
+			x -= DISPLAY_START_OFFSET;
+		} else {
+			x = 0;
+		}
 
-#ifdef TARR
-	printk("QT - input to report [%d] %s x: %d, y: %d, area: %d\n", id,
-		status & QT602240_MOVE ? "moved" : "pressed",
-		x, y, area);
-#endif
+		/* TARR - P1 wierdness due to display rotated 180 */
+		finger->x = y;
+		//finger->x = 480-y;
+		finger->y = x;
+		//finger->y = 800-x;
+		finger->area = area;
 
-	finger[id].status = status & QT602240_MOVE ?
-				QT602240_MOVE : QT602240_PRESS;
-
-	/* TARR - P1 wierdness due to display rotated 180 */
-	finger[id].x = y;
-	//finger[id].x = 480-y;
-	finger[id].y = x;
-	//finger[id].y = 800-x;
-	finger[id].area = area;
-
-	qt602240_input_report(data, id);
+		qt602240_input_report(data, id);
+	}
 }
 
 static irqreturn_t qt602240_interrupt(int irq, void *dev_id)
@@ -1368,6 +1371,12 @@ static void qt602240_start(struct qt602240_data *data)
 {
 	int i;
 	struct qt602240_message status;
+
+	// Initialize parts of finger array
+	for (i = 0; i < QT602240_MAX_FINGER; i++) {
+		data->finger[i].where = UNTOUCHED;
+		data->finger[i].k = NULL;
+	}
 
 	//printk("QT - Touchscreen START\n");
 
