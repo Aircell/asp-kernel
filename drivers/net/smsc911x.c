@@ -814,6 +814,10 @@ static int smsc911x_mii_probe(struct net_device *dev)
 	/* mask with MAC supported features */
 	phydev->supported &= (PHY_BASIC_FEATURES | SUPPORTED_Pause |
 			      SUPPORTED_Asym_Pause);
+
+	/* JFK: Turn off 100baseT for cloudsurfer */
+	phydev->supported &= ~(SUPPORTED_100baseT_Full|SUPPORTED_100baseT_Half);
+
 	phydev->advertising = phydev->supported;
 
 	pdata->phy_dev = phydev;
