@@ -59,8 +59,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x0e, /* REG_AVADC_CTL		(0x7)TARR ADCL_EN, AVADC_CLK_PRIORITY, ADCR_EN*/
 	0x00, /* REG_ADCMICSEL		(0x8)	*/
 	0x00, /* REG_DIGMIXING		(0x9)	*/
-	0x06, /* REG_ATXL1PGA		(0xA)	*/
-	0x06, /* REG_ATXR1PGA		(0xB)	*/
+	0x18, /* REG_ATXL1PGA		(0xA)	*/
+	0x18, /* REG_ATXR1PGA		(0xB)	*/
 	0x00, /* REG_AVTXL2PGA		(0xC)	*/
 	0x00, /* REG_AVTXR2PGA		(0xD)	*/
 	0x01, /* REG_AUDIO_IF		(0xE)	*/
