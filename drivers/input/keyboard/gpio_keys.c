@@ -46,6 +46,9 @@ static void gpio_keys_report_event(struct gpio_button_data *bdata)
 
 	input_event(input, type, button->code, !!state);
 	input_sync(input);
+
+	if(button->callback) 
+		button->callback(button->code, !!state, input);
 }
 
 static void gpio_keys_work_func(struct work_struct *work)
@@ -53,7 +56,9 @@ static void gpio_keys_work_func(struct work_struct *work)
 	struct gpio_button_data *bdata =
 		container_of(work, struct gpio_button_data, work);
 
+
 	gpio_keys_report_event(bdata);
+
 }
 
 static void gpio_keys_timer(unsigned long _data)
@@ -75,6 +80,7 @@ static irqreturn_t gpio_keys_isr(int irq, void *dev_id)
 			jiffies + msecs_to_jiffies(button->debounce_interval));
 	else
 		schedule_work(&bdata->work);
+
 
 	return IRQ_HANDLED;
 }

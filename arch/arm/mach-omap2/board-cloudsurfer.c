@@ -195,6 +195,62 @@ static struct platform_device cloudsurfer_charger_device = {
 /*
  * GPIO Buttons
  */
+
+extern void kernel_restart(char *);
+static void cs_suicide_watch(unsigned long data);
+DEFINE_TIMER(cs_volume_poweroff_timer, cs_suicide_watch, 0, 0);
+static void cs_suicide_watch(unsigned long data) {
+	static int countdown;
+	static struct input_dev *dev;
+	printk(KERN_INFO "%s %d\n", __func__, countdown);
+
+	if(data) { 
+		dev = (struct input_dev *)data; 
+		countdown = 5;
+		return;
+	}	
+	switch(countdown) {
+	case 5:
+		printk(KERN_INFO "Sending powerdown key\n");
+		input_event(dev, EV_KEY, KEY_POWER, 1);
+		input_sync(dev);
+		break;
+	case 4:
+		input_event(dev, EV_KEY, KEY_POWER, 0);
+		input_sync(dev);
+		break;
+	
+	case 0:
+		printk(KERN_INFO "Powering off phone\n");
+		panic("Forced reset at user request");
+		break;
+	}
+	
+	countdown--;
+		
+	cs_volume_poweroff_timer.expires = jiffies + 100;
+	add_timer(&cs_volume_poweroff_timer);
+		
+}
+
+
+static void cs_poweroff_setup(void) {
+	init_timer(&cs_volume_poweroff_timer);
+}
+
+
+static void cs_volume_poweroff(int code, int state, void *data) {
+
+	struct input_dev *input = data;
+	if(state==1) {
+		cs_volume_poweroff_timer.expires = jiffies + 500;
+		cs_suicide_watch((unsigned long)data);
+		add_timer(&cs_volume_poweroff_timer);
+	} else {
+		del_timer(&cs_volume_poweroff_timer);
+	}	
+}
+
 static struct gpio_keys_button cs_volume_buttons[] = {
     {
         .gpio       = AIRCELL_VOLUME_UP_DETECT,
@@ -203,6 +259,7 @@ static struct gpio_keys_button cs_volume_buttons[] = {
         .type       =  EV_KEY,
         .active_low = 1,
         .wakeup     = 1,
+	.callback   = cs_volume_poweroff,
     },
     {
         .gpio       = AIRCELL_VOLUME_DOWN_DETECT,
@@ -1038,6 +1095,8 @@ static void __init omap3logic_init(void)
 	omap3logic_qt602240_init();
 
 	omap3logic_i2c_init();
+
+	cs_poweroff_setup();
 
 	platform_add_devices(cloudsurfer_devices, ARRAY_SIZE(cloudsurfer_devices));
 
