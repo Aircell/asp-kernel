@@ -206,23 +206,34 @@ static void cs_suicide_watch(unsigned long data) {
 
 	if(data) { 
 		dev = (struct input_dev *)data; 
-		countdown = 5;
+		countdown = 12;
 		return;
 	}	
 	switch(countdown) {
-	case 5:
+	case 12:
 		printk(KERN_INFO "Sending powerdown key\n");
 		input_event(dev, EV_KEY, KEY_POWER, 1);
 		input_sync(dev);
 		break;
-	case 4:
+	case 11:
 		input_event(dev, EV_KEY, KEY_POWER, 0);
 		input_sync(dev);
 		break;
 	
+	case 1:
+		if(gpio_get_value(AIRCELL_BATTERY_POWERED)){
+			printk(KERN_INFO "Powering off wifi phone\n");
+			gpio_set_value(AIRCELL_BATTERY_CUT_ENABLE, 1);
+			
+		} else {
+
+			printk(KERN_INFO "Power cycling corded phone\n");
+			gpio_set_value(AIRCELL_SOFTWARE_RESET, 0);
+		}
+		break;
 	case 0:
-		printk(KERN_INFO "Powering off phone\n");
 		panic("Forced reset at user request");
+	default:
 		break;
 	}
 	
@@ -243,7 +254,7 @@ static void cs_volume_poweroff(int code, int state, void *data) {
 
 	struct input_dev *input = data;
 	if(state==1) {
-		cs_volume_poweroff_timer.expires = jiffies + 500;
+		cs_volume_poweroff_timer.expires = jiffies + 800;
 		cs_suicide_watch((unsigned long)data);
 		add_timer(&cs_volume_poweroff_timer);
 	} else {
