@@ -19,6 +19,7 @@
 #define AIRCELL_TOUCH_INTERRUPT			11
 #define AIRCELL_BACKLIGHT_ENABLE		164
 #define AIRCELL_MUTE					57
+#define AIRCELL_PMIC_HEADSET			7
 
 extern unsigned int pin_get_gpio_input(unsigned int pin);
 extern unsigned int pin_set_gpio_dataout(unsigned int pin, unsigned int set);
