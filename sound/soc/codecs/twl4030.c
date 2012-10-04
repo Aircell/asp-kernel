@@ -76,8 +76,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_ARX2VTXPGA		(0x18)	*/
 	0x00, /* REG_ARXL1_APGA_CTL	(0x19)	*/
 	0x00, /* REG_ARXR1_APGA_CTL	(0x1A)	*/
-	0x33, /* REG_ARXL2_APGA_CTL	(0x1B)	*/
-	0x33, /* REG_ARXR2_APGA_CTL	(0x1C)	*/
+	0x73, /* REG_ARXL2_APGA_CTL	(0x1B)	 Keep very low until dial is ready*/
+	0x73, /* REG_ARXR2_APGA_CTL	(0x1C)	 Keep very low until dial is ready*/
 	0x00, /* REG_ATX2ARXPGA		(0x1D)	*/
 	0x00, /* REG_BT_IF		(0x1E)	*/
 	0x00, /* REG_BTPGA		(0x1F)	*/
@@ -117,7 +117,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
 	0x30, /* REG_RX_PATH_SEL	(0x43)	JFK - Mono output*/
-	0x03, /* REG_VDL_APGA_CTL	(0x44)	*/
+	0x3B, /* REG_VDL_APGA_CTL	(0x44)	JFK - Can trip breakers if too high*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
 	0x00, /* REG_VIBRA_PWM_SET	(0x47)	*/
