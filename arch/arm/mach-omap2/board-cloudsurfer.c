@@ -200,47 +200,61 @@ extern void kernel_restart(char *);
 static void cs_suicide_watch(unsigned long data);
 DEFINE_TIMER(cs_volume_poweroff_timer, cs_suicide_watch, 0, 0);
 static void cs_suicide_watch(unsigned long data) {
-	static int countdown;
+	static int countdown = -1;
 	static struct input_dev *dev;
+	static DEFINE_MUTEX(cs_suicide_mutex);
+
 	printk(KERN_INFO "%s %d\n", __func__, countdown);
 
-	if(data) { 
+	/* Serialize access to the timer */
+	mutex_lock(&cs_suicide_mutex);
+
+
+	if(data == ~0L ) { 
+		if(countdown>-1) {
+			del_timer(&cs_volume_poweroff_timer);
+			countdown = -1;
+		}
+	} else if(data) { 
 		dev = (struct input_dev *)data; 
 		countdown = 12;
-		return;
-	}	
-	switch(countdown) {
-	case 12:
-		printk(KERN_INFO "Sending powerdown key\n");
-		input_event(dev, EV_KEY, KEY_POWER, 1);
-		input_sync(dev);
-		break;
-	case 11:
-		input_event(dev, EV_KEY, KEY_POWER, 0);
-		input_sync(dev);
-		break;
-	
-	case 1:
-		if(gpio_get_value(AIRCELL_BATTERY_POWERED)){
-			printk(KERN_INFO "Powering off wifi phone\n");
-			gpio_set_value(AIRCELL_BATTERY_CUT_ENABLE, 1);
-			
-		} else {
-
-			printk(KERN_INFO "Power cycling corded phone\n");
-			gpio_set_value(AIRCELL_SOFTWARE_RESET, 0);
-		}
-		break;
-	case 0:
-		panic("Forced reset at user request");
-	default:
-		break;
-	}
-	
-	countdown--;
+		cs_volume_poweroff_timer.expires = jiffies + 800;
+		add_timer(&cs_volume_poweroff_timer);
+	} else {
+		switch(countdown) {
+		case 12:
+			printk(KERN_INFO "Sending powerdown key\n");
+			input_event(dev, EV_KEY, KEY_POWER, 1);
+			input_sync(dev);
+			break;
+		case 11:
+			input_event(dev, EV_KEY, KEY_POWER, 0);
+			input_sync(dev);
+			break;
 		
-	cs_volume_poweroff_timer.expires = jiffies + 100;
-	add_timer(&cs_volume_poweroff_timer);
+		case 1:
+			if(gpio_get_value(AIRCELL_BATTERY_POWERED)){
+				printk(KERN_INFO "Powering off wifi phone\n");
+				gpio_set_value(AIRCELL_BATTERY_CUT_ENABLE, 1);
+				
+			} else {
+
+				printk(KERN_INFO "Power cycling corded phone\n");
+				gpio_set_value(AIRCELL_SOFTWARE_RESET, 0);
+			}
+			break;
+		case 0:
+			panic("Forced reset at user request");
+		default:
+			break;
+		}
+		
+		countdown--;
+			
+		cs_volume_poweroff_timer.expires = jiffies + 100;
+		add_timer(&cs_volume_poweroff_timer);
+	}
+	mutex_unlock(&cs_suicide_mutex);
 		
 }
 
@@ -252,13 +266,10 @@ static void cs_poweroff_setup(void) {
 
 static void cs_volume_poweroff(int code, int state, void *data) {
 
-	struct input_dev *input = data;
 	if(state==1) {
-		cs_volume_poweroff_timer.expires = jiffies + 800;
 		cs_suicide_watch((unsigned long)data);
-		add_timer(&cs_volume_poweroff_timer);
 	} else {
-		del_timer(&cs_volume_poweroff_timer);
+		cs_suicide_watch((unsigned long)~0L);
 	}	
 }
 
@@ -1106,13 +1117,14 @@ static void __init omap3logic_init(void)
 	
 	fix_pbias_voltage();
 
+	cs_poweroff_setup();
+
 	cloudsurfer_gpio_init();
 
 	omap3logic_qt602240_init();
 
 	omap3logic_i2c_init();
 
-	cs_poweroff_setup();
 
 	platform_add_devices(cloudsurfer_devices, ARRAY_SIZE(cloudsurfer_devices));
 
