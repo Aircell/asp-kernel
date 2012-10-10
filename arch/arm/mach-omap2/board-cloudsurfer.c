@@ -197,82 +197,8 @@ static struct platform_device cloudsurfer_charger_device = {
  */
 
 extern void kernel_restart(char *);
-static void cs_suicide_watch(unsigned long data);
-DEFINE_TIMER(cs_volume_poweroff_timer, cs_suicide_watch, 0, 0);
-static void cs_suicide_watch(unsigned long data) {
-	static int countdown = -1;
-	static struct input_dev *dev;
-	static DEFINE_MUTEX(cs_suicide_mutex);
-
-	printk(KERN_INFO "%s %d\n", __func__, countdown);
-
-	/* Serialize access to the timer */
-	mutex_lock(&cs_suicide_mutex);
-
-
-	if(data == ~0L ) { 
-		if(countdown>-1) {
-			del_timer(&cs_volume_poweroff_timer);
-			countdown = -1;
-		}
-	} else if(data) { 
-		dev = (struct input_dev *)data; 
-		countdown = 12;
-		cs_volume_poweroff_timer.expires = jiffies + 800;
-		add_timer(&cs_volume_poweroff_timer);
-	} else {
-		switch(countdown) {
-		case 12:
-			printk(KERN_INFO "Sending powerdown key\n");
-			input_event(dev, EV_KEY, KEY_POWER, 1);
-			input_sync(dev);
-			break;
-		case 11:
-			input_event(dev, EV_KEY, KEY_POWER, 0);
-			input_sync(dev);
-			break;
-		
-		case 1:
-			if(gpio_get_value(AIRCELL_BATTERY_POWERED)){
-				printk(KERN_INFO "Powering off wifi phone\n");
-				gpio_set_value(AIRCELL_BATTERY_CUT_ENABLE, 1);
-				
-			} else {
-
-				printk(KERN_INFO "Power cycling corded phone\n");
-				gpio_set_value(AIRCELL_SOFTWARE_RESET, 0);
-			}
-			break;
-		case 0:
-			panic("Forced reset at user request");
-		default:
-			break;
-		}
-		
-		countdown--;
-			
-		cs_volume_poweroff_timer.expires = jiffies + 100;
-		add_timer(&cs_volume_poweroff_timer);
-	}
-	mutex_unlock(&cs_suicide_mutex);
-		
-}
-
-
-static void cs_poweroff_setup(void) {
-	init_timer(&cs_volume_poweroff_timer);
-}
-
-
-static void cs_volume_poweroff(int code, int state, void *data) {
-
-	if(state==1) {
-		cs_suicide_watch((unsigned long)data);
-	} else {
-		cs_suicide_watch((unsigned long)~0L);
-	}	
-}
-
+extern void cs_volume_poweroff(int code, int state, void *data);
+extern void cs_poweroff_setup();
 static struct gpio_keys_button cs_volume_buttons[] = {
     {
         .gpio       = AIRCELL_VOLUME_UP_DETECT,
