@@ -28,63 +28,6 @@
 
 #include "cloudsurfer-gpio.h"
 #include <plat/board.h>
-/*
-#include <linux/init.h>
-#include <linux/delay.h>
-#include <linux/err.h>
-#include <linux/clk.h>
-#include <linux/gpio_keys.h>
-#include <linux/switch.h>
-#include <linux/input/matrix_keypad.h>
-#include <linux/leds.h>
-
-#include <linux/spi/spi.h>
-#include <linux/spi/eeprom.h>
-
-#include <linux/i2c/qt602240_ts.h>
-#include <linux/i2c/twl.h>
-#include <linux/usb/otg.h>
-#include <linux/smsc911x.h>
-
-#include <linux/regulator/machine.h>
-#include <linux/usb/android_composite.h>
-
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
-#include <linux/mtd/partitions.h>
-#include <linux/mtd/physmap.h>
-
-#include <linux/power/cloudsurfer-charger.h>
-
-#include <mach/hardware.h>
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
-#include <asm/mach/map.h>
-
-#include <plat/usb.h>
-#include <plat/common.h>
-#include <plat/mcspi.h>
-#include <plat/clock.h>
-#include <plat/omap-pm.h>
-#include <plat/gpmc.h>
-#include <plat/nand.h>
-#include <plat/control.h>
-#include <plat/display.h>
-#include <plat/board-omap3logic.h>
-#include <plat/dm3730logic-productid.h>
-#include <plat/omap3logic-cf.h>
-#include <plat/wifi_tiwlan.h>
-#include <plat/dmtimer.h>
-
-#include "mux.h"
-#include "mmc-twl4030.h"
-#include "pm.h"
-#include "omap3-opp.h"
-#include "board-cloudsurfer.h"
-#include <plat/sdrc.h>
-#include <linux/i2c/at24.h>
-#include <linux/leds-pca9626.h>
-*/
 
 static void cs_suicide_watch(struct work_struct * );
 static void cs_suicide_timer(unsigned long data);
@@ -152,15 +95,13 @@ static void cs_suicide_watch(struct work_struct *w) {
 		default:
 			break;
 		}
-		del_timer(&cs_volume_poweroff_timer);
-		cs_volume_poweroff_timer.expires = jiffies + 100;
-		add_timer(&cs_volume_poweroff_timer);
+		mod_timer(&cs_volume_poweroff_timer, jiffies + 100);
 		printk(KERN_INFO "%s : %d\n", __func__, countdown);
 	} else {
 		/* Countdown aborted */
 		printk(KERN_INFO "%s : Countdown stopped\n", __func__);
 		if(countdown > -1) 
-			del_timer(&cs_volume_poweroff_timer);
+			del_timer_sync(&cs_volume_poweroff_timer);
 		countdown = -1;
 
 	}
