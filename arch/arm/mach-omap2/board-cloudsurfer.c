@@ -303,6 +303,7 @@ static void fix_pbias_voltage(void)
 /* TARR - The OPP clock rates need to be specific to CloudSurfer as we 
  * are using the Extended TEmperature Range versio of the DM3730 that 
  * does not support the higher MPU/DSP clock rates
+ * TARR - Lower the max rates to reduce power consumption
  */
 static struct omap_opp cloudsurfer_mpu_rate_table[] = {
     {0, 0, 0},
@@ -313,7 +314,7 @@ static struct omap_opp cloudsurfer_mpu_rate_table[] = {
     /*OPP3 (OPP120)*/
     {S600M, VDD1_OPP3, 0x35},
     /*OPP4 (OPPTM)*/
-    {S800M, VDD1_OPP4, 0x35},
+    //{S800M, VDD1_OPP4, 0x35},
 };
 
 struct omap_opp cloudsurfer_dsp_rate_table[] = {
@@ -325,7 +326,7 @@ struct omap_opp cloudsurfer_dsp_rate_table[] = {
     /*OPP3 (OPP120) */
     {S520M, VDD1_OPP3, 0x35},
     /*OPP4 (OPPTM) */
-    {S660M, VDD1_OPP4, 0x3C},
+    //{S660M, VDD1_OPP4, 0x3C},
 };
 
 struct omap_opp cloudsurfer_l3_rate_table[] = {
