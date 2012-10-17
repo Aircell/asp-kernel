@@ -238,7 +238,7 @@
  * This gives more space to press & flick up to raise the notification shade.
  * When below DISPLAY_BOTTOM_REPORT, report at most DISPLAY_BOTTOM_REPORT-1
  */
-#define DISPLAY_BOTTOM         834
+#define DISPLAY_BOTTOM         820
 #define DISPLAY_BOTTOM_REPORT  800
 
 /* Modified to support 19X11 touchscreen based on email from
@@ -1070,7 +1070,7 @@ static void qt602240_handle_pdata(struct qt602240_data *data)
 			voltage = (pdata->voltage - QT602240_VOLTAGE_DEFAULT) /
 				QT602240_VOLTAGE_STEP;
 
-		printk("qt602240_ts: setting voltage to 270 + %hhd (0x%hhx)\n", voltage, voltage);
+		//printk("qt602240_ts: setting voltage to 270 + %hhd (0x%hhx)\n", voltage, voltage);
 		qt602240_write_object(data, QT602240_SPT_CTECONFIG,
 				QT602240_CTE_VOLTAGE, voltage);
 	}
