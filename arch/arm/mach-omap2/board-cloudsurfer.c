@@ -309,10 +309,11 @@ static struct omap_opp cloudsurfer_mpu_rate_table[] = {
     {0, 0, 0},
     /*OPP1 (OPP50)*/
     {S125M, VDD1_OPP1, 0x1B},
+    {S250M, VDD1_OPP2, 0x1B},
     /*OPP2 (OPP100)*/
-    {S300M, VDD1_OPP2, 0x28},
+    {S300M, VDD1_OPP3, 0x28},
     /*OPP3 (OPP120)*/
-    {S600M, VDD1_OPP3, 0x35},
+    {S600M, VDD1_OPP4, 0x35},
     /*OPP4 (OPPTM)*/
     //{S800M, VDD1_OPP4, 0x35},
 };
@@ -321,10 +322,11 @@ struct omap_opp cloudsurfer_dsp_rate_table[] = {
     {0, 0, 0},
     /*OPP1 (OPP50) */
     {S90M, VDD1_OPP1, 0x1B},
+    {S180M, VDD1_OPP2, 0x1B},
     /*OPP2 (OPP100) */
-    {S260M, VDD1_OPP2, 0x28},
+    {S260M, VDD1_OPP3, 0x28},
     /*OPP3 (OPP120) */
-    {S520M, VDD1_OPP3, 0x35},
+    {S520M, VDD1_OPP4, 0x35},
     /*OPP4 (OPPTM) */
     //{S660M, VDD1_OPP4, 0x3C},
 };
