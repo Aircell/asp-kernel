@@ -245,6 +245,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 {
 	struct mmc_card *card;
 	int err, funcs;
+	int line;
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
@@ -253,16 +254,19 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	 * Inform the card of the voltage
 	 */
 	err = mmc_send_io_op_cond(host, host->ocr, &ocr);
-	if (err)
+	if (err) {
+		line = __LINE__;
 		goto err;
-
+	}
 	/*
 	 * For SPI, enable CRC as appropriate.
 	 */
 	if (mmc_host_is_spi(host)) {
 		err = mmc_spi_set_crc(host, use_spi_crc);
-		if (err)
+		if (err) {
+			line = __LINE__;
 			goto err;
+		}
 	}
 /*
  *	The number of functions on the card is encoded inside
@@ -273,6 +277,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (host->embedded_sdio_data.funcs)
 		funcs = host->embedded_sdio_data.num_funcs;
+//	printk(KERN_INFO "TARR - %s:%d (%d)\n",__FUNCTION__,__LINE__,funcs);
 #endif
 	/*
 	 * Allocate card structure.
@@ -280,8 +285,10 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	card = mmc_alloc_card(host, NULL);
 	if (IS_ERR(card)) {
 		err = PTR_ERR(card);
+		line = __LINE__;
 		goto err;
 	}
+//	printk(KERN_INFO "TARR - %s:%d\n",__FUNCTION__,__LINE__);
 	card->sdio_funcs = funcs;
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
@@ -295,9 +302,10 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (!mmc_host_is_spi(host)) {
 		err = mmc_send_relative_addr(host, &card->rca);
-		if (err)
+		if (err) {
+			line = __LINE__;
 			goto remove;
-
+		}
 		mmc_set_bus_mode(host, MMC_BUSMODE_PUSHPULL);
 	}
 
@@ -306,8 +314,10 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (!mmc_host_is_spi(host)) {
 		err = mmc_select_card(card);
-		if (err)
+		if (err) {
+			line = __LINE__;
 			goto remove;
+		}
 	}
 
 	/*
@@ -320,8 +330,10 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	else {
 #endif
 		err = sdio_read_cccr(card);
-		if (err)
+		if (err) {
+			line = __LINE__;	
 			goto remove;
+		}
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	}
 #endif
@@ -335,30 +347,36 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	else {
 #endif
 		err = sdio_read_common_cis(card);
-		if (err)
+		if (err) {
+			line = __LINE__;
 			goto remove;
+		}
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	}
 #endif
-
 	if (oldcard) {
 		int same = (card->cis.vendor == oldcard->cis.vendor &&
 			    card->cis.device == oldcard->cis.device);
-		mmc_remove_card(card);
+		//mmc_remove_card(card);
 		if (!same) {
 			err = -ENOENT;
+			line = __LINE__;
 			goto err;
 		}
 		card = oldcard;
-		return 0;
+		line = __LINE__;
+		err = 0;
+		goto err;
 	}
 
 	/*
 	 * Switch to high-speed (if supported).
 	 */
 	err = sdio_enable_hs(card);
-	if (err)
+	if (err) {
+		line = __LINE__;
 		goto remove;
+	}
 
 	/*
 	 * Change to the card's maximum speed.
@@ -379,18 +397,24 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	 * Switch to wider bus (if supported).
 	 */
 	err = sdio_enable_wide(card);
-	if (err)
+	if (err) {
+		line = __LINE__;
 		goto remove;
+	}
 
 	if (!oldcard)
 		host->card = card;
-	return 0;
+	line = __LINE__;
+	err = 0;
+	goto err;
 
 remove:
-	if (!oldcard)
+	if (!oldcard) {
 		mmc_remove_card(card);
-
+		line = __LINE__;
+	}
 err:
+//	printk(KERN_INFO "TARR - %s:%d - %d\n",__FUNCTION__,line,err);
 	return err;
 }
 
@@ -404,6 +428,7 @@ static void mmc_sdio_remove(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
+	printk(KERN_INFO "TARR - %s\n",__FUNCTION__);
 	for (i = 0;i < host->card->sdio_funcs;i++) {
 		if (host->card->sdio_func[i]) {
 			sdio_remove_func(host->card->sdio_func[i]);
@@ -454,13 +479,23 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 
 	for (i = 0; i < host->card->sdio_funcs; i++) {
 		struct sdio_func *func = host->card->sdio_func[i];
+//		printk(KERN_INFO "TARR %s:%d f = 0x%8.8x, p = %s, d = 0x%8.8x\n",
+//				__FUNCTION__, __LINE__,
+//				(unsigned int)func, 
+//				sdio_func_present(func)?"TRUE":"FALSE", 
+//				(unsigned int)func->dev.driver);
+ 
 		if (func && sdio_func_present(func) && func->dev.driver) {
 			const struct dev_pm_ops *pmops = func->dev.driver->pm;
 			if (!pmops || !pmops->suspend || !pmops->resume) {
 				/* force removal of entire card in that case */
+				/* TARR 12Oct12 - Let not force removal */
 				err = -ENOSYS;
-			} else
+				//printk(KERN_INFO "TARR - %s:%d\n",__FUNCTION__,__LINE__);
+			} else {
 				err = pmops->suspend(&func->dev);
+				printk(KERN_INFO "TARR - %s:%d\n",__FUNCTION__,__LINE__);
+			}
 			if (err)
 				break;
 		}
@@ -470,6 +505,7 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 		if (func && sdio_func_present(func) && func->dev.driver) {
 			const struct dev_pm_ops *pmops = func->dev.driver->pm;
 			pmops->resume(&func->dev);
+			//printk(KERN_INFO "TARR - %s:%d\n",__FUNCTION__,__LINE__);
 		}
 	}
 
@@ -478,15 +514,23 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 
 static int mmc_sdio_resume(struct mmc_host *host)
 {
-	int i, err;
-
+	int i, err = 0;
+	struct sdio_func *func;
+	struct dev_pm_ops *pmops;
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
 	/* Basic card reinitialization. */
-	mmc_claim_host(host);
-	err = mmc_sdio_init_card(host, host->ocr, host->card);
-	mmc_release_host(host);
+	printk(KERN_INFO "TARR - %s\n",__FUNCTION__);
+	//for (i = 0; i < host->card->sdio_funcs; i++) {
+	//	func = host->card->sdio_func[i];
+	//	printk(KERN_INFO "TARR %s:%d i=%d, f=0x%8.8x\n",
+	//			__FUNCTION__,__LINE__, i, (unsigned int)func);
+	//}
+	//mmc_claim_host(host);
+	//err = mmc_sdio_init_card(host, host->ocr, host->card);
+	//mmc_release_host(host);
+	//printk(KERN_INFO "TARR - %s:%d - %d\n",__FUNCTION__,__LINE__,err);
 
 	/*
 	 * If the card looked to be the same as before suspending, then
@@ -499,13 +543,16 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	 * etc.) and return an error otherwise.
 	 */
 	for (i = 0; !err && i < host->card->sdio_funcs; i++) {
-		struct sdio_func *func = host->card->sdio_func[i];
+		func = host->card->sdio_func[i];
+		printk(KERN_INFO "TARR %s:%d i=%d, f=0x%8.8x\n",
+				__FUNCTION__,__LINE__, i,
+				(unsigned int)func);
 		if (func && sdio_func_present(func) && func->dev.driver) {
-			const struct dev_pm_ops *pmops = func->dev.driver->pm;
+			pmops = func->dev.driver->pm;
 			err = pmops->resume(&func->dev);
+			//printk(KERN_INFO "TARR - %s:%d - %d\n",__FUNCTION__,__LINE__,err);
 		}
 	}
-
 	return err;
 }
 

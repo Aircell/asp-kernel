@@ -326,13 +326,14 @@ static void seiko_panel_disable(struct omap_dss_device *dssdev)
 
 static int seiko_panel_suspend(struct omap_dss_device *dssdev)
 {
-	seiko_panel_disable(dssdev);
+	//seiko_panel_disable(dssdev);
 	return 0;
 }
 
 static int seiko_panel_resume(struct omap_dss_device *dssdev)
 {
-	return seiko_panel_enable(dssdev);
+	//seiko_panel_enable(dssdev);
+	return 0;
 }
 
 static struct omap_dss_driver seiko_driver = {

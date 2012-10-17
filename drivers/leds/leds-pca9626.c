@@ -196,13 +196,13 @@ static int pca9626_remove(struct i2c_client *client)
 
 static int pca9626_suspend(struct device *dev)
 {
-	printk("Tarr - %s\n",__FUNCTION__);
+	//printk("Tarr - %s\n",__FUNCTION__);
 	return 0;
 }
 
 static int pca9626_resume(struct device *dev)
 {
-	printk("Tarr - %s\n",__FUNCTION__);
+	//printk("Tarr - %s\n",__FUNCTION__);
 	return 0;
 }
 static const struct dev_pm_ops pca9626_pm_ops = {
