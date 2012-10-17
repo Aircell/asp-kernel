@@ -1560,7 +1560,7 @@ static int qt602240_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 
-	printk("TARR - %s\n",__FUNCTION__);
+	//printk("TARR - %s\n",__FUNCTION__);
 #ifdef TARR
 	struct qt602240_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
@@ -1581,7 +1581,7 @@ static int qt602240_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 
-	printk("TARR - %s\n",__FUNCTION__);
+	//printk("TARR - %s\n",__FUNCTION__);
 #ifdef TARR
 	struct qt602240_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
