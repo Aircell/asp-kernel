@@ -683,12 +683,14 @@ static struct i2c_board_info __initdata omap3logic_i2c2_boardinfo[] = {
 struct qt602240_platform_data omap3logic_touchscreendata = {
 	.x_line = 19,
 	.y_line = 11,
-	.x_size = 1252,
+	.x_size = 1220,
 	.y_size = 480,
 	.blen = 23,
-	.threshold = 60,
-	.voltage = 600,
+	.threshold = 35, // sensitivity
+	.voltage = 263, // default is 270
+	// Original code had this at 600 and some bad math, translating to 257.
 	.orient = QT602240_NORMAL
+	//.orient = QT602240_ROTATED_90_COUNTER -- can't get this to work (Topher, 10/17/12)
 };
 
 static struct platform_device omap3logic_touch_device = {

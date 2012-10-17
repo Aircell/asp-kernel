@@ -189,8 +189,8 @@
 #define QT602240_CTE_ACTVGCAFDEPTH	4
 #define QT602240_CTE_VOLTAGE		5	/* firmware ver 21 over */
 
-#define QT602240_VOLTAGE_DEFAULT	2700000
-#define QT602240_VOLTAGE_STEP		10000
+#define QT602240_VOLTAGE_DEFAULT	270
+#define QT602240_VOLTAGE_STEP		1
 
 /* Define for QT602240_GEN_COMMAND */
 #define QT602240_BOOT_VALUE		0xa5
@@ -231,6 +231,15 @@
 #define QT602240_MAX_FINGER		10
 
 #define DISPLAY_START_OFFSET	17
+/*
+ * Vertical coordinates below DISPLAY_BOTTOM + DISPLAY_START_OFFSET are sent
+ * to the keypad. 800 would be the exact bottom display edge.
+ * 852 - 17 - 1 = 834, which is just above the upper edge of the keypad.
+ * This gives more space to press & flick up to raise the notification shade.
+ * When below DISPLAY_BOTTOM_REPORT, report at most DISPLAY_BOTTOM_REPORT-1
+ */
+#define DISPLAY_BOTTOM         834
+#define DISPLAY_BOTTOM_REPORT  800
 
 /* Modified to support 19X11 touchscreen based on email from
  * Tu T. Phan at Touch Internaltional to AirCell on 24 Aug 2011
@@ -243,8 +252,18 @@ static const u8 init_vals_ver_22[] = {
 	/* QT602240_GEN_ACQUIRE(8) */
 	0x08, 0x05, 0x01, 0x01, 0x32, 0x00, 0x00, 0x00,
 	/* QT602240_TOUCH_MULTI(9) */
-	0x83, 0x00, 0x00, 0x13, 0x0b, 0x00, 0x17, 0x50, 0x02, 0x01,
-	0x00, 0x01, 0x01, 0x00, 0x04, 0x10, 0x10, 0x10, 0xFF, 0x03,
+	/* First byte is the bits:
+	 * 7 - fancier multitouch detection
+	 * 6 - 1 to disable PRESS events
+	 * 5 - 1 to disable RELEASE events
+	 * 4 - 1 to disable MOVE events
+	 * 3 - 1 to disable VECTOR change events
+	 * 2 - 1 to disable AMPLITUDE change events
+	 * 1 - report enable
+	 * 0 - ENABLE
+	 */
+	0x8F, 0x00, 0x00, 0x13, 0x0b, 0x00, 0x10, 0x50, 0x03, 0x04,
+    0x02, 0x02, 0x0a, 0x00, 0x02, 0x05, 0x05, 0x10, 0xFF, 0x03,
 	0xFF, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00,
 	/* QT602240_TOUCH_KEYARRAY(15) */
@@ -302,10 +321,10 @@ struct qt602240_message {
 };
 
 struct key {
-	int start_x;
-	int end_x;
 	int start_y;
 	int end_y;
+	int start_x;
+	int end_x;
 	int valid;
 	int status;
 	int code;
@@ -313,25 +332,25 @@ struct key {
 };
 
 struct key keypad[] = {
-	{852, 964,0,153,1,0,KEY_BACK,'B'}, 		/* BACK key */
-	{852, 964,170,307,1,0,KEY_HOME,'H'},	/* HOME key */
-	{852, 964,323,479,1,0,KEY_MENU,'M'},	/* MENU key */
+	{830,939,   0,153, 1,0,KEY_BACK,'B'}, 		/* BACK key */
+	{830,939, 170,307, 1,0,KEY_HOME,'H'},	/* HOME key */
+	{830,939, 323,479, 1,0,KEY_MENU,'M'},	/* MENU key */
 
-	{977, 1032,0,153,1,0,KEY_1,'1'}, 		/* 1 key */
-	{977, 1032,170,307,1,0,KEY_2,'2'},		/* 2 key */
-	{977, 1032,323,479,1,0,KEY_3,'3'},		/* 3 key */
+	{952,1006,   0,153, 1,0,KEY_1,'1'}, 		/* 1 key */
+	{952,1006, 170,307, 1,0,KEY_2,'2'},		/* 2 key */
+	{952,1006, 323,479, 1,0,KEY_3,'3'},		/* 3 key */
 
-	{1045, 1102,0,153,1,0,KEY_4,'4'}, 		/* 4 key */
-	{1045, 1102,170,307,1,0,KEY_5,'5'},		/* 5 key */
-	{1045, 1102,323,479,1,0,KEY_6,'6'},		/* 6 key */
+	{1019,1074,   0,153, 1,0,KEY_4,'4'}, 		/* 4 key */
+	{1019,1074, 170,307, 1,0,KEY_5,'5'},		/* 5 key */
+	{1019,1074, 323,479, 1,0,KEY_6,'6'},		/* 6 key */
 
-	{1115, 1175,0,153,1,0,KEY_7,'7'},		/* 7 key */
-	{1115, 1175,170,307,1,0,KEY_8,'8'},		/* 8 key */
-	{1115, 1175,323,479,1,0,KEY_9,'9'},		/* 9 key */
+	{1086,1145,   0,153, 1,0,KEY_7,'7'},		/* 7 key */
+	{1086,1145, 170,307, 1,0,KEY_8,'8'},		/* 8 key */
+	{1086,1145, 323,479, 1,0,KEY_9,'9'},		/* 9 key */
 
-	{1188, 1252,0,153,1,0,KEY_NUMERIC_STAR,'*'},/* * key */
-	{1188, 1252,170,307,1,0,KEY_0,'0'},			/* 0 key */
-	{1188, 1252,323,479,1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
+	{1157,1220,   0,153, 1,0,KEY_NUMERIC_STAR,'*'},/* * key */
+	{1157,1220, 170,307, 1,0,KEY_0,'0'},			/* 0 key */
+	{1157,1220, 323,479, 1,0,KEY_NUMERIC_POUND,'#'},	/* # key*/
 	{0,0,0,0,0,0,0,0},					/* End of keys */
 };
 
@@ -676,9 +695,9 @@ static struct key* find_key_on_keypad(int rawx, int rawy)
 	int index = 0;
 
 	/* Walk through the keypad definition table to find the key */	
-	while ( k->start_x != 0 ) {
-		if ( k->start_x <= rawx && k->end_x >= rawx &&
-				 k->start_y <= rawy && k->end_y >= rawy ) {
+	while ( k->start_y != 0 ) {
+		if ( k->start_y <= rawy && k->end_y >= rawy &&
+				 k->start_x <= rawx && k->end_x >= rawx ) {
 			// Is it an active key?
 			if ( k->valid ) {
 				return k; // Yep
@@ -735,6 +754,7 @@ static void report_key(struct qt602240_data *data,
 static void qt602240_input_touchevent(struct qt602240_data *data,
 				      struct qt602240_message *message, int id)
 {
+	const struct qt602240_platform_data *pdata = data->pdata;
 	struct qt602240_finger *finger = data->finger + id;
 	//struct input_dev *input_dev = data->input_dev;
 	u8 status = message->message[0];
@@ -753,10 +773,6 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 	/* Tarr - x is reported in 12 bits, y is reported in 10 due to 
        scaling size difference */
 	x = (message->message[1] << 4) | ((message->message[3] & ~0x0f) >> 4);
-	/* Tarr - Because the touchscreen got "flipped" in the P3, need to
-     * adjust x accordingly
-	 */
-    x = 1252 - x;
 	y = (message->message[2] << 2) | ((message->message[3] & ~0xf3) >> 2);
 	area = message->message[4];
 
@@ -779,10 +795,13 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 
 	//printk("Finger %d status %x where %d key %p\n", id, status, finger->where, finger->k);
 
+	// P3 screen is flipped
+	x = pdata->x_size - 1 - x;
+
 	if (finger->where == UNTOUCHED) {
 		// first report on this finger since up -- call it keypad or touchscreen
 		// If a finger starts in one area, it keeps reporting there until up.
-		if (x > 800+DISPLAY_START_OFFSET) {
+		if (x > DISPLAY_BOTTOM + DISPLAY_START_OFFSET) {
 			/* TARR - the keypad is at the "lower" portion of the screen */
 			finger->where = ON_KEYPAD;
 			//printk("qt602240 - finger %d on keypad\n", id);
@@ -792,26 +811,25 @@ static void qt602240_input_touchevent(struct qt602240_data *data,
 		}
 	}
 
+	// Display is rotated
+	finger->x = y;
+	finger->y = x;
+	//printk("qt602240 - touch at %3d %3d\n", x, y);
+
 	if (finger->where == ON_KEYPAD) {
 		// Store raw X and Y values
-		finger->x = x;
-		finger->y = y;
 		report_key(data, finger);
 	} else {
 		// Must be ON_TOUCHSCREEN
-		
 		//TARR - need to remove an offset
-		if (x > DISPLAY_START_OFFSET) {
-			x -= DISPLAY_START_OFFSET;
+		if (finger->y > DISPLAY_START_OFFSET) {
+			finger->y -= DISPLAY_START_OFFSET;
 		} else {
-			x = 0;
+			finger->y = 0;
 		}
+		// Topher - max out at 799
+		if (finger->y >= DISPLAY_BOTTOM_REPORT) finger->y = DISPLAY_BOTTOM_REPORT - 1;
 
-		/* TARR - P1 wierdness due to display rotated 180 */
-		finger->x = y;
-		//finger->x = 480-y;
-		finger->y = x;
-		//finger->y = 800-x;
 		finger->area = area;
 
 		qt602240_input_report(data, id);
@@ -953,7 +971,7 @@ static int qt602240_check_matrix_size(struct qt602240_data *data)
 		if (pdata->y_line <= 9)
 			mode = 4;
 		if (pdata->y_line == 10 || pdata->y_line == 11)
-			mode = 3;
+			mode = 3; // Cloudsurfer
 		break;
 	case 20:
 		mode = 4;
@@ -1052,6 +1070,7 @@ static void qt602240_handle_pdata(struct qt602240_data *data)
 			voltage = (pdata->voltage - QT602240_VOLTAGE_DEFAULT) /
 				QT602240_VOLTAGE_STEP;
 
+		printk("qt602240_ts: setting voltage to 270 + %hhd (0x%hhx)\n", voltage, voltage);
 		qt602240_write_object(data, QT602240_SPT_CTECONFIG,
 				QT602240_CTE_VOLTAGE, voltage);
 	}
@@ -1462,7 +1481,7 @@ static int __devinit qt602240_probe(struct i2c_client *client,
 	__set_bit(BTN_TOUCH, input_dev->keybit);
 
 	/* Setup the keypad */
-	for (k=&keypad[0]; k->start_x != 0; k++ ) {
+	for (k=&keypad[0]; k->end_y != 0; k++ ) {
 		__set_bit(k->code,input_dev->keybit);
 	}	
 
