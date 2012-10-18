@@ -56,9 +56,10 @@ extern int ddebug_remove_module(char *mod_name);
 	__attribute__((section("__verbose"), aligned(8))) =		\
 	{ KBUILD_MODNAME, __func__, __FILE__, fmt, DEBUG_HASH,	\
 		DEBUG_HASH2, __LINE__, _DPRINTK_FLAGS_DEFAULT };	\
-	if (__dynamic_dbg_enabled(descriptor))				\
-		printk(KERN_INFO "|%25.25s|%5d|" fmt,\
-		 __func__, __LINE__, ##__VA_ARGS__);		\
+	if (__dynamic_dbg_enabled(descriptor)) {				\
+		extern unsigned long volatile jiffies;				\
+		printk(KERN_INFO "%10lu|%25.25s|%5d|" fmt,\
+		 jiffies, __func__, __LINE__, ##__VA_ARGS__);}		\
 	} while (0)
 
 #define dynamic_dev_dbg(dev, fmt, ...) do {				\
