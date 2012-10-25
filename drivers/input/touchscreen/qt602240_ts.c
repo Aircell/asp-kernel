@@ -726,7 +726,7 @@ static void report_key(struct qt602240_data *data,
 		if (finger->k != NULL) {
 			input_report_key(input_dev, finger->k->code, 1);
 			input_sync(input_dev);
-#ifdef ASP_DEVELOPMENT
+#ifdef ASP_DEVELOP
 			printk("KEY - %c pressed\n",finger->k->character);
 #endif
 		}
