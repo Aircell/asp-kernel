@@ -18,6 +18,8 @@
 /*
  *  Based on gpio-charger from Lars-Peter Clausen, with added i2c operations
  *  to initiate and regulate charging.
+ *
+ *  TARR - 25Oct2012 - Add sysfs functionality to modify the charge current
  */
 
 #include <linux/device.h>
@@ -31,6 +33,7 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
+#include <linux/sysfs.h>
 
 #include <linux/power/cloudsurfer-charger.h>
 
@@ -38,9 +41,13 @@
 #define PCA9536_INIT_REG	0x03
 #define PCA9536_INIT_DATA	0x0c
 #define CHARGE_RATE_REG		0x01
+#define CHARGE_CURRENT_0	0
 #define CHARGE_RATE_OFF		0x01
+#define CHARGE_CURRENT_100	100
 #define CHARGE_RATE_TRICKLE	0x00
+#define CHARGE_CURRENT_500	500
 #define CHARGE_RATE_FULL	0x02
+
 #define OP_PLUG_EVENT		1
 #define OP_SLEEP			2
 #define OP_WAKE				3
@@ -49,12 +56,15 @@
 struct gpio_charger {
 	struct i2c_client *client;
 	const struct gpio_charger_platform_data *pdata;
+	unsigned int online;
+	unsigned int charge_current;
 	unsigned int irq;
 	struct work_struct irq_work;
 	struct delayed_work delayed_report;
-
 	struct power_supply charger;
 };
+
+static struct gpio_charger *G_gpio_charger;
 
 static int pca9536_i2c_write(struct i2c_client *client, u8 reg, u8 value)
 {
@@ -84,25 +94,37 @@ static inline struct gpio_charger *psy_to_gpio_charger(struct power_supply *psy)
 	return container_of(psy, struct gpio_charger, charger);
 }
 
-static void set_charger_state(struct gpio_charger *gc, int operation_id) {
-	int has_pwr = 0;
-
+static void set_charger_state(struct gpio_charger *gc, int operation_id) 
+{
+	int online;	
+	int level;
 	const struct gpio_charger_platform_data *pdata = gc->pdata;
 	struct i2c_client *client = gc->client;
 
-	has_pwr = gpio_get_value(pdata->gpio);
-	has_pwr ^= pdata->gpio_active_low;
+	online = gpio_get_value(pdata->gpio);
+	online ^= pdata->gpio_active_low;
 	
-	if (! has_pwr) return;
+	if (!gc->online && !online) 
+		return;
+	gc->online = online;
 
 	if (operation_id == OP_PLUG_EVENT) {
 		pca9536_i2c_write(client, PCA9536_INIT_REG, PCA9536_INIT_DATA);
-		pca9536_i2c_write(client, CHARGE_RATE_REG, CHARGE_RATE_TRICKLE);
+		if ( gc->online ) {
+			level = CHARGE_RATE_TRICKLE;
+			gc->charge_current = CHARGE_CURRENT_100;
+		} else {
+			level = CHARGE_RATE_OFF;
+			gc->charge_current = CHARGE_CURRENT_0; 
+		}
+		pca9536_i2c_write(client, CHARGE_RATE_REG, level);
 	} else if (operation_id == OP_SLEEP) {
 		pca9536_i2c_write(client, CHARGE_RATE_REG, CHARGE_RATE_FULL);
+		gc->charge_current = CHARGE_CURRENT_500;
 	} else if (operation_id == OP_WAKE) {
 		pca9536_i2c_write(client, PCA9536_INIT_REG, PCA9536_INIT_DATA);
 		pca9536_i2c_write(client, CHARGE_RATE_REG, CHARGE_RATE_TRICKLE);
+		gc->charge_current = CHARGE_CURRENT_100;
 	}
 }
 
@@ -140,12 +162,10 @@ static int gpio_charger_get_property(struct power_supply *psy,
 		enum power_supply_property psp, union power_supply_propval *val)
 {
 	struct gpio_charger *gpio_charger = psy_to_gpio_charger(psy);
-	const struct gpio_charger_platform_data *pdata = gpio_charger->pdata;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = gpio_get_value(pdata->gpio);
-		val->intval ^= pdata->gpio_active_low;
+		val->intval = gpio_charger->online;
 		break;
 	default:
 		return -EINVAL;
@@ -156,6 +176,61 @@ static int gpio_charger_get_property(struct power_supply *psy,
 
 static enum power_supply_property gpio_charger_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
+};
+
+static ssize_t show_valid_charge_current(struct device *dev, struct device_attribute *attr, char *buf) 
+{
+	return sprintf(buf,"%d,%d,%d\n",CHARGE_CURRENT_0,CHARGE_CURRENT_100,
+				CHARGE_CURRENT_500);
+}
+
+static DEVICE_ATTR(valid_charge_current,S_IRUGO,show_valid_charge_current,NULL);
+
+static ssize_t show_charger(struct device *dev, struct device_attribute *attr, char *buf) 
+{
+	return sprintf(buf,"%d\n",G_gpio_charger->charge_current);
+}
+
+static ssize_t set_charger(struct device *dev, struct device_attribute *attr, char *buf,size_t count) 
+{
+	int tcurrent;
+	int charge_rate = -1;
+	if ( G_gpio_charger->online == 0 )
+		return count;
+
+	sscanf(buf,"%d",&tcurrent);
+	switch ( tcurrent ) {
+		case CHARGE_CURRENT_0:
+			charge_rate = CHARGE_RATE_OFF;
+			break;
+		case CHARGE_CURRENT_100:
+			charge_rate = CHARGE_RATE_TRICKLE;
+			break;
+		case CHARGE_CURRENT_500:
+			charge_rate = CHARGE_RATE_FULL;
+			break;
+		default:
+			charge_rate = -1;
+			break;
+	}
+	if ( charge_rate != -1 ) {
+		pca9536_i2c_write(G_gpio_charger->client, CHARGE_RATE_REG, charge_rate);
+		G_gpio_charger->charge_current = tcurrent;
+	}		
+	return count;
+}
+
+static DEVICE_ATTR(charge_current,S_IRUGO| S_IWUSR,show_charger,set_charger);
+
+static struct attribute *cloudsurfer_charger_sysfs_entries[] = {
+	&dev_attr_charge_current.attr,
+	&dev_attr_valid_charge_current.attr,
+	NULL,
+};
+
+static struct attribute_group cloudsurfer_charger_attr_group = {
+	.name 	= NULL,
+	.attrs	= cloudsurfer_charger_sysfs_entries,
 };
 
 static int gpio_charger_probe(struct i2c_client *client,
@@ -184,10 +259,9 @@ static int gpio_charger_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Failed to alloc driver structure\n");
 		return -ENOMEM;
 	}
-
 	charger = &gpio_charger->charger;
 
-	charger->name = pdata->name ? pdata->name : "gpio-charger";
+	charger->name = pdata->name ? pdata->name : "charger";
 	charger->type = pdata->type;
 	charger->properties = gpio_charger_properties;
 	charger->num_properties = ARRAY_SIZE(gpio_charger_properties);
@@ -236,7 +310,11 @@ static int gpio_charger_probe(struct i2c_client *client,
 	/*platform_set_drvdata(pdev, gpio_charger);*/
 	i2c_set_clientdata(client, gpio_charger);
 
+	if ( sysfs_create_group(&charger->dev->kobj,&cloudsurfer_charger_attr_group)) 
+		dev_err(&client->dev,"Failed to create sysfs entries\n");
+
 	schedule_work(&gpio_charger->irq_work);
+	G_gpio_charger = gpio_charger;
 	return 0;
 
 err_gpio_free:
@@ -330,4 +408,4 @@ module_exit(gpio_charger_exit);
 MODULE_AUTHOR("Topher Cawlfield <ccawlfield@aircell.com>");
 MODULE_DESCRIPTION("Driver for ASP battery charger");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:cloudsurfer-charger");
+MODULE_ALIAS("platform:charger");

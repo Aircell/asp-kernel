@@ -177,7 +177,7 @@ static char *cloudsurfer_supplicants[] = {
 };
 
 static struct gpio_charger_platform_data cloudsurfer_charger_pdata = {
-	.name = "ac",
+	.name = "charger",
 	.type = POWER_SUPPLY_TYPE_MAINS,
 	.gpio = AIRCELL_POWER_APPLIED_DETECT,
 	.gpio_active_low = 1,
@@ -186,7 +186,7 @@ static struct gpio_charger_platform_data cloudsurfer_charger_pdata = {
 };
 
 static struct platform_device cloudsurfer_charger_device = {
-	.name = "gpio-charger",
+	.name = "charger",
 	.dev = {
 		.platform_data = &cloudsurfer_charger_pdata,
 	},
