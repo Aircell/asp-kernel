@@ -79,6 +79,10 @@ static void cs_suicide_watch(struct work_struct *w) {
 			input_sync(idev);
 			break;
 		
+		case 2:
+			printk(KERN_INFO "Syncing filesystems\n");
+			emergency_sync();
+			break;
 		case 1:
 			if(gpio_get_value(AIRCELL_BATTERY_POWERED)){
 				printk(KERN_INFO "Powering off wifi phone\n");
