@@ -4,6 +4,8 @@
 
 # Each configuration option enables a list of files.
 
+ccflags-y += $(ASP_DEVELOP)
+
 wm97xx-ts-y := wm97xx-core.o
 
 obj-$(CONFIG_TOUCHSCREEN_AD7877)	+= ad7877.o
