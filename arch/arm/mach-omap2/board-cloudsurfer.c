@@ -82,9 +82,10 @@
 #include <linux/leds-pca9626.h>
 #include "cloudsurfer-gpio.h"
 
-void cloudsurfer_init_audio();
+void cloudsurfer_init_audio(void);
 void twl4030_unmute_delay(int delay);
-void twl4030_mute();
+void twl4030_mute(void);
+void emergency_sync(void);
 
 extern void print_omap_clocks(void);
 
@@ -172,6 +173,14 @@ static inline void __init omap3logic_init_smsc911x(void)
 
 /* Power stuff */
 
+static int power_applied_irq;
+static irqreturn_t power_applied_irq_handler(int irq, void *devid)
+{
+	emergency_sync();
+	printk(KERN_EMERG "POWERED DOWN\n");
+	return IRQ_HANDLED;
+}
+
 static char *cloudsurfer_supplicants[] = {
     "bq27500"
 };
@@ -185,20 +194,21 @@ static struct gpio_charger_platform_data cloudsurfer_charger_pdata = {
 	.num_supplicants = ARRAY_SIZE(cloudsurfer_supplicants),
 };
 
+#ifdef TARR
 static struct platform_device cloudsurfer_charger_device = {
 	.name = "charger",
 	.dev = {
 		.platform_data = &cloudsurfer_charger_pdata,
 	},
 };
-
+#endif
 /*
  * GPIO Buttons
  */
 
 extern void kernel_restart(char *);
 extern void cs_volume_poweroff(int code, int state, void *data);
-extern void cs_poweroff_setup();
+extern void cs_poweroff_setup(void);
 static struct gpio_keys_button cs_volume_buttons[] = {
     {
         .gpio       = AIRCELL_VOLUME_UP_DETECT,
@@ -739,6 +749,8 @@ static void omap3logic_qt602240_init(void)
 
 int __init omap3logic_i2c_init(void)
 {
+	int ret;
+
 	printk("Cloudsurfer I2C Init");
 	omap_register_i2c_bus(1, 2600, omap3logic_i2c1_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c1_boardinfo));
@@ -746,16 +758,28 @@ int __init omap3logic_i2c_init(void)
      * and the Battery Fuel Gauge. This is done based on the 
      * AIRCELL_BATTERY_POWERED gpio. If the pin is high, it is a
      * battery powered phone and we need to add the two devices
-     * to the I2C2 boardinfo
+     * to the I2C2 boardinfo. If we are not battery powered, we 
+ 	 * need to configure the the AIRCELL_POWER_APPLIED_DETECT pin as 
+	 * an interrupt so that we can flush the filesystems before we 
+     * completely loose power.
+		
      */
 	if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
-		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"cloudsurfer-charger");
+		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"charger");
 		omap3logic_i2c2_boardinfo[2].addr = 0x41;
 		omap3logic_i2c2_boardinfo[2].platform_data = &cloudsurfer_charger_pdata;
 		strcpy(&omap3logic_i2c2_boardinfo[3].type[0],"bq27500");
 		omap3logic_i2c2_boardinfo[3].addr = 0x55;
 		printk("Cloudsurfer is Battery Powered");
 	} else {
+		power_applied_irq = gpio_to_irq(AIRCELL_POWER_APPLIED_DETECT);
+		/* When a wired phone AIRCELL_POWER_APPLIED_DETECT is low when
+  		 * power is there and high when off, so we look for a rising edge
+		 */
+		ret = request_irq(power_applied_irq, power_applied_irq_handler,
+                IRQF_TRIGGER_RISING, "power_applied_irq", NULL);
+        if (ret < 0)
+            printk(KERN_ERR "Failed to request power applied irq: %d\n", ret);
 		printk("Cloudsurfer is POE Powered");
 	}
 	omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
@@ -916,9 +940,9 @@ extern void omap3logic_init_audio_mux(void);
 extern void __init board_lcd_init(void);
 
 
-static char device_serial[MAX_USB_SERIAL_NUM];
 
 #ifdef USE_USB
+static char device_serial[MAX_USB_SERIAL_NUM];
 static char *usb_functions_adb[] = {
 	"adb",
 };

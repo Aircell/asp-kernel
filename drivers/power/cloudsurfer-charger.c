@@ -213,6 +213,7 @@ static ssize_t set_charger(struct device *dev, struct device_attribute *attr, ch
 			charge_rate = -1;
 			break;
 	}
+	printk(KERN_INFO "TARR - %s - [%s]->%d\n",__FUNCTION__,buf,charge_rate);
 	if ( charge_rate != -1 ) {
 		pca9536_i2c_write(G_gpio_charger->client, CHARGE_RATE_REG, charge_rate);
 		G_gpio_charger->charge_current = tcurrent;
