@@ -752,6 +752,7 @@ static void omap3logic_qt602240_init(void)
 int __init omap3logic_i2c_init(void)
 {
 	int ret;
+	size_t i2c2_size;
 
 	printk("Cloudsurfer I2C Init");
 	omap_register_i2c_bus(1, 2600, omap3logic_i2c1_boardinfo,
@@ -772,6 +773,7 @@ int __init omap3logic_i2c_init(void)
 		omap3logic_i2c2_boardinfo[2].platform_data = &cloudsurfer_charger_pdata;
 		strcpy(&omap3logic_i2c2_boardinfo[3].type[0],"bq27500");
 		omap3logic_i2c2_boardinfo[3].addr = 0x55;
+		i2c2_size = 4;
 		printk("Cloudsurfer is Battery Powered");
 	} else {
 		power_applied_irq = gpio_to_irq(AIRCELL_POWER_APPLIED_DETECT);
@@ -783,9 +785,9 @@ int __init omap3logic_i2c_init(void)
         if (ret < 0)
             printk(KERN_ERR "Failed to request power applied irq: %d\n", ret);
 		printk("Cloudsurfer is POE Powered");
+		i2c2_size = 2;
 	}
-	omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo,
-			ARRAY_SIZE(omap3logic_i2c2_boardinfo));
+	omap_register_i2c_bus(2, 400, omap3logic_i2c2_boardinfo, i2c2_size);
 	omap_register_i2c_bus(3, 400, omap3logic_i2c3_boardinfo,
 			ARRAY_SIZE(omap3logic_i2c3_boardinfo));
 	return 0;
