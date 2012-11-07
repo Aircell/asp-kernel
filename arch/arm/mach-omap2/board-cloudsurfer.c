@@ -194,14 +194,13 @@ static struct gpio_charger_platform_data cloudsurfer_charger_pdata = {
 	.num_supplicants = ARRAY_SIZE(cloudsurfer_supplicants),
 };
 
-#ifdef TARR
 static struct platform_device cloudsurfer_charger_device = {
-	.name = "charger",
+	.name = "cloudsurfer-charger",
 	.dev = {
 		.platform_data = &cloudsurfer_charger_pdata,
 	},
 };
-#endif
+
 /*
  * GPIO Buttons
  */
@@ -768,7 +767,7 @@ int __init omap3logic_i2c_init(void)
 		
      */
 	if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
-		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"charger");
+		strcpy(&omap3logic_i2c2_boardinfo[2].type[0],"cloudsurfer-charger");
 		omap3logic_i2c2_boardinfo[2].addr = 0x41;
 		omap3logic_i2c2_boardinfo[2].platform_data = &cloudsurfer_charger_pdata;
 		strcpy(&omap3logic_i2c2_boardinfo[3].type[0],"bq27500");
