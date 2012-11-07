@@ -272,7 +272,9 @@ static struct platform_device headset_jack = {
 
 static struct platform_device *cloudsurfer_devices[] __initdata = {
     &volume_buttons,
+/*  Remove headset support until hardware is stable
     &headset_jack,
+*/
 };
 
 
@@ -1041,10 +1043,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_input(AIRCELL_PROX_INTERRUPT);
 	gpio_direction_output(AIRCELL_MUTE,0);
 
-	gpio_request(AIRCELL_PMIC_HEADSET,"AIRCELL_PMIC_HEADSET");
-	gpio_direction_output(AIRCELL_PMIC_HEADSET,1);
-
-
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
 	gpio_export(AIRCELL_BATTERY_POWERED,0);
@@ -1060,7 +1058,6 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
 	gpio_export(AIRCELL_MUTE,0);
-	gpio_export(AIRCELL_PMIC_HEADSET,0);
 
 }
 
