@@ -117,7 +117,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
 	0x30, /* REG_RX_PATH_SEL	(0x43)	JFK - Mono output*/
-	0x3B, /* REG_VDL_APGA_CTL	(0x44)	JFK - Can trip breakers if too high*/
+	0x03, /* REG_VDL_APGA_CTL	(0x44)	JFK - Can trip breakers if too high*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
 	0x00, /* REG_VIBRA_PWM_SET	(0x47)	*/
