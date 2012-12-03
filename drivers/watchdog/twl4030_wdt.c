@@ -54,7 +54,8 @@ static int twl4030_wdt_write(unsigned char val)
 
 static int twl4030_wdt_enable(struct twl4030_wdt *wdt)
 {
-	return twl4030_wdt_write(wdt->timer_margin + 1);
+//	return twl4030_wdt_write(wdt->timer_margin + 1);
+	return twl4030_wdt_write(wdt->timer_margin);
 }
 
 static int twl4030_wdt_disable(struct twl4030_wdt *wdt)
