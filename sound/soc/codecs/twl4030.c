@@ -544,12 +544,14 @@ static int micpath_event(struct snd_soc_dapm_widget *w,
 			micbias_ctl |= TWL4030_MICBIAS2_CTL; /* digimic */
 		else
 			micbias_ctl &= ~TWL4030_MICBIAS2_CTL;
+
 	} else {
 		/* TX1 microphone path */
 		if (adcmicsel & TWL4030_TX1IN_SEL)
 			micbias_ctl |= TWL4030_MICBIAS1_CTL; /* digimic */
 		else
 			micbias_ctl &= ~TWL4030_MICBIAS1_CTL;
+
 	}
 
 	twl4030_write(w->codec, TWL4030_REG_MICBIAS_CTL, micbias_ctl);
@@ -584,6 +586,9 @@ static int micmixl_event(struct snd_soc_dapm_widget *w,
 		}
 	}
 	
+	/* JFK:  Pin Mic Bias On */
+	micbias |= (1<<0);  
+
 	twl4030_write(w->codec, TWL4030_REG_MICBIAS_CTL, micbias);
 	twl4030_write(w->codec, TWL4030_REG_ANAMICL, micsw);
 	twl4030_write(w->codec, TWL4030_REG_AVADC_CTL, avadc);
@@ -613,6 +618,9 @@ static int micmixr_event(struct snd_soc_dapm_widget *w,
 		}
 	}
 	
+	/* JFK:  Pin Mic Bias On */
+	micbias |= (1<<1);  
+
 	twl4030_write(w->codec, TWL4030_REG_MICBIAS_CTL, micbias);
 	twl4030_write(w->codec, TWL4030_REG_ANAMICR, micsw);
 	twl4030_write(w->codec, TWL4030_REG_AVADC_CTL, avadc);
