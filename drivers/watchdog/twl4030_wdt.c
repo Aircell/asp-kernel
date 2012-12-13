@@ -18,6 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+// cheating here
+#define DEBUG
+
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -48,8 +51,15 @@ MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started "
 
 static int twl4030_wdt_write(unsigned char val)
 {
-	return twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, val,
+	int result;
+	result = twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, val,
 					TWL4030_WATCHDOG_CFG_REG_OFFS);
+	if (result != 0)
+	{
+		pr_warning("twl4030_wdt: twl_i2c_write failed with %d\n", result);
+		// May want to schedule_delayed_work here
+	}
+	return result;
 }
 
 static int twl4030_wdt_enable(struct twl4030_wdt *wdt)
@@ -80,7 +90,10 @@ static ssize_t twl4030_wdt_write_fop(struct file *file,
 	struct twl4030_wdt *wdt = file->private_data;
 
 	if (len)
+	{
+		pr_debug("twl4030_wdt: watchdog keepalive via write_fop\n");
 		twl4030_wdt_enable(wdt);
+	}
 
 	return len;
 }
@@ -109,6 +122,7 @@ static long twl4030_wdt_ioctl(struct file *file,
 		return put_user(0, p);
 
 	case WDIOC_KEEPALIVE:
+		pr_debug("twl4030_wdt: watchdog keepalive via ioctl\n");
 		twl4030_wdt_enable(wdt);
 		break;
 
