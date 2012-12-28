@@ -271,9 +271,7 @@ static struct platform_device headset_jack = {
 
 static struct platform_device *cloudsurfer_devices[] __initdata = {
     &volume_buttons,
-/*  Remove headset support until hardware is stable
     &headset_jack,
-*/
 };
 
 
