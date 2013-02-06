@@ -83,7 +83,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_BTPGA		(0x1F)	*/
 	0x00, /* REG_BTSTPGA		(0x20)	*/
 	0x00, /* REG_EAR_CTL		(0x21)	*/
-	0x2d, /* REG_HS_SEL		(0x22)	*/
+	0x28, /* REG_HS_SEL		(0x22)	*/
 	0x0f, /* REG_HS_GAIN_SET	(0x23)	*/
 	0x00, /* REG_HS_POPN_SET	(0x24)	*/
 	0x00, /* REG_PREDL_CTL		(0x25)	*/
@@ -116,8 +116,8 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x40)	*/
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
-	0x30, /* REG_RX_PATH_SEL	(0x43)	JFK - Mono output*/
-	0x03, /* REG_VDL_APGA_CTL	(0x44)	JFK - Can trip breakers if too high*/
+	0x00, /* REG_RX_PATH_SEL	(0x43)	*/
+	0x33, /* REG_VDL_APGA_CTL	(0x44)	JFK - Can trip breakers if too high*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
 	0x00, /* REG_VIBRA_PWM_SET	(0x47)	*/
