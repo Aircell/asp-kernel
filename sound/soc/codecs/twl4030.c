@@ -67,12 +67,12 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x61, /* REG_VOICE_IF		(0xF)	*/
 	0x00, /* REG_ARXR1PGA		(0x10)	*/
 	0x00, /* REG_ARXL1PGA		(0x11)	*/
-	0x2A, /* REG_ARXR2PGA		(0x12)	*/
-	0x2A, /* REG_ARXL2PGA		(0x13)	*/
+	0x3A, /* REG_ARXR2PGA		(0x12)	*/
+	0x00, /* REG_ARXL2PGA		(0x13)	*/
 	0x31, /* REG_VRXPGA		(0x14)	*/
 	0x00, /* REG_VSTPGA		(0x15)	*/
 	0x00, /* REG_VRX2ARXPGA		(0x16)	*/
-	0x1c, /* REG_AVDAC_CTL		(0x17)	*/
+	0x14, /* REG_AVDAC_CTL		(0x17)	*/
 	0x00, /* REG_ARX2VTXPGA		(0x18)	*/
 	0x00, /* REG_ARXL1_APGA_CTL	(0x19)	*/
 	0x00, /* REG_ARXR1_APGA_CTL	(0x1A)	*/
@@ -187,6 +187,7 @@ static inline void twl4030_write_reg_cache(struct snd_soc_codec *codec,
 	if (reg >= TWL4030_CACHEREGNUM) {
 		return;
 	}
+
 
 	switch(reg) {
 	case TWL4030_REG_EXT_MUTE:
