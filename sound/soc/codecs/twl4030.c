@@ -68,11 +68,11 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_ARXR1PGA		(0x10)	*/
 	0x00, /* REG_ARXL1PGA		(0x11)	*/
 	0x3A, /* REG_ARXR2PGA		(0x12)	*/
-	0x00, /* REG_ARXL2PGA		(0x13)	*/
+	0x3A, /* REG_ARXL2PGA		(0x13)	*/
 	0x31, /* REG_VRXPGA		(0x14)	*/
 	0x00, /* REG_VSTPGA		(0x15)	*/
 	0x00, /* REG_VRX2ARXPGA		(0x16)	*/
-	0x14, /* REG_AVDAC_CTL		(0x17)	*/
+	0x1c, /* REG_AVDAC_CTL		(0x17)	*/
 	0x00, /* REG_ARX2VTXPGA		(0x18)	*/
 	0x00, /* REG_ARXL1_APGA_CTL	(0x19)	*/
 	0x00, /* REG_ARXR1_APGA_CTL	(0x1A)	*/
@@ -83,7 +83,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* REG_BTPGA		(0x1F)	*/
 	0x00, /* REG_BTSTPGA		(0x20)	*/
 	0x00, /* REG_EAR_CTL		(0x21)	*/
-	0x28, /* REG_HS_SEL		(0x22)	*/
+	0x2d, /* REG_HS_SEL		(0x22)	*/
 	0x0f, /* REG_HS_GAIN_SET	(0x23)	*/
 	0x00, /* REG_HS_POPN_SET	(0x24)	*/
 	0x00, /* REG_PREDL_CTL		(0x25)	*/
@@ -116,7 +116,7 @@ static const u8 twl4030_reg[TWL4030_CACHEREGNUM] = {
 	0x00, /* not used		(0x40)	*/
 	0x00, /* not used		(0x41)	*/
 	0x00, /* not used		(0x42)	*/
-	0x00, /* REG_RX_PATH_SEL	(0x43)	*/
+	0x30, /* REG_RX_PATH_SEL	(0x43)	*/
 	0x33, /* REG_VDL_APGA_CTL	(0x44)	JFK - Can trip breakers if too high*/
 	0x00, /* REG_VIBRA_CTL		(0x45)	*/
 	0x00, /* REG_VIBRA_SET		(0x46)	*/
