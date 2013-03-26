@@ -112,6 +112,7 @@ obj-$(CONFIG_CLOUDSURFER)   += board-cloudsurfer.o \
                        board-cloudsurfer-sdram.o \
                        board-cloudsurfer-poweroff.o \
                        board-cloudsurfer-display.o \
+                       board-cloudsurfer-revision.o \
                        mmc-twl4030.o
 obj-$(CONFIG_MACH_DM3730_TORPEDO_NOT)	+= board-dm3730logic.o \
 					   board-dm3730logic-display.o \

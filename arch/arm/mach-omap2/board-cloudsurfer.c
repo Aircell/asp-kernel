@@ -88,6 +88,8 @@ void twl4030_mute(void);
 void emergency_sync(void);
 
 extern void print_omap_clocks(void);
+extern void cloudsurfer_revision_setup(void);
+extern int  cloudsurfer_board_revision();
 
 #define QT_I2C_ADDR			 0x4b
 #define DIE_ID_REG_BASE		(L4_WK_34XX_PHYS + 0xA000)
@@ -1076,7 +1078,17 @@ static void __init omap3logic_init(void)
 
 	omap3logic_i2c_init();
 
+	cloudsurfer_revision_setup();
 
+	printk(KERN_INFO "Cloudsurfer Board Revision %d\n", cloudsurfer_board_revision());
+	switch(cloudsurfer_board_revision()) {
+	case 1:
+		/* Rev A boards have reversed GPIO logic for Volume Up Key */
+		cs_volume_buttons[0].active_low = 0;
+		break;
+	default:
+		break;
+	}
 	platform_add_devices(cloudsurfer_devices, ARRAY_SIZE(cloudsurfer_devices));
 
 	board_lcd_init();
@@ -1128,6 +1140,7 @@ static void __init omap3logic_map_io(void)
 	omap2_set_globals_343x();
 	omap2_map_common_io();
 }
+
 
 MACHINE_START(DM3730_SOM_LV, "Aircell CloudSurfer DM3730")
 	.phys_io		= 0x48000000,
