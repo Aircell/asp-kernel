@@ -77,6 +77,14 @@ void cloudsurfer_revision_setup(void) {
 	if (!properties_kobj || ret)
 		pr_err("failed to create board_properties\n");
 
+        if (machine_is_cloudsurfer_p3() || machine_is_dm3730_som_lv()) {
+		board_revision=0;
+        } else if (machine_is_cloudsurfer_reva()) {
+		board_revision=1;
+        } else {
+		board_revision=-1;
+        }
+
 }
 
 static int __init setup_board_revision(char *str)
