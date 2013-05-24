@@ -1043,7 +1043,8 @@ int dm3730logic_has_wilink_wifi_module(void)
 	}
 
 	/* Not a SOM, no WiLink */
-	if (!machine_is_dm3730_som_lv()) {
+	if (!machine_is_dm3730_som_lv() || machine_is_cloudsurfer_p3()
+		|| machine_is_cloudsurfer_reva()) {
 		printk("%s:%d\n", __FUNCTION__, __LINE__);
 		return 0;
 	}

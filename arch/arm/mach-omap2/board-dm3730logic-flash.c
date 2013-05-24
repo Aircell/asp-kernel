@@ -189,7 +189,8 @@ void __init dm3730logic_flash_init(void)
 
 #if 1
 #warning "Need productID to determine if NOR present!"
-	if (machine_is_dm3730_som_lv()) {
+	if (machine_is_dm3730_som_lv() || machine_is_cloudsurfer_p3()
+		|| machine_is_cloudsurfer_reva()) {
 		printk("%s: Assuming NOR present (need productID!)\n", __FUNCTION__);
 		nor_size = 23; /* assume 8MB */
 	}

@@ -1151,3 +1151,23 @@ MACHINE_START(DM3730_SOM_LV, "Aircell CloudSurfer DM3730")
 	.init_machine	= omap3logic_init,
 	.timer			= &omap_timer,
 MACHINE_END
+
+MACHINE_START(CLOUDSURFER_P3, "Cloudsurfer")
+	.phys_io		= 0x48000000,
+	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+	.boot_params	= 0x80000100,
+	.map_io			= omap3logic_map_io,
+	.init_irq		= omap3logic_init_irq,
+	.init_machine	= omap3logic_init,
+	.timer			= &omap_timer,
+MACHINE_END
+
+MACHINE_START(CLOUDSURFER_REVA, "Cloudsurfer")
+	.phys_io		= 0x48000000,
+	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+	.boot_params	= 0x80000100,
+	.map_io			= omap3logic_map_io,
+	.init_irq		= omap3logic_init_irq,
+	.init_machine	= omap3logic_init,
+	.timer			= &omap_timer,
+MACHINE_END
