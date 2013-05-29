@@ -218,7 +218,7 @@ static struct gpio_keys_button cs_volume_buttons[] = {
         .type       =  EV_KEY,
         .active_low = 1,
         .wakeup     = 1,
-	.callback   = cs_volume_poweroff,
+		.callback   = cs_volume_poweroff,
     },
     {
         .gpio       = AIRCELL_VOLUME_DOWN_DETECT,
@@ -1064,7 +1064,7 @@ void cloudsurfer_gpio_init(void)
 
 static void __init omap3logic_init(void)
 {
-	printk("Aircell CloudSurfer P3\n");
+	printk("Aircell CloudSurfer\n");
 
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBP);
 	
@@ -1081,13 +1081,11 @@ static void __init omap3logic_init(void)
 	cloudsurfer_revision_setup();
 
 	printk(KERN_INFO "Cloudsurfer Board Revision %d\n", cloudsurfer_board_revision());
-	switch(cloudsurfer_board_revision()) {
-	case 1:
+	if (machine_is_cloudsurfer_reva()) {
 		/* Rev A boards have reversed GPIO logic for Volume Up Key */
+		printk("Rev A board = Rev B phone; volume-up is active high\n");
 		cs_volume_buttons[0].active_low = 0;
-		break;
-	default:
-		break;
+		cs_volume_buttons[0].callback = NULL;
 	}
 	platform_add_devices(cloudsurfer_devices, ARRAY_SIZE(cloudsurfer_devices));
 
