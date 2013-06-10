@@ -1066,6 +1066,12 @@ static void __init omap3logic_init(void)
 {
 	printk("Aircell CloudSurfer\n");
 
+	// Kludge to correct a poor decision to have MACH_TYPE_CLOUDSURFER_P3
+	// different from MACH_TYPE_DM3730_SOM_LV.
+	if (machine_is_cloudsurfer_p3_dupe()) {
+		__machine_arch_type = MACH_TYPE_CLOUDSURFER_P3;
+	}
+
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBP);
 	
 	fix_pbias_voltage();
@@ -1139,7 +1145,7 @@ static void __init omap3logic_map_io(void)
 	omap2_map_common_io();
 }
 
-
+/*
 MACHINE_START(DM3730_SOM_LV, "Aircell CloudSurfer DM3730")
 	.phys_io		= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
@@ -1149,8 +1155,20 @@ MACHINE_START(DM3730_SOM_LV, "Aircell CloudSurfer DM3730")
 	.init_machine	= omap3logic_init,
 	.timer			= &omap_timer,
 MACHINE_END
+*/
 
 MACHINE_START(CLOUDSURFER_P3, "Cloudsurfer")
+	.phys_io		= 0x48000000,
+	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+	.boot_params	= 0x80000100,
+	.map_io			= omap3logic_map_io,
+	.init_irq		= omap3logic_init_irq,
+	.init_machine	= omap3logic_init,
+	.timer			= &omap_timer,
+MACHINE_END
+
+
+MACHINE_START(CLOUDSURFER_P3_DUPE, "Cloudsurfer")
 	.phys_io		= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
