@@ -10,6 +10,8 @@ struct gpio_keys_button {
 	int type;		/* input event type (EV_KEY, EV_SW) */
 	int wakeup;		/* configure the button as a wake-up source */
 	int debounce_interval;	/* debounce ticks interval in msecs */
+	int masking_gpio; /* Added for ASP Rev B phones which generate volume-up on cradle insertion */
+	int mask_high; /* 1 if masking_gpio is high when this key should be ignored */
 	void (*callback)(int code, int state, void *);
 };
 

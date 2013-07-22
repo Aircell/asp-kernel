@@ -44,6 +44,10 @@ static void gpio_keys_report_event(struct gpio_button_data *bdata, int do_cb)
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value(button->gpio) ? 1 : 0) ^ button->active_low;
 
+	if (button->masking_gpio != 0) {
+		state &= (gpio_get_value(button->masking_gpio) ? 1 : 0) ^ button->mask_high;
+	}
+
 	input_event(input, type, button->code, !!state);
 	input_sync(input);
 
