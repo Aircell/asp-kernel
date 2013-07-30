@@ -145,6 +145,12 @@ static inline void __init omap3logic_init_smsc911x(void)
 	omap_mux_init_gpio(eth_gpio, OMAP_PIN_INPUT | 
 						OMAP_WAKEUP_EN | OMAP_MUX_MODE4);
 
+	/* For the Rev A board we need to switch the gpio_10/sys_clkout1 mux to gpio_10.
+	 * Mode 0 is sys_clkout1 (power-on default), 4 is gpio_10, and 7 is safe_mode.
+	 */
+	omap_mux_init_gpio(AIRCELL_WAKE_ON_LAN, OMAP_PIN_INPUT | 
+						OMAP_WAKEUP_EN | OMAP_MUX_MODE4);
+
 	if (gpmc_cs_request(eth_cs, SZ_16M, &cs_mem_base) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem for smsc911x\n");
 		return;
@@ -1031,6 +1037,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_request(AIRCELL_BACKLIGHT_ENABLE,"AIRCELL_BACKLIGHT_ENABLE");
 	gpio_request(AIRCELL_TOUCH_INTERRUPT,"AIRCELL_TOUCH_INTERRUPT");
 	gpio_request(AIRCELL_MUTE,"AIRCELL_MUTE");
+	gpio_request(AIRCELL_WAKE_ON_LAN,"AIRCELL_WAKE_ON_LAN");
 
 	gpio_direction_input(AIRCELL_BATTERY_POWERED);
 	gpio_direction_output(AIRCELL_18V_ENABLE,1);
@@ -1045,6 +1052,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_direction_output(AIRCELL_BACKLIGHT_ENABLE,0);
 	gpio_direction_input(AIRCELL_PROX_INTERRUPT);
 	gpio_direction_output(AIRCELL_MUTE,0);
+	gpio_direction_input(AIRCELL_WAKE_ON_LAN);
 
 	gpio_export(AIRCELL_18V_ENABLE,0);
 	gpio_export(AIRCELL_SOFTWARE_RESET,0);
@@ -1061,7 +1069,7 @@ void cloudsurfer_gpio_init(void)
 	gpio_export(AIRCELL_BATTERY_CUT_ENABLE,0);
 	gpio_export(AIRCELL_BACKLIGHT_ENABLE,0);
 	gpio_export(AIRCELL_MUTE,0);
-
+	gpio_export(AIRCELL_WAKE_ON_LAN,0);
 }
 
 static void __init omap3logic_init(void)
