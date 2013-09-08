@@ -21,6 +21,9 @@
 #define AIRCELL_BACKLIGHT_ENABLE		164
 #define AIRCELL_MUTE					57
 #define AIRCELL_PMIC_HEADSET			7
+/* 104 is new for Rev B phones. Logic-high means power has been removed and the
+ * phone has < 30 ms to finish all fs writes. */
+#define AIRCELL_POE_PWR_GOOD			104
 
 extern unsigned int pin_get_gpio_input(unsigned int pin);
 extern unsigned int pin_set_gpio_dataout(unsigned int pin, unsigned int set);
