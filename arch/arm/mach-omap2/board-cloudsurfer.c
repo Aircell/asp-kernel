@@ -783,14 +783,16 @@ int __init omap3logic_i2c_init(void)
 		i2c2_size = 4;
 		printk("Cloudsurfer is Battery Powered");
 	} else {
-		power_applied_irq = gpio_to_irq(AIRCELL_POWER_APPLIED_DETECT);
-		/* When a wired phone AIRCELL_POWER_APPLIED_DETECT is low when
-  		 * power is there and high when off, so we look for a rising edge
-		 */
-		ret = request_irq(power_applied_irq, power_applied_irq_handler,
-                IRQF_TRIGGER_RISING, "power_applied_irq", NULL);
-        if (ret < 0)
-            printk(KERN_ERR "Failed to request power applied irq: %d\n", ret);
+		if (! machine_is_cloudsurfer_reva()) {
+			power_applied_irq = gpio_to_irq(AIRCELL_POWER_APPLIED_DETECT);
+			/* When a wired phone AIRCELL_POWER_APPLIED_DETECT is low when
+			 * power is there and high when off, so we look for a rising edge
+			 */
+			ret = request_irq(power_applied_irq, power_applied_irq_handler,
+							  IRQF_TRIGGER_RISING, "power_applied_irq", NULL);
+			if (ret < 0)
+				printk(KERN_ERR "Failed to request power applied irq: %d\n", ret);
+		}
 		printk("Cloudsurfer is POE Powered");
 		i2c2_size = 2;
 	}
