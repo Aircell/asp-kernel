@@ -1104,13 +1104,15 @@ static void __init omap3logic_init(void)
 		printk("Rev A board = Rev B phone; volume-up is active high\n");
 		cs_volume_buttons[0].active_low = 0;
 		cs_volume_buttons[0].callback = NULL;
-		cs_volume_buttons[0].masking_gpio = AIRCELL_POWER_APPLIED_DETECT;
-		cs_volume_buttons[0].mask_high = 0;
-		// "debounce_interval" holds off GPIO poll. 85 is too fast for in-cradle.
-		// 100 seems to work on my 1 phones.
-		cs_volume_buttons[0].debounce_interval = 100;
-		printk("Adding %d ms delay on volume-up to mask spurrious in-cradle events\n",
-			cs_volume_buttons[0].debounce_interval);
+		if ( gpio_get_value(AIRCELL_BATTERY_POWERED) == 1 ) {
+			cs_volume_buttons[0].masking_gpio = AIRCELL_POWER_APPLIED_DETECT;
+			cs_volume_buttons[0].mask_high = 0;
+			// "debounce_interval" holds off GPIO poll. 85 is too fast for in-cradle.
+			// 100 seems to work on my 1 phones.
+			cs_volume_buttons[0].debounce_interval = 100;
+			printk("Adding %d ms delay on volume-up to mask spurrious in-cradle events\n",
+				   cs_volume_buttons[0].debounce_interval);
+		}
 	}
 	platform_add_devices(cloudsurfer_devices, ARRAY_SIZE(cloudsurfer_devices));
 
